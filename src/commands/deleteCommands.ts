@@ -37,22 +37,29 @@ export function registerDeleteCommands(
 
         const rootKey = keyPath[0];
 
-        if (rootKey === 'permissions' && keyPath.length === 3) {
-          const category = keyPath[1] as PermissionCategory;
-          const rule = keyPath[2];
-          removePermissionRule(filePath, category, rule);
-        } else if (rootKey === 'env' && keyPath.length === 2) {
-          removeEnvVar(filePath, keyPath[1]);
-        } else if (rootKey === 'hooks' && keyPath.length >= 3) {
-          const eventType = keyPath[1] as HookEventType;
-          const matcherIndex = parseInt(keyPath[2], 10);
-          removeHookEntry(filePath, eventType, matcherIndex);
-        } else if (rootKey === 'mcpServers' && keyPath.length === 2) {
-          removeMcpServer(filePath, keyPath[1]);
-        } else if (rootKey === 'enabledPlugins' && keyPath.length === 2) {
-          removePlugin(filePath, keyPath[1]);
-        } else {
-          removeScalarSetting(filePath, rootKey);
+        try {
+          if (rootKey === 'permissions' && keyPath.length === 3) {
+            const category = keyPath[1] as PermissionCategory;
+            const rule = keyPath[2];
+            removePermissionRule(filePath, category, rule);
+          } else if (rootKey === 'env' && keyPath.length === 2) {
+            removeEnvVar(filePath, keyPath[1]);
+          } else if (rootKey === 'hooks' && keyPath.length >= 3) {
+            const eventType = keyPath[1] as HookEventType;
+            const matcherIndex = parseInt(keyPath[2], 10);
+            if (isNaN(matcherIndex)) return;
+            removeHookEntry(filePath, eventType, matcherIndex);
+          } else if (rootKey === 'mcpServers' && keyPath.length === 2) {
+            removeMcpServer(filePath, keyPath[1]);
+          } else if (rootKey === 'enabledPlugins' && keyPath.length === 2) {
+            removePlugin(filePath, keyPath[1]);
+          } else {
+            removeScalarSetting(filePath, rootKey);
+          }
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `Failed to delete: ${error instanceof Error ? error.message : String(error)}`,
+          );
         }
       },
     ),

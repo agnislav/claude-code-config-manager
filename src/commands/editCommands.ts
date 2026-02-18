@@ -34,16 +34,22 @@ export function registerEditCommands(
         // Determine the type of edit based on keyPath
         const rootKey = keyPath[0];
 
-        if (rootKey === 'env' && keyPath.length === 2) {
-          setEnvVar(filePath, keyPath[1], newValue);
-        } else if (rootKey === 'sandbox') {
-          const sandboxKey = keyPath.slice(1).join('.');
-          const parsed = parseInputValue(newValue);
-          setSandboxProperty(filePath, sandboxKey, parsed);
-        } else {
-          // Scalar setting
-          const parsed = parseInputValue(newValue);
-          setScalarSetting(filePath, rootKey, parsed);
+        try {
+          if (rootKey === 'env' && keyPath.length === 2) {
+            setEnvVar(filePath, keyPath[1], newValue);
+          } else if (rootKey === 'sandbox') {
+            const sandboxKey = keyPath.slice(1).join('.');
+            const parsed = parseInputValue(newValue);
+            setSandboxProperty(filePath, sandboxKey, parsed);
+          } else {
+            // Scalar setting
+            const parsed = parseInputValue(newValue);
+            setScalarSetting(filePath, rootKey, parsed);
+          }
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `Failed to edit setting: ${error instanceof Error ? error.message : String(error)}`,
+          );
         }
       },
     ),

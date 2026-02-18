@@ -9,7 +9,7 @@ import {
   removeScalarSetting,
 } from '../config/configWriter';
 import { PERMISSION_CATEGORY_LABELS, SCOPE_LABELS } from '../constants';
-import { ClaudeCodeConfig, ConfigScope, PermissionCategory } from '../types';
+import { ClaudeCodeConfig, PermissionCategory } from '../types';
 import { readJsonFile } from '../utils/json';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 
@@ -66,25 +66,31 @@ export function registerMoveCommands(
 
         const rootKey = keyPath[0];
 
-        // Write to target first, then remove from source
-        if (rootKey === 'permissions' && keyPath.length === 3) {
-          const category = keyPath[1] as PermissionCategory;
-          const rule = keyPath[2];
-          addPermissionRule(targetFilePath, category, rule);
-          removePermissionRule(filePath, category, rule);
-        } else if (rootKey === 'env' && keyPath.length === 2) {
-          const envKey = keyPath[1];
-          const currentValue = node.description?.toString() ?? '';
-          setEnvVar(targetFilePath, envKey, currentValue);
-          removeEnvVar(filePath, envKey);
-        } else {
-          // Scalar setting
-          const currentSc = allScopes.find((s) => s.scope === scope);
-          const value = currentSc?.config[rootKey];
-          if (value !== undefined) {
-            setScalarSetting(targetFilePath, rootKey, value);
-            removeScalarSetting(filePath, rootKey);
+        try {
+          // Write to target first, then remove from source
+          if (rootKey === 'permissions' && keyPath.length === 3) {
+            const category = keyPath[1] as PermissionCategory;
+            const rule = keyPath[2];
+            addPermissionRule(targetFilePath, category, rule);
+            removePermissionRule(filePath, category, rule);
+          } else if (rootKey === 'env' && keyPath.length === 2) {
+            const envKey = keyPath[1];
+            const currentSc = allScopes.find((s) => s.scope === scope);
+            const currentValue = currentSc?.config.env?.[envKey] ?? '';
+            setEnvVar(targetFilePath, envKey, currentValue);
+            removeEnvVar(filePath, envKey);
+          } else {
+            // Scalar setting
+            const currentSc = allScopes.find((s) => s.scope === scope);
+            const value = currentSc?.config[rootKey];
+            if (value !== undefined) {
+              setScalarSetting(targetFilePath, rootKey, value);
+              removeScalarSetting(filePath, rootKey);
+            }
           }
+        } catch (error) {
+          vscode.window.showErrorMessage(`Failed to move setting: ${error instanceof Error ? error.message : String(error)}`);
+          return;
         }
 
         vscode.window.showInformationMessage(
@@ -145,7 +151,7 @@ export function registerMoveCommands(
         }
 
         // Check if the setting already exists in the target
-        const targetConfig = readJsonFile<ClaudeCodeConfig>(targetFilePath).data;
+        const targetConfig = readJsonFile<ClaudeCodeConfig>(targetFilePath).data ?? {};
         if (settingKey in targetConfig) {
           const overwrite = await vscode.window.showWarningMessage(
             `"${settingKey}" already exists in ${SCOPE_LABELS[pick.value.scope]}. Overwrite?`,
@@ -159,11 +165,14 @@ export function registerMoveCommands(
         const value = currentSc?.config[settingKey];
         if (value !== undefined) {
           setScalarSetting(targetFilePath, settingKey, value);
+          vscode.window.showInformationMessage(
+            `Copied "${settingKey}" to ${SCOPE_LABELS[pick.value.scope]}`,
+          );
+        } else {
+          vscode.window.showWarningMessage(
+            `Could not copy "${settingKey}": value not found in source scope.`,
+          );
         }
-
-        vscode.window.showInformationMessage(
-          `Copied "${settingKey}" to ${SCOPE_LABELS[pick.value.scope]}`,
-        );
       },
     ),
   );
@@ -224,7 +233,7 @@ export function registerMoveCommands(
         const scopeLabel = SCOPE_LABELS[scopePick.value.scope];
 
         // Check if the rule already exists in any category in the target
-        const targetConfig = readJsonFile<ClaudeCodeConfig>(targetFilePath).data;
+        const targetConfig = readJsonFile<ClaudeCodeConfig>(targetFilePath).data ?? {};
         const allCategories = [PermissionCategory.Allow, PermissionCategory.Deny, PermissionCategory.Ask];
 
         for (const cat of allCategories) {

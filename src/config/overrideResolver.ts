@@ -72,11 +72,9 @@ export function resolveScalarOverride(
  * Checks if a permission rule in a given scope is overridden by a conflicting
  * rule in a higher-precedence scope.
  *
- * A rule is considered overridden if:
- * - A higher-precedence scope has an overlapping rule in a *different* category
- *   (e.g., Managed denies "Bash(curl *)" while User allows "Bash(curl *)")
- * - A higher-precedence scope has the same rule in the *same* category
- *   (redundant but not harmful — we still flag it for visibility)
+ * A rule is considered overridden only if a higher-precedence scope has an
+ * overlapping rule in a *different* category (e.g., Managed denies "Bash(curl *)"
+ * while User allows "Bash(curl *)"). Same-category overlap is not flagged.
  */
 export function resolvePermissionOverride(
   category: PermissionCategory,

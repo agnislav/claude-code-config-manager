@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as path from 'path';
 
 export interface ParseResult<T> {
   data: T;
@@ -35,7 +36,7 @@ export function readJsonFile<T = unknown>(filePath: string): ParseResult<T> {
 }
 
 export function writeJsonFile(filePath: string, data: unknown): void {
-  const dir = filePath.substring(0, filePath.lastIndexOf('/'));
+  const dir = path.dirname(filePath);
   fs.mkdirSync(dir, { recursive: true });
   const content = JSON.stringify(data, null, 2) + '\n';
   fs.writeFileSync(filePath, content, 'utf-8');

@@ -8,7 +8,6 @@ import {
 } from '../config/configWriter';
 import { SCOPE_LABELS, ALL_HOOK_EVENT_TYPES } from '../constants';
 import {
-  ConfigScope,
   HookEventType,
   McpServerConfig,
   PermissionCategory,
@@ -43,7 +42,13 @@ export function registerAddCommands(
         });
         if (!rule) return;
 
-        addPermissionRule(filePath, category.value, rule.trim());
+        try {
+          addPermissionRule(filePath, category.value, rule.trim());
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `Failed to add permission rule: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
       },
     ),
   );
@@ -68,7 +73,13 @@ export function registerAddCommands(
         });
         if (value === undefined) return;
 
-        setEnvVar(filePath, key.trim(), value);
+        try {
+          setEnvVar(filePath, key.trim(), value);
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `Failed to add environment variable: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
       },
     ),
   );
@@ -124,7 +135,13 @@ export function registerAddCommands(
           config = { command: command.trim(), args };
         }
 
-        setMcpServer(mcpFilePath, serverName.trim(), config);
+        try {
+          setMcpServer(mcpFilePath, serverName.trim(), config);
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `Failed to add MCP server: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
       },
     ),
   );
@@ -154,10 +171,16 @@ export function registerAddCommands(
         });
         if (!command) return;
 
-        addHookEntry(filePath, eventType.value as HookEventType, {
-          matcher: matcher?.trim() || undefined,
-          hooks: [{ type: 'command', command: command.trim() }],
-        });
+        try {
+          addHookEntry(filePath, eventType.value as HookEventType, {
+            matcher: matcher?.trim() || undefined,
+            hooks: [{ type: 'command', command: command.trim() }],
+          });
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `Failed to add hook: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
       },
     ),
   );

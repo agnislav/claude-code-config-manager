@@ -17,6 +17,9 @@ function ensureDir(filePath: string): void {
 
 function loadOrCreate<T>(filePath: string): T {
   const result = readJsonFile<T>(filePath);
+  if (result.error) {
+    throw new Error(`Cannot modify ${filePath}: ${result.error}`);
+  }
   return result.data;
 }
 

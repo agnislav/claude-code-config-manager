@@ -3,6 +3,9 @@
  * No runtime JSON Schema library — we validate the most common mistakes by hand.
  */
 
+import { HookEventType } from '../types';
+import { DEDICATED_SECTION_KEYS, KNOWN_SETTING_KEYS } from '../constants';
+
 export interface ValidationIssue {
   message: string;
   path: string;
@@ -11,29 +14,16 @@ export interface ValidationIssue {
   line?: number;
 }
 
+/** Derived from DEDICATED_SECTION_KEYS + KNOWN_SETTING_KEYS to stay in sync with the type. */
 const KNOWN_TOP_LEVEL_KEYS = new Set([
-  'permissions',
-  'env',
-  'hooks',
-  'sandbox',
-  'enabledPlugins',
-  'model',
-  'smallFastModel',
-  'outputStyle',
-  'apiKeyHelper',
-  'includeCoAuthoredBy',
-  'trustWorkspaceConfig',
+  ...DEDICATED_SECTION_KEYS,
+  ...KNOWN_SETTING_KEYS,
 ]);
 
 const VALID_PERMISSION_CATEGORIES = new Set(['allow', 'deny', 'ask']);
 
-const VALID_HOOK_EVENTS = new Set([
-  'PreToolUse',
-  'PostToolUse',
-  'Notification',
-  'Stop',
-  'SubagentStop',
-]);
+/** Derived from the HookEventType enum to stay in sync. */
+const VALID_HOOK_EVENTS: Set<string> = new Set(Object.values(HookEventType));
 
 export function validateConfig(config: unknown, sourceText?: string): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
