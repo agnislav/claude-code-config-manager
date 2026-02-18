@@ -5,6 +5,12 @@ All notable changes to the Claude Code Config Manager extension will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.3.1] - 2026-02-18
+
+### Changed
+- Renamed sidebar container title from "Claude Code Config" to "Claude Code Config Manager"
+- Removed redundant "Inline Editing" section from README
+
 ## [0.3.0] - 2026-02-18
 
 ### Added

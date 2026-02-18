@@ -29,10 +29,6 @@ Manage every section of Claude Code configuration:
 - **Environment Variables** — Custom env vars passed to Claude Code
 - **Sandbox** — Sandbox mode and networking configuration
 
-### Inline Editing
-
-Edit values directly from the tree — no need to hunt for the right JSON file and key. Add, edit, delete, and move settings between scopes with context menu actions.
-
 ### Section Filters
 
 Quickly focus on what matters with toolbar filter buttons for each config section. Toggle visibility of Permissions, MCP Servers, Plugins, Hooks, Settings, Environment, and Sandbox sections independently.
