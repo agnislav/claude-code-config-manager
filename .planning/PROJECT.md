@@ -8,7 +8,14 @@ A VS Code extension that provides a visual config viewer and editor for Claude C
 
 Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
 
-## Current Milestone: Planning next milestone
+## Current Milestone: v0.4.1 — Node Display Polish
+
+**Goal:** Refine how tree nodes render — relative paths for project scopes, cleaner plugin labels, and expandable hook entries.
+
+**Target features:**
+- Show relative path for project and local scope tree items
+- Remove enabled/disabled text from plugin nodes
+- Render hook entries as expandable key-value nodes like object settings
 
 ## Requirements
 
@@ -34,7 +41,9 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 
 ### Active
 
-(None yet — define in next milestone)
+- [ ] Show relative path for project and local scope tree items
+- [ ] Remove enabled/disabled text from plugin nodes
+- [ ] Render hook entries as expandable key-value nodes
 
 ### Out of Scope
 
@@ -72,4 +81,4 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 | formatValue exported from settingNode.ts | Shared by SettingKeyValueNode for consistent value rendering | ✓ Good |
 
 ---
-*Last updated: 2026-02-20 after v0.4.0 milestone complete*
+*Last updated: 2026-02-20 after v0.4.1 milestone started*

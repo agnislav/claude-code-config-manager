@@ -5,15 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
-**Current focus:** Planning next milestone
+**Current focus:** v0.4.1 — Node Display Polish
 
 ## Current Position
 
-Milestone: v0.4.0 complete (Tree UX Refinements)
-Status: Between milestones
-Last activity: 2026-02-20 — v0.4.0 milestone completed and archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-20 — Milestone v0.4.1 started
 
-Progress: v0.3.x ✓ | v0.4.0 ✓
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ○
 
 ## Performance Metrics
 
@@ -43,9 +44,6 @@ Full decision log in PROJECT.md Key Decisions table.
 
 - Add "go to (scope/entity)" to the command palette (ui)
 - Multiselect for batch copy and move operations (ui)
-- Show relative path for project and local scope tree items (ui)
-- Remove enabled/disabled text from plugin nodes (ui)
-- Render hook entries as expandable key-value nodes like object settings (ui)
 
 ### Blockers/Concerns
 
@@ -54,5 +52,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: v0.4.0 milestone completed and archived. Ready for next milestone.
+Stopped at: Defining v0.4.1 requirements
 Resume file: None
