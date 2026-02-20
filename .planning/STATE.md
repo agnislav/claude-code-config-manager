@@ -47,6 +47,7 @@ Full decision log in PROJECT.md Key Decisions table.
 - Multiselect for batch copy and move operations (ui)
 - Show relative path for project and local scope tree items (ui)
 - Remove enabled/disabled text from plugin nodes (ui)
+- Render hook entries as expandable key-value nodes like object settings (ui)
 
 ### Blockers/Concerns
 
