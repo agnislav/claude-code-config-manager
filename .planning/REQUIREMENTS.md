@@ -74,30 +74,38 @@ Deferred to later milestone. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ERR-01 | — | Pending |
-| ERR-02 | — | Pending |
-| ERR-03 | — | Pending |
-| ERR-04 | — | Pending |
-| ERR-05 | — | Pending |
-| SYNC-01 | — | Pending |
-| SYNC-02 | — | Pending |
-| SYNC-03 | — | Pending |
-| PATH-01 | — | Pending |
-| PATH-02 | — | Pending |
-| PATH-03 | — | Pending |
-| RES-01 | — | Pending |
-| RES-02 | — | Pending |
-| QUAL-01 | — | Pending |
-| QUAL-02 | — | Pending |
-| QUAL-03 | — | Pending |
-| QUAL-04 | — | Pending |
-| QUAL-05 | — | Pending |
+| ERR-01 | 10 | Pending |
+| ERR-02 | 10 | Pending |
+| ERR-03 | 10 | Pending |
+| ERR-04 | 11 | Pending |
+| ERR-05 | 11 | Pending |
+| SYNC-01 | 12 | Pending |
+| SYNC-02 | 12 | Pending |
+| SYNC-03 | 12 | Pending |
+| PATH-01 | 13 | Pending |
+| PATH-02 | 13 | Pending |
+| PATH-03 | 13 | Pending |
+| RES-01 | 14 | Pending |
+| RES-02 | 14 | Pending |
+| QUAL-01 | 15 | Pending |
+| QUAL-02 | 15 | Pending |
+| QUAL-03 | 15 | Pending |
+| QUAL-04 | 15 | Pending |
+| QUAL-05 | 15 | Pending |
 
 **Coverage:**
 - v0.5.0 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18 ⚠️
+- Mapped to phases: 18 (Phases 10–15)
+- Unmapped: 0 ✓
+
+**Phase Distribution:**
+- Phase 10 (Error Handling Foundation): 3 requirements
+- Phase 11 (Tree Error Resilience): 2 requirements
+- Phase 12 (Write Lifecycle & Concurrency): 3 requirements
+- Phase 13 (Path Safety Hardening): 3 requirements
+- Phase 14 (Resource Management): 2 requirements
+- Phase 15 (Code Quality Cleanup): 5 requirements
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 after initial definition*
+*Last updated: 2026-02-20 after roadmap creation (100% coverage)*

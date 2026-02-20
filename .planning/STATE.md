@@ -9,12 +9,92 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-20 — Milestone v0.5.0 started
+Phase: 10 (Error Handling Foundation)
+Plan: Not started
+Status: Roadmap defined, ready to begin implementation
+Last activity: 2026-02-20 — v0.5.0 roadmap created
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ◆
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ◆ (Phase 10/15)
+
+## v0.5.0 Progress
+
+**Milestone:** 0/18 requirements complete (0%)
+**Current Phase:** 10/15 (Error Handling Foundation)
+**Phase Progress:** 0/3 requirements complete (0%)
+
+### Phase 10: Error Handling Foundation
+
+**Status:** Not Started
+**Requirements:** ERR-01, ERR-02, ERR-03
+
+#### Tasks
+
+- [ ] **ERR-01: Propagate writeJsonFile errors**
+  - Add proper error propagation from writeJsonFile() to all callers
+  - Wrap calls in try-catch with user-facing error messages
+  - Test write failures (permission denied, disk full scenarios)
+
+- [ ] **ERR-02: Config parse error handling**
+  - Check JSON parse error field in configModel.reload()
+  - Show warning for corrupted config files
+  - Display file path and parse error details
+
+- [ ] **ERR-03: MCP config parse error handling**
+  - Check MCP config parse error field in configModel
+  - Show warning for invalid .mcp.json files
+  - Include diagnostic information
+
+#### Success Criteria
+
+- [ ] Write failures display actionable error messages instead of silent failures
+- [ ] Corrupted JSON config files trigger visible warnings with file path
+- [ ] Invalid .mcp.json files show diagnostic warnings
+- [ ] No unhandled promise rejections in file write operations
+
+---
+
+### Upcoming Phases
+
+**Phase 11: Tree Error Resilience**
+- ERR-04: Tree operation error guards
+- ERR-05: Plugin checkbox rollback
+
+**Phase 12: Write Lifecycle & Concurrency**
+- SYNC-01: Track in-flight writes
+- SYNC-02: Cleanup orphaned timeouts
+- SYNC-03: Debounce maximum wait ceiling
+
+**Phase 13: Path Safety Hardening**
+- PATH-01: Replace string path operations
+- PATH-02: Validate write paths
+- PATH-03: Validate revealInFile inputs
+
+**Phase 14: Resource Management**
+- RES-01: Dispose tree provider EventEmitter
+- RES-02: Invalidate plugin metadata cache
+
+**Phase 15: Code Quality Cleanup**
+- QUAL-01: Remove unused _configStore parameters
+- QUAL-02: Remove dead code
+- QUAL-03: Extract timeout constants
+- QUAL-04: Use SCOPE_LABELS in delete confirmations
+- QUAL-05: Guard keyPath array access
+
+---
+
+### Milestone Overview
+
+| Phase | Requirements | Complete | Status |
+|-------|--------------|----------|--------|
+| 10 | 3 | 0 | Not Started |
+| 11 | 2 | 0 | Not Started |
+| 12 | 3 | 0 | Not Started |
+| 13 | 3 | 0 | Not Started |
+| 14 | 2 | 0 | Not Started |
+| 15 | 5 | 0 | Not Started |
+| **Total** | **18** | **0** | **0%** |
+
+---
 
 ## Performance Metrics
 
@@ -48,8 +128,21 @@ Full decision log in PROJECT.md Key Decisions table.
 
 None.
 
+## Architecture Notes for v0.5.0
+
+- **Phase 10 (Error Handling Foundation)** must complete before other phases can safely build on error infrastructure
+- **SYNC-01 (write tracking)** in Phase 12 establishes lifecycle pattern for SYNC-02/SYNC-03
+- **PATH-01 (path.dirname)** in Phase 13 is prerequisite for PATH-02 (path validation)
+- Phases 14 and 15 items are independent and can be executed in parallel if desired
+
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: All milestones complete, project archived
+Stopped at: v0.5.0 roadmap created, Phase 10 ready to begin
 Resume file: None
+Next action: Begin Phase 10 implementation
+
+---
+
+*State initialized: 2026-02-20*
+*Last updated: 2026-02-20 — v0.5.0 roadmap created*
