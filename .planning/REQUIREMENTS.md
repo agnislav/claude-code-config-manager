@@ -1,0 +1,52 @@
+# Requirements: Claude Code Config Manager
+
+**Defined:** 2026-02-20
+**Core Value:** Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
+
+## v0.4.1 Requirements
+
+Requirements for milestone v0.4.1 — Node Display Polish.
+
+### Tree Display
+
+- [ ] **TREE-01**: Project Shared and Project Local scope nodes show the relative workspace path in their description
+- [ ] **TREE-02**: Plugin nodes display only the plugin name without enabled/disabled text suffix
+- [ ] **TREE-03**: Hook entry nodes expand to show key-value child nodes (matching object settings pattern)
+
+## Future Requirements
+
+### UI Enhancements
+
+- **NAV-01**: User can "go to" a scope or entity via the command palette
+- **BATCH-01**: User can select multiple items for batch copy and move operations
+
+### Deferred
+
+- **INLINE-01**: Re-enable plugin inline buttons (move/copy/delete)
+- **EDIT-01**: EditValue inline improvements
+- **OVERRIDE-01**: Overridden entities visual management
+- **SORT-01**: Sort items in tree
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Marketplace publishing | Personal tool, not targeting public release |
+| Windows support | macOS/Linux only, matches Claude Code platform support |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| TREE-01 | — | Pending |
+| TREE-02 | — | Pending |
+| TREE-03 | — | Pending |
+
+**Coverage:**
+- v0.4.1 requirements: 3 total
+- Mapped to phases: 0
+- Unmapped: 3 (roadmap pending)
+
+---
+*Requirements defined: 2026-02-20*
+*Last updated: 2026-02-20 after initial definition*
