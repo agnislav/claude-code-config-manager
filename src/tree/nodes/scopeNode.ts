@@ -30,8 +30,13 @@ export class ScopeNode extends ConfigTreeNode {
     );
 
     this.iconPath = new vscode.ThemeIcon(SCOPE_ICONS[scopedConfig.scope]);
+    const isProjectScope =
+      scopedConfig.scope === ConfigScope.ProjectShared ||
+      scopedConfig.scope === ConfigScope.ProjectLocal;
     this.description = scopedConfig.fileExists
-      ? this.getShortPath(scopedConfig.filePath)
+      ? isProjectScope && scopedConfig.filePath
+        ? vscode.workspace.asRelativePath(scopedConfig.filePath, false)
+        : this.getShortPath(scopedConfig.filePath)
       : 'Not found';
     this.tooltip = new vscode.MarkdownString(SCOPE_DESCRIPTIONS[scopedConfig.scope]);
 

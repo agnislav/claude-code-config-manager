@@ -1,17 +1,18 @@
 import * as vscode from 'vscode';
 import { HookCommand, HookEventType, NodeContext, ScopedConfig } from '../../types';
 import { ConfigTreeNode } from './baseNode';
+import { HookKeyValueNode } from './hookKeyValueNode';
 
 export class HookEntryNode extends ConfigTreeNode {
   readonly nodeType = 'hookEntry';
 
   constructor(
     label: string,
-    eventType: HookEventType,
-    matcherIndex: number,
-    hookIndex: number,
-    hook: HookCommand,
-    scopedConfig: ScopedConfig,
+    private readonly eventType: HookEventType,
+    private readonly matcherIndex: number,
+    private readonly hookIndex: number,
+    private readonly hook: HookCommand,
+    private readonly scopedConfig: ScopedConfig,
   ) {
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
@@ -21,7 +22,7 @@ export class HookEntryNode extends ConfigTreeNode {
       filePath: scopedConfig.filePath,
     };
 
-    super(label, vscode.TreeItemCollapsibleState.None, ctx);
+    super(label, vscode.TreeItemCollapsibleState.Collapsed, ctx);
 
     const iconMap: Record<string, string> = {
       command: 'terminal',
@@ -33,13 +34,27 @@ export class HookEntryNode extends ConfigTreeNode {
     if (hook.command) {
       this.tooltip = new vscode.MarkdownString(`\`${hook.command}\``);
     }
-    if (hook.timeout) {
-      this.description = `timeout: ${hook.timeout}s`;
-    }
+    this.description = '';
     this.finalize();
   }
 
   getChildren(): ConfigTreeNode[] {
-    return [];
+    const entries: ConfigTreeNode[] = [];
+    // Show all defined properties of the hook command
+    for (const [key, val] of Object.entries(this.hook)) {
+      if (val !== undefined) {
+        entries.push(
+          new HookKeyValueNode(
+            this.eventType,
+            this.matcherIndex,
+            this.hookIndex,
+            key,
+            val,
+            this.scopedConfig,
+          ),
+        );
+      }
+    }
+    return entries;
   }
 }

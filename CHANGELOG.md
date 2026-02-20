@@ -5,6 +5,13 @@ All notable changes to the Claude Code Config Manager extension will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.4.1] - 2026-02-20
+
+### Changed
+- Project Shared and Project Local scope nodes now show workspace-relative paths (e.g., `.claude/settings.json`) instead of full home-relative paths
+- Plugin nodes display only version suffix in description — removed redundant "enabled"/"disabled" text since checkbox state already conveys this
+- Hook entry nodes are now expandable, revealing key-value child nodes for each hook command property (type, command, timeout, etc.), matching the object settings UX from v0.4.0
+
 ## [0.4.0] - 2026-02-20
 
 ### Added

@@ -8,14 +8,9 @@ A VS Code extension that provides a visual config viewer and editor for Claude C
 
 Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
 
-## Current Milestone: v0.4.1 — Node Display Polish
+## Current State
 
-**Goal:** Refine how tree nodes render — relative paths for project scopes, cleaner plugin labels, and expandable hook entries.
-
-**Target features:**
-- Show relative path for project and local scope tree items
-- Remove enabled/disabled text from plugin nodes
-- Render hook entries as expandable key-value nodes like object settings
+Shipped through v0.4.1. No active milestone — run `/gsd:new-milestone` to start next.
 
 ## Requirements
 
@@ -38,12 +33,13 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 - ✓ Lock defaults to on with state-semantic icons; lock toggle in toolbar — v0.4.0
 - ✓ Collapse All / Expand All toolbar buttons — v0.4.0
 - ✓ Object settings expand to show key/value children — v0.4.0
+- ✓ Project scope nodes show workspace-relative paths — v0.4.1
+- ✓ Plugin nodes show only name without enabled/disabled text — v0.4.1
+- ✓ Hook entries expandable with key-value child nodes — v0.4.1
 
 ### Active
 
-- [ ] Show relative path for project and local scope tree items
-- [ ] Remove enabled/disabled text from plugin nodes
-- [ ] Render hook entries as expandable key-value nodes
+(None — run `/gsd:new-milestone` to define next milestone requirements)
 
 ### Out of Scope
 
@@ -56,7 +52,7 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 
 ## Context
 
-4,399 LOC TypeScript. Toolbar has 4 buttons: lock (locked by default), filter (with active variant), collapse all, expand all. Lock toggle is in toolbar with state-semantic icons. Object settings expand to show key/value children. Plugin and editValue inline buttons remain temporarily disabled.
+4,471 LOC TypeScript. Toolbar has 4 buttons: lock (locked by default), filter (with active variant), collapse all, expand all. Lock toggle is in toolbar with state-semantic icons. Object settings and hook entries expand to show key/value children. Project scope nodes display workspace-relative paths. Plugin and editValue inline buttons remain temporarily disabled.
 
 ## Constraints
 
@@ -79,6 +75,9 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 | Collapse All delegates to VS Code built-in | Consistent behavior; Expand All uses reveal() pattern for full-depth walk | ✓ Good |
 | Object settings single-level expansion only | Avoids recursive complexity; nested objects show `{N keys}` as leaves | ✓ Good |
 | formatValue exported from settingNode.ts | Shared by SettingKeyValueNode for consistent value rendering | ✓ Good |
+| asRelativePath(path, false) for project scopes | Clean workspace-relative paths; false omits workspace folder prefix in single-root | ✓ Good |
+| Remove enabled/disabled text from plugins | Checkbox + dimming already convey state; text was redundant | ✓ Good |
+| Hook entries follow object settings expandable pattern | Consistent UX; same key-value child node approach | ✓ Good |
 
 ---
-*Last updated: 2026-02-20 after v0.4.1 milestone started*
+*Last updated: 2026-02-20 after v0.4.1 milestone*

@@ -44,8 +44,7 @@ export class PluginNode extends ConfigTreeNode {
       ? vscode.TreeItemCheckboxState.Checked
       : vscode.TreeItemCheckboxState.Unchecked;
 
-    const status = enabled ? 'enabled' : 'disabled';
-    this.description = versionSuffix ? `${versionSuffix} · ${status}` : status;
+    this.description = versionSuffix || '';
 
     // Custom URI for FileDecorationProvider to dim disabled plugin labels
     this.resourceUri = vscode.Uri.from({
