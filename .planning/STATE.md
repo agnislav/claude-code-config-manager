@@ -41,9 +41,7 @@ Full decision log in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-- Add collapse all and expand all to command palette (ui)
 - Add "go to (scope/entity)" to the command palette (ui)
-- Add move action for items with copy icon button (ui)
 - Multiselect for batch copy and move operations (ui)
 - Show relative path for project and local scope tree items (ui)
 - Remove enabled/disabled text from plugin nodes (ui)
