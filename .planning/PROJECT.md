@@ -8,9 +8,16 @@ A VS Code extension that provides a visual config viewer and editor for Claude C
 
 Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
 
-## Current State
+## Current Milestone: v0.5.0 Hardening
 
-Shipped through v0.4.1. No active milestone — run `/gsd:new-milestone` to start next.
+**Goal:** Fix all identified bugs, reduce technical debt, and harden error handling across the extension.
+
+**Target areas:**
+- Error handling for file writes, JSON parsing, and tree operations
+- Race condition prevention in file watcher / config writer
+- Path validation and security hardening
+- Resource leak fixes and cache invalidation
+- Code quality cleanup (dead code, magic numbers, unused params)
 
 ## Requirements
 
@@ -39,7 +46,7 @@ Shipped through v0.4.1. No active milestone — run `/gsd:new-milestone` to star
 
 ### Active
 
-(None — run `/gsd:new-milestone` to define next milestone requirements)
+(See `.planning/REQUIREMENTS.md` for v0.5.0 requirements)
 
 ### Out of Scope
 
@@ -80,4 +87,4 @@ Shipped through v0.4.1. No active milestone — run `/gsd:new-milestone` to star
 | Hook entries follow object settings expandable pattern | Consistent UX; same key-value child node approach | ✓ Good |
 
 ---
-*Last updated: 2026-02-20 after v0.4.1 milestone*
+*Last updated: 2026-02-20 after v0.5.0 milestone start*

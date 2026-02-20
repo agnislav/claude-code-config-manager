@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
-**Current focus:** No active milestone — run `/gsd:new-milestone` to start next
+**Current focus:** v0.5.0 Hardening — bug fixes and tech debt reduction
 
 ## Current Position
 
-Phase: — (none active)
+Phase: Not started (defining requirements)
 Plan: —
-Status: All milestones complete (v0.3.x, v0.4.0, v0.4.1)
-Last activity: 2026-02-20 — Completed v0.3 milestone archival
+Status: Defining requirements
+Last activity: 2026-02-20 — Milestone v0.5.0 started
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ◆
 
 ## Performance Metrics
 
