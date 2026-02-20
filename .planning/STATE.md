@@ -5,21 +5,21 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
-**Current focus:** v0.4.1 — Node Display Polish
+**Current focus:** No active milestone — run `/gsd:new-milestone` to start next
 
 ## Current Position
 
-Phase: 9 (complete)
-Plan: 1/1 complete
-Status: Phase 9 complete, v0.4.1 ready for release
-Last activity: 2026-02-20 — Completed 09-01-PLAN.md
+Phase: — (none active)
+Plan: —
+Status: All milestones complete (v0.3.x, v0.4.0, v0.4.1)
+Last activity: 2026-02-20 — Completed v0.3 milestone archival
 
 Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11 (7 in v0.3.x, 3 in v0.4.0, 1 in v0.4.1)
+- Total plans completed: 12 (7 in v0.3.x, 3 in v0.4.0, 1 in v0.4.1, 1 Phase 9 rework)
 - Average duration: ~7 min
 - Total execution time: ~28 min (for tracked v0.4.x plans)
 
@@ -33,18 +33,11 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓
 | 8 (v0.4.0) | 1 | 5 min | 5 min |
 | 9 (v0.4.1) | 1 | 7 min | 7 min |
 
-*Updated after each plan completion*
-
 ## Accumulated Context
 
 ### Decisions
 
 Full decision log in PROJECT.md Key Decisions table.
-
-Recent decisions from Phase 9:
-- Use vscode.workspace.asRelativePath with false parameter for clean workspace-relative paths (project scopes only)
-- Remove enabled/disabled text from plugin descriptions (checkbox state already conveys this)
-- Hook entries follow same expandable pattern as object settings from Phase 8
 
 ### Pending Todos
 
@@ -58,5 +51,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed Phase 9 (09-01-PLAN.md), v0.4.1 ready for release
+Stopped at: All milestones complete, project archived
 Resume file: None
