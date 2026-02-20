@@ -17,51 +17,25 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<ConfigTreeNod
 
   constructor(private readonly configStore: ConfigStore) {
     configStore.onDidChange(() => this.refresh());
-    this.syncFilterContext();
+    this.updateFilterUI();
   }
 
   get sectionFilter(): ReadonlySet<SectionType> {
     return this._sectionFilter;
   }
 
-  toggleSectionFilter(section: SectionType): void {
-    if (this._sectionFilter.has(section)) {
-      this._sectionFilter.delete(section);
-    } else {
-      this._sectionFilter.add(section);
-    }
-    this.syncFilterContext();
-    this.refresh();
-  }
-
-  selectAllSections(): void {
+  setSectionFilter(sections: ReadonlySet<SectionType>): void {
     this._sectionFilter.clear();
-    this.syncFilterContext();
+    for (const s of sections) {
+      this._sectionFilter.add(s);
+    }
+    this.updateFilterUI();
     this.refresh();
   }
 
-  /** Maps SectionType to a context key suffix safe for VS Code when-clauses. */
-  private static readonly FILTER_CTX_KEYS: Record<SectionType, string> = {
-    [SectionType.Permissions]: 'permissions',
-    [SectionType.Sandbox]: 'sandbox',
-    [SectionType.Hooks]: 'hooks',
-    [SectionType.McpServers]: 'mcpServers',
-    [SectionType.Environment]: 'environment',
-    [SectionType.Plugins]: 'plugins',
-    [SectionType.Settings]: 'settings',
-  };
-
-  private syncFilterContext(): void {
-    const isAll = this._sectionFilter.size === 0;
-    vscode.commands.executeCommand('setContext', 'claudeConfig_filter_all', isAll);
-    for (const st of Object.values(SectionType)) {
-      const ctxKey = ConfigTreeProvider.FILTER_CTX_KEYS[st];
-      vscode.commands.executeCommand(
-        'setContext',
-        `claudeConfig_filter_${ctxKey}`,
-        this._sectionFilter.has(st),
-      );
-    }
+  private updateFilterUI(): void {
+    const isFiltered = this._sectionFilter.size > 0;
+    vscode.commands.executeCommand('setContext', 'claudeConfig_filterActive', isFiltered);
   }
 
   refresh(): void {
@@ -191,7 +165,13 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<ConfigTreeNod
 
     return allScopes
       .filter((s) => s.scope !== ConfigScope.Managed)
-      .map((scopedConfig) => new ScopeNode(scopedConfig, allScopes, key, this._sectionFilter));
+      .map((scopedConfig) => {
+        const locked = this.configStore.isScopeLocked(scopedConfig.scope);
+        const effective: ScopedConfig = locked && !scopedConfig.isReadOnly
+          ? { ...scopedConfig, isReadOnly: true }
+          : scopedConfig;
+        return new ScopeNode(effective, allScopes, key, this._sectionFilter);
+      });
   }
 
   private getMultiRootChildren(): ConfigTreeNode[] {
@@ -205,7 +185,7 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<ConfigTreeNod
       const folderName = discovered?.workspaceFolder?.name ?? key;
 
       // Create a virtual folder node
-      const folderNode = new WorkspaceFolderNode(folderName, key, allScopes, this._sectionFilter);
+      const folderNode = new WorkspaceFolderNode(folderName, key, allScopes, this._sectionFilter, this.configStore);
       children.push(folderNode);
     }
 
@@ -221,6 +201,7 @@ class WorkspaceFolderNode extends ConfigTreeNode {
     private readonly workspaceFolderUri: string,
     private readonly allScopes: ScopedConfig[],
     private readonly sectionFilter: ReadonlySet<SectionType>,
+    private readonly configStore: ConfigStore,
   ) {
     super(folderName, vscode.TreeItemCollapsibleState.Expanded, {
       scope: ConfigScope.User, // placeholder — not meaningful for folder nodes
@@ -237,9 +218,12 @@ class WorkspaceFolderNode extends ConfigTreeNode {
   getChildren(): ConfigTreeNode[] {
     return this.allScopes
       .filter((s) => s.scope !== ConfigScope.Managed)
-      .map(
-        (scopedConfig) =>
-          new ScopeNode(scopedConfig, this.allScopes, this.workspaceFolderUri, this.sectionFilter),
-      );
+      .map((scopedConfig) => {
+        const locked = this.configStore.isScopeLocked(scopedConfig.scope);
+        const effective: ScopedConfig = locked && !scopedConfig.isReadOnly
+          ? { ...scopedConfig, isReadOnly: true }
+          : scopedConfig;
+        return new ScopeNode(effective, this.allScopes, this.workspaceFolderUri, this.sectionFilter);
+      });
   }
 }

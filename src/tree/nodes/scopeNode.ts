@@ -3,6 +3,7 @@ import { SCOPE_DESCRIPTIONS, SCOPE_ICONS, SCOPE_LABELS } from '../../constants';
 import { ConfigScope, NodeContext, ScopedConfig, SectionType } from '../../types';
 import { ConfigTreeNode } from './baseNode';
 import { SectionNode } from './sectionNode';
+import { LOCK_URI_SCHEME } from '../lockDecorations';
 
 export class ScopeNode extends ConfigTreeNode {
   readonly nodeType = 'scope';
@@ -33,15 +34,25 @@ export class ScopeNode extends ConfigTreeNode {
       ? this.getShortPath(scopedConfig.filePath)
       : 'Not found';
     this.tooltip = new vscode.MarkdownString(SCOPE_DESCRIPTIONS[scopedConfig.scope]);
+
+    // Set resourceUri for lock dimming decoration (User scope only)
+    if (scopedConfig.scope === ConfigScope.User) {
+      this.resourceUri = vscode.Uri.from({
+        scheme: LOCK_URI_SCHEME,
+        path: '/user',
+        query: scopedConfig.isReadOnly ? 'locked' : 'unlocked',
+      });
+    }
+
     this.finalize();
   }
 
   protected computeContextValue(): string {
-    const base = super.computeContextValue();
-    if (!this.scopedConfig.fileExists) {
-      return `${base}.missing`;
-    }
-    return base;
+    const base = `scope.${this.scopedConfig.scope}`;
+    const editability = this.scopedConfig.isReadOnly ? 'readOnly' : 'editable';
+    const parts = [base, editability];
+    if (!this.scopedConfig.fileExists) parts.push('missing');
+    return parts.join('.');
   }
 
   getChildren(): ConfigTreeNode[] {

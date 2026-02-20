@@ -7,9 +7,11 @@ import {
   removeEnvVar,
   setScalarSetting,
   removeScalarSetting,
+  setPluginEnabled,
+  removePlugin,
 } from '../config/configWriter';
 import { PERMISSION_CATEGORY_LABELS, SCOPE_LABELS } from '../constants';
-import { ClaudeCodeConfig, PermissionCategory } from '../types';
+import { ClaudeCodeConfig, ConfigScope, PermissionCategory } from '../types';
 import { readJsonFile } from '../utils/json';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 
@@ -25,7 +27,13 @@ export function registerMoveCommands(
         const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
 
         if (isReadOnly || !filePath) {
-          vscode.window.showWarningMessage('Cannot move read-only items.');
+          if (isReadOnly && scope === ConfigScope.User) {
+            vscode.window.showInformationMessage(
+              'User scope is currently locked. Click the lock icon in the toolbar to unlock.',
+            );
+          } else {
+            vscode.window.showWarningMessage('Cannot move read-only items.');
+          }
           return;
         }
 
@@ -40,7 +48,7 @@ export function registerMoveCommands(
         const allScopes = configStore.getAllScopes(key);
 
         const targetScopes = allScopes.filter(
-          (s) => s.scope !== scope && !s.isReadOnly,
+          (s) => s.scope !== scope && !s.isReadOnly && s.scope !== ConfigScope.Managed && !configStore.isScopeLocked(s.scope),
         );
 
         if (targetScopes.length === 0) {
@@ -48,7 +56,7 @@ export function registerMoveCommands(
           return;
         }
 
-        const pick = await vscode.window.showQuickPick(
+        const movePick = await vscode.window.showQuickPick(
           targetScopes.map((s) => ({
             label: SCOPE_LABELS[s.scope],
             description: s.filePath ?? '',
@@ -56,8 +64,9 @@ export function registerMoveCommands(
           })),
           { placeHolder: 'Move to which scope?' },
         );
-        if (!pick) return;
+        if (!movePick) return;
 
+        const pick = movePick;
         const targetFilePath = pick.value.filePath;
         if (!targetFilePath) {
           vscode.window.showWarningMessage('Cannot move to this scope: no configuration file available.');
@@ -79,6 +88,12 @@ export function registerMoveCommands(
             const currentValue = currentSc?.config.env?.[envKey] ?? '';
             setEnvVar(targetFilePath, envKey, currentValue);
             removeEnvVar(filePath, envKey);
+          } else if (rootKey === 'enabledPlugins' && keyPath.length === 2) {
+            const pluginId = keyPath[1];
+            const currentSc = allScopes.find((s) => s.scope === scope);
+            const enabled = currentSc?.config.enabledPlugins?.[pluginId] ?? true;
+            setPluginEnabled(targetFilePath, pluginId, enabled);
+            removePlugin(filePath, pluginId);
           } else {
             // Scalar setting
             const currentSc = allScopes.find((s) => s.scope === scope);
@@ -108,7 +123,12 @@ export function registerMoveCommands(
         if (!node?.nodeContext) return;
         const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
 
-        if (isReadOnly || !filePath) {
+        if (!filePath) {
+          return;
+        }
+        // Allow copy from locked User scope (non-destructive).
+        // Block copy from truly read-only scopes (Managed).
+        if (isReadOnly && scope !== ConfigScope.User) {
           vscode.window.showWarningMessage('Cannot copy read-only items.');
           return;
         }
@@ -123,25 +143,26 @@ export function registerMoveCommands(
         const key = node.nodeContext.workspaceFolderUri ?? keys[0];
         const allScopes = configStore.getAllScopes(key);
 
-        const targetScopes = allScopes.filter(
-          (s) => s.scope !== scope && !s.isReadOnly,
+        const copySettingTargetScopes = allScopes.filter(
+          (s) => s.scope !== scope && !s.isReadOnly && s.scope !== ConfigScope.Managed && !configStore.isScopeLocked(s.scope),
         );
 
-        if (targetScopes.length === 0) {
+        if (copySettingTargetScopes.length === 0) {
           vscode.window.showInformationMessage('No other editable scopes available.');
           return;
         }
 
-        const pick = await vscode.window.showQuickPick(
-          targetScopes.map((s) => ({
+        const copySettingPick = await vscode.window.showQuickPick(
+          copySettingTargetScopes.map((s) => ({
             label: `Copy to ${SCOPE_LABELS[s.scope]}`,
             description: s.filePath ?? '',
             value: s,
           })),
           { placeHolder: 'Copy setting to which scope?' },
         );
-        if (!pick) return;
+        if (!copySettingPick) return;
 
+        const pick = copySettingPick;
         const targetFilePath = pick.value.filePath;
         if (!targetFilePath) {
           vscode.window.showWarningMessage(
@@ -185,7 +206,9 @@ export function registerMoveCommands(
         if (!node?.nodeContext) return;
         const { keyPath, isReadOnly, scope } = node.nodeContext;
 
-        if (isReadOnly) {
+        // Allow copy from locked User scope (non-destructive).
+        // Block copy from truly read-only scopes (Managed).
+        if (isReadOnly && scope !== ConfigScope.User) {
           vscode.window.showWarningMessage('Cannot copy read-only items.');
           return;
         }
@@ -203,25 +226,26 @@ export function registerMoveCommands(
         const key = node.nodeContext.workspaceFolderUri ?? keys[0];
         const allScopes = configStore.getAllScopes(key);
 
-        const targetScopes = allScopes.filter(
-          (s) => s.scope !== scope && !s.isReadOnly,
+        const copyPermTargetScopes = allScopes.filter(
+          (s) => s.scope !== scope && !s.isReadOnly && s.scope !== ConfigScope.Managed && !configStore.isScopeLocked(s.scope),
         );
 
-        if (targetScopes.length === 0) {
+        if (copyPermTargetScopes.length === 0) {
           vscode.window.showInformationMessage('No other editable scopes available.');
           return;
         }
 
-        const scopePick = await vscode.window.showQuickPick(
-          targetScopes.map((s) => ({
+        const permScopePick = await vscode.window.showQuickPick(
+          copyPermTargetScopes.map((s) => ({
             label: `Copy to ${SCOPE_LABELS[s.scope]}`,
             description: s.filePath ?? '',
             value: s,
           })),
           { placeHolder: 'Copy permission to which scope?' },
         );
-        if (!scopePick) return;
+        if (!permScopePick) return;
 
+        const scopePick = permScopePick;
         const targetFilePath = scopePick.value.filePath;
         if (!targetFilePath) {
           vscode.window.showWarningMessage(

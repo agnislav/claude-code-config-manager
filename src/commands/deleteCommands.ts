@@ -8,7 +8,7 @@ import {
   removePlugin,
   removeScalarSetting,
 } from '../config/configWriter';
-import { HookEventType, PermissionCategory } from '../types';
+import { HookEventType, PermissionCategory, ConfigScope } from '../types';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 
 export function registerDeleteCommands(
@@ -23,7 +23,13 @@ export function registerDeleteCommands(
         const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
 
         if (isReadOnly || !filePath) {
-          vscode.window.showWarningMessage('Cannot delete read-only items.');
+          if (isReadOnly && node.nodeContext.scope === ConfigScope.User) {
+            vscode.window.showInformationMessage(
+              'User scope is currently locked. Click the lock icon in the toolbar to unlock.',
+            );
+          } else {
+            vscode.window.showWarningMessage('Cannot delete read-only items.');
+          }
           return;
         }
 

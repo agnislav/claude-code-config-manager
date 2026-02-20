@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { NodeContext, ScopedConfig } from '../../types';
 import { resolveScalarOverride } from '../../config/overrideResolver';
 import { ConfigTreeNode } from './baseNode';
+import { SettingKeyValueNode } from './settingKeyValueNode';
 
 export class SettingNode extends ConfigTreeNode {
   readonly nodeType = 'setting';
@@ -9,8 +10,8 @@ export class SettingNode extends ConfigTreeNode {
   constructor(
     private readonly key: string,
     private readonly value: unknown,
-    scopedConfig: ScopedConfig,
-    allScopes: ScopedConfig[],
+    private readonly scopedConfig: ScopedConfig,
+    private readonly allScopes: ScopedConfig[],
   ) {
     const override = resolveScalarOverride(key, scopedConfig.scope, allScopes);
 
@@ -23,12 +24,22 @@ export class SettingNode extends ConfigTreeNode {
       filePath: scopedConfig.filePath,
     };
 
-    super(key, vscode.TreeItemCollapsibleState.None, ctx);
+    // Determine collapsibility: object types (non-null, non-array) are expandable
+    const isExpandableObject =
+      typeof value === 'object' && value !== null && !Array.isArray(value);
+    const collapsibleState = isExpandableObject
+      ? vscode.TreeItemCollapsibleState.Collapsed
+      : vscode.TreeItemCollapsibleState.None;
+
+    super(key, collapsibleState, ctx);
 
     this.iconPath = override.isOverridden
       ? new vscode.ThemeIcon('tools', new vscode.ThemeColor('disabledForeground'))
       : new vscode.ThemeIcon('tools');
-    this.description = formatValue(value);
+
+    // Object settings: empty description (children show the detail)
+    // Scalar/array settings: show value inline
+    this.description = isExpandableObject ? '' : formatValue(value);
 
     if (typeof value === 'object' && value !== null) {
       this.tooltip = new vscode.MarkdownString(
@@ -39,11 +50,30 @@ export class SettingNode extends ConfigTreeNode {
   }
 
   getChildren(): ConfigTreeNode[] {
-    return [];
+    // Only object types (non-null, non-array) have children
+    if (
+      typeof this.value !== 'object' ||
+      this.value === null ||
+      Array.isArray(this.value)
+    ) {
+      return [];
+    }
+
+    // Create a SettingKeyValueNode for each key/value pair
+    return Object.entries(this.value).map(
+      ([childKey, childValue]) =>
+        new SettingKeyValueNode(
+          this.key,
+          childKey,
+          childValue,
+          this.scopedConfig,
+          this.allScopes,
+        ),
+    );
   }
 }
 
-function formatValue(value: unknown): string {
+export function formatValue(value: unknown): string {
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);

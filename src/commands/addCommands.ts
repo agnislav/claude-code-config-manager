@@ -221,7 +221,9 @@ async function pickScopeFilePath(configStore: ConfigStore): Promise<string | und
   const key = keys[0];
   const allScopes = configStore.getAllScopes(key);
 
-  const editableScopes = allScopes.filter((s) => !s.isReadOnly);
+  const editableScopes = allScopes.filter(
+    (s) => !s.isReadOnly && !configStore.isScopeLocked(s.scope),
+  );
   if (editableScopes.length === 0) return undefined;
 
   const pick = await vscode.window.showQuickPick(

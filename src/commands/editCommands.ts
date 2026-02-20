@@ -5,6 +5,7 @@ import {
   setScalarSetting,
   setSandboxProperty,
 } from '../config/configWriter';
+import { ConfigScope } from '../types';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 
 export function registerEditCommands(
@@ -19,7 +20,13 @@ export function registerEditCommands(
         const { filePath, keyPath, isReadOnly } = node.nodeContext;
 
         if (isReadOnly || !filePath) {
-          vscode.window.showWarningMessage('This setting is read-only.');
+          if (isReadOnly && node.nodeContext.scope === ConfigScope.User) {
+            vscode.window.showInformationMessage(
+              'User scope is currently locked. Click the lock icon in the toolbar to unlock.',
+            );
+          } else {
+            vscode.window.showWarningMessage('This setting is read-only.');
+          }
           return;
         }
 

@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { ConfigStore } from '../config/configModel';
 import { removePlugin, setPluginEnabled } from '../config/configWriter';
 import { SCOPE_LABELS } from '../constants';
+import { ConfigScope } from '../types';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { PluginMetadataService } from '../utils/pluginMetadata';
 
@@ -19,7 +20,13 @@ export function registerPluginCommands(
         const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
 
         if (isReadOnly || !filePath) {
-          vscode.window.showWarningMessage('Cannot delete read-only items.');
+          if (isReadOnly && scope === ConfigScope.User) {
+            vscode.window.showInformationMessage(
+              'User scope is currently locked. Click the lock icon in the toolbar to unlock.',
+            );
+          } else {
+            vscode.window.showWarningMessage('Cannot delete read-only items.');
+          }
           return;
         }
         if (keyPath[0] !== 'enabledPlugins' || keyPath.length !== 2) return;
@@ -74,7 +81,9 @@ export function registerPluginCommands(
         if (!node?.nodeContext) return;
         const { keyPath, isReadOnly, scope } = node.nodeContext;
 
-        if (isReadOnly) {
+        // Allow copy from locked User scope (non-destructive).
+        // Block copy from truly read-only scopes (Managed).
+        if (isReadOnly && scope !== ConfigScope.User) {
           vscode.window.showWarningMessage('Cannot copy from a read-only scope.');
           return;
         }
@@ -91,25 +100,27 @@ export function registerPluginCommands(
         const key = node.nodeContext.workspaceFolderUri ?? keys[0];
         const allScopes = configStore.getAllScopes(key);
 
-        const targetScopes = allScopes.filter(
-          (s) => s.scope !== scope && !s.isReadOnly,
+        const pluginTargetScopes = allScopes.filter(
+          (s) => s.scope !== scope && !s.isReadOnly && s.scope !== ConfigScope.Managed && !configStore.isScopeLocked(s.scope),
         );
 
-        if (targetScopes.length === 0) {
+        if (pluginTargetScopes.length === 0) {
           vscode.window.showInformationMessage('No other editable scopes available.');
           return;
         }
 
         // Step 1: pick target scope
-        const scopePick = await vscode.window.showQuickPick(
-          targetScopes.map((s) => ({
+        const pluginScopePick = await vscode.window.showQuickPick(
+          pluginTargetScopes.map((s) => ({
             label: `Copy to ${SCOPE_LABELS[s.scope]}`,
             description: s.filePath ?? '',
             value: s,
           })),
           { placeHolder: 'Copy plugin to which scope?' },
         );
-        if (!scopePick) return;
+        if (!pluginScopePick) return;
+
+        const scopePick = pluginScopePick;
 
         const targetFilePath = scopePick.value.filePath;
         if (!targetFilePath) {

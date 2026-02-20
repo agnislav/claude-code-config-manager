@@ -11,6 +11,7 @@ export class ConfigStore implements vscode.Disposable {
 
   private configs = new Map<string, ScopedConfig[]>();
   private discoveredPaths = new Map<string, DiscoveredPaths>();
+  private _lockedScopes = new Set<ConfigScope>();
 
   reload(workspaceFolderUri?: string): void {
     const allDiscovered = discoverConfigPaths();
@@ -81,10 +82,25 @@ export class ConfigStore implements vscode.Disposable {
     return (folders?.length ?? 0) > 1;
   }
 
+  lockScope(scope: ConfigScope): void {
+    this._lockedScopes.add(scope);
+    this._onDidChange.fire(undefined);
+  }
+
+  unlockScope(scope: ConfigScope): void {
+    this._lockedScopes.delete(scope);
+    this._onDidChange.fire(undefined);
+  }
+
+  isScopeLocked(scope: ConfigScope): boolean {
+    return this._lockedScopes.has(scope);
+  }
+
   dispose(): void {
     this._onDidChange.dispose();
     this.configs.clear();
     this.discoveredPaths.clear();
+    this._lockedScopes.clear();
   }
 
   private getFirstKey(): string {

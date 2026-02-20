@@ -2,7 +2,7 @@
   "name": "claude-code-config-manager",
   "displayName": "Claude Code Config Manager",
   "description": "Visual config viewer and editor for Claude Code settings — scope-aware TreeView with override detection, inline editing, and file watching.",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "publisher": "agnislav",
   "license": "MIT",
   "repository": {
@@ -96,7 +96,8 @@
       {
         "command": "claudeConfig.moveToScope",
         "title": "Move to Scope...",
-        "category": "Claude Config"
+        "category": "Claude Config",
+        "icon": "$(arrow-swap)"
       },
       {
         "command": "claudeConfig.togglePlugin",
@@ -124,7 +125,7 @@
         "command": "claudeConfig.copyPluginToScope",
         "title": "Copy to Scope...",
         "category": "Claude Config",
-        "icon": "$(copy)"
+        "icon": "$(add)"
       },
       {
         "command": "claudeConfig.openPluginReadme",
@@ -136,245 +137,87 @@
         "command": "claudeConfig.copySettingToScope",
         "title": "Copy to Scope...",
         "category": "Claude Config",
-        "icon": "$(copy)"
+        "icon": "$(add)"
       },
       {
         "command": "claudeConfig.copyPermissionToScope",
         "title": "Copy to Scope...",
         "category": "Claude Config",
-        "icon": "$(copy)"
+        "icon": "$(add)"
       },
       {
-        "command": "claudeConfig.filterAll",
-        "title": "Show All Sections",
+        "command": "claudeConfig.filterSections",
+        "title": "Filter Sections",
         "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-all.svg",
-          "dark": "resources/icons/filters/dark/filter-all.svg"
-        }
+        "icon": "$(filter)"
       },
       {
-        "command": "claudeConfig.filterAll.active",
-        "title": "Show All Sections",
+        "command": "claudeConfig.filterSections.active",
+        "title": "Filter Sections",
         "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-all-active.svg",
-          "dark": "resources/icons/filters/dark/filter-all-active.svg"
-        }
+        "icon": "$(filter-filled)"
       },
       {
-        "command": "claudeConfig.filter.permissions",
-        "title": "Filter: Permissions",
-        "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-permissions.svg",
-          "dark": "resources/icons/filters/dark/filter-permissions.svg"
-        }
+        "command": "claudeConfig.toggleUserLock",
+        "title": "Toggle User Scope Lock",
+        "category": "Claude Config"
       },
       {
-        "command": "claudeConfig.filter.permissions.active",
-        "title": "Filter: Permissions",
+        "command": "claudeConfig.lockUserScope",
+        "title": "Lock User Scope",
         "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-permissions-active.svg",
-          "dark": "resources/icons/filters/dark/filter-permissions-active.svg"
-        }
+        "icon": "$(unlock)"
       },
       {
-        "command": "claudeConfig.filter.sandbox",
-        "title": "Filter: Sandbox",
+        "command": "claudeConfig.unlockUserScope",
+        "title": "Unlock User Scope",
         "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-sandbox.svg",
-          "dark": "resources/icons/filters/dark/filter-sandbox.svg"
-        }
+        "icon": "$(lock)"
       },
       {
-        "command": "claudeConfig.filter.sandbox.active",
-        "title": "Filter: Sandbox",
+        "command": "claudeConfig.collapseAll",
+        "title": "Collapse All",
         "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-sandbox-active.svg",
-          "dark": "resources/icons/filters/dark/filter-sandbox-active.svg"
-        }
+        "icon": "$(collapse-all)"
       },
       {
-        "command": "claudeConfig.filter.hooks",
-        "title": "Filter: Hooks",
+        "command": "claudeConfig.expandAll",
+        "title": "Expand All",
         "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-hooks.svg",
-          "dark": "resources/icons/filters/dark/filter-hooks.svg"
-        }
-      },
-      {
-        "command": "claudeConfig.filter.hooks.active",
-        "title": "Filter: Hooks",
-        "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-hooks-active.svg",
-          "dark": "resources/icons/filters/dark/filter-hooks-active.svg"
-        }
-      },
-      {
-        "command": "claudeConfig.filter.mcpServers",
-        "title": "Filter: MCP Servers",
-        "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-mcp.svg",
-          "dark": "resources/icons/filters/dark/filter-mcp.svg"
-        }
-      },
-      {
-        "command": "claudeConfig.filter.mcpServers.active",
-        "title": "Filter: MCP Servers",
-        "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-mcp-active.svg",
-          "dark": "resources/icons/filters/dark/filter-mcp-active.svg"
-        }
-      },
-      {
-        "command": "claudeConfig.filter.env",
-        "title": "Filter: Environment",
-        "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-env.svg",
-          "dark": "resources/icons/filters/dark/filter-env.svg"
-        }
-      },
-      {
-        "command": "claudeConfig.filter.env.active",
-        "title": "Filter: Environment",
-        "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-env-active.svg",
-          "dark": "resources/icons/filters/dark/filter-env-active.svg"
-        }
-      },
-      {
-        "command": "claudeConfig.filter.plugins",
-        "title": "Filter: Plugins",
-        "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-plugins.svg",
-          "dark": "resources/icons/filters/dark/filter-plugins.svg"
-        }
-      },
-      {
-        "command": "claudeConfig.filter.plugins.active",
-        "title": "Filter: Plugins",
-        "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-plugins-active.svg",
-          "dark": "resources/icons/filters/dark/filter-plugins-active.svg"
-        }
-      },
-      {
-        "command": "claudeConfig.filter.settings",
-        "title": "Filter: Settings",
-        "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-settings.svg",
-          "dark": "resources/icons/filters/dark/filter-settings.svg"
-        }
-      },
-      {
-        "command": "claudeConfig.filter.settings.active",
-        "title": "Filter: Settings",
-        "category": "Claude Config",
-        "icon": {
-          "light": "resources/icons/filters/light/filter-settings-active.svg",
-          "dark": "resources/icons/filters/dark/filter-settings-active.svg"
-        }
+        "icon": "$(expand-all)"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "claudeConfig.refresh",
+          "command": "claudeConfig.lockUserScope",
+          "when": "view == claudeConfigTree && !claudeConfig_userScope_locked",
+          "group": "navigation@0"
+        },
+        {
+          "command": "claudeConfig.unlockUserScope",
+          "when": "view == claudeConfigTree && claudeConfig_userScope_locked",
+          "group": "navigation@0"
+        },
+        {
+          "command": "claudeConfig.filterSections",
+          "when": "view == claudeConfigTree && !claudeConfig_filterActive",
+          "group": "navigation@1"
+        },
+        {
+          "command": "claudeConfig.filterSections.active",
+          "when": "view == claudeConfigTree && claudeConfig_filterActive",
+          "group": "navigation@1"
+        },
+        {
+          "command": "claudeConfig.collapseAll",
           "when": "view == claudeConfigTree",
-          "group": "navigation@99"
-        },
-        {
-          "command": "claudeConfig.filterAll",
-          "when": "view == claudeConfigTree && !claudeConfig_filter_all",
-          "group": "navigation@0"
-        },
-        {
-          "command": "claudeConfig.filterAll.active",
-          "when": "view == claudeConfigTree && claudeConfig_filter_all",
-          "group": "navigation@0"
-        },
-        {
-          "command": "claudeConfig.filter.permissions",
-          "when": "view == claudeConfigTree && !claudeConfig_filter_permissions",
-          "group": "navigation@1"
-        },
-        {
-          "command": "claudeConfig.filter.permissions.active",
-          "when": "view == claudeConfigTree && claudeConfig_filter_permissions",
-          "group": "navigation@1"
-        },
-        {
-          "command": "claudeConfig.filter.mcpServers",
-          "when": "view == claudeConfigTree && !claudeConfig_filter_mcpServers",
           "group": "navigation@2"
         },
         {
-          "command": "claudeConfig.filter.mcpServers.active",
-          "when": "view == claudeConfigTree && claudeConfig_filter_mcpServers",
-          "group": "navigation@2"
-        },
-        {
-          "command": "claudeConfig.filter.plugins",
-          "when": "view == claudeConfigTree && !claudeConfig_filter_plugins",
+          "command": "claudeConfig.expandAll",
+          "when": "view == claudeConfigTree",
           "group": "navigation@3"
-        },
-        {
-          "command": "claudeConfig.filter.plugins.active",
-          "when": "view == claudeConfigTree && claudeConfig_filter_plugins",
-          "group": "navigation@3"
-        },
-        {
-          "command": "claudeConfig.filter.hooks",
-          "when": "view == claudeConfigTree && !claudeConfig_filter_hooks",
-          "group": "navigation@4"
-        },
-        {
-          "command": "claudeConfig.filter.hooks.active",
-          "when": "view == claudeConfigTree && claudeConfig_filter_hooks",
-          "group": "navigation@4"
-        },
-        {
-          "command": "claudeConfig.filter.settings",
-          "when": "view == claudeConfigTree && !claudeConfig_filter_settings",
-          "group": "navigation@5"
-        },
-        {
-          "command": "claudeConfig.filter.settings.active",
-          "when": "view == claudeConfigTree && claudeConfig_filter_settings",
-          "group": "navigation@5"
-        },
-        {
-          "command": "claudeConfig.filter.env",
-          "when": "view == claudeConfigTree && !claudeConfig_filter_environment",
-          "group": "navigation@6"
-        },
-        {
-          "command": "claudeConfig.filter.env.active",
-          "when": "view == claudeConfigTree && claudeConfig_filter_environment",
-          "group": "navigation@6"
-        },
-        {
-          "command": "claudeConfig.filter.sandbox",
-          "when": "view == claudeConfigTree && !claudeConfig_filter_sandbox",
-          "group": "navigation@7"
-        },
-        {
-          "command": "claudeConfig.filter.sandbox.active",
-          "when": "view == claudeConfigTree && claudeConfig_filter_sandbox",
-          "group": "navigation@7"
         }
       ],
       "view/item/context": [
@@ -395,7 +238,7 @@
         },
         {
           "command": "claudeConfig.moveToScope",
-          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /permissionRule|envVar|setting/",
+          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /permissionRule|envVar|plugin|setting/",
           "group": "2_move"
         },
         {
@@ -434,24 +277,44 @@
           "group": "inline@0"
         },
         {
-          "command": "claudeConfig.copyPluginToScope",
-          "when": "view == claudeConfigTree && viewItem =~ /^plugin\\.editable/",
+          "command": "claudeConfig.moveToScope",
+          "when": "view == claudeConfigTree && viewItem =~ /^plugin\\.editable/ && false",
           "group": "inline@1"
         },
         {
-          "command": "claudeConfig.deletePlugin",
-          "when": "view == claudeConfigTree && viewItem =~ /^plugin\\.editable/",
+          "command": "claudeConfig.copyPluginToScope",
+          "when": "view == claudeConfigTree && viewItem =~ /^plugin\\.editable/ && false",
           "group": "inline@2"
         },
         {
+          "command": "claudeConfig.deletePlugin",
+          "when": "view == claudeConfigTree && viewItem =~ /^plugin\\.editable/ && false",
+          "group": "inline@3"
+        },
+        {
           "command": "claudeConfig.editValue",
-          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /envVar|sandboxProperty/",
+          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /envVar|sandboxProperty/ && false",
           "group": "inline@1"
+        },
+        {
+          "command": "claudeConfig.moveToScope",
+          "when": "view == claudeConfigTree && viewItem =~ /^envVar\\.editable/",
+          "group": "inline@0"
+        },
+        {
+          "command": "claudeConfig.moveToScope",
+          "when": "view == claudeConfigTree && viewItem =~ /^permissionRule\\.editable/",
+          "group": "inline@0"
         },
         {
           "command": "claudeConfig.copyPermissionToScope",
           "when": "view == claudeConfigTree && viewItem =~ /^permissionRule\\.editable/",
           "group": "inline@1"
+        },
+        {
+          "command": "claudeConfig.moveToScope",
+          "when": "view == claudeConfigTree && viewItem =~ /^setting\\.editable/",
+          "group": "inline@0"
         },
         {
           "command": "claudeConfig.copySettingToScope",
@@ -510,67 +373,23 @@
           "when": "false"
         },
         {
-          "command": "claudeConfig.filterAll",
+          "command": "claudeConfig.filterSections.active",
           "when": "false"
         },
         {
-          "command": "claudeConfig.filter.permissions",
+          "command": "claudeConfig.lockUserScope",
           "when": "false"
         },
         {
-          "command": "claudeConfig.filter.sandbox",
+          "command": "claudeConfig.unlockUserScope",
           "when": "false"
         },
         {
-          "command": "claudeConfig.filter.hooks",
+          "command": "claudeConfig.collapseAll",
           "when": "false"
         },
         {
-          "command": "claudeConfig.filter.mcpServers",
-          "when": "false"
-        },
-        {
-          "command": "claudeConfig.filter.env",
-          "when": "false"
-        },
-        {
-          "command": "claudeConfig.filter.plugins",
-          "when": "false"
-        },
-        {
-          "command": "claudeConfig.filter.settings",
-          "when": "false"
-        },
-        {
-          "command": "claudeConfig.filterAll.active",
-          "when": "false"
-        },
-        {
-          "command": "claudeConfig.filter.permissions.active",
-          "when": "false"
-        },
-        {
-          "command": "claudeConfig.filter.sandbox.active",
-          "when": "false"
-        },
-        {
-          "command": "claudeConfig.filter.hooks.active",
-          "when": "false"
-        },
-        {
-          "command": "claudeConfig.filter.mcpServers.active",
-          "when": "false"
-        },
-        {
-          "command": "claudeConfig.filter.env.active",
-          "when": "false"
-        },
-        {
-          "command": "claudeConfig.filter.plugins.active",
-          "when": "false"
-        },
-        {
-          "command": "claudeConfig.filter.settings.active",
+          "command": "claudeConfig.expandAll",
           "when": "false"
         }
       ]
