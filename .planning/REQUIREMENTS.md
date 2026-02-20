@@ -38,15 +38,15 @@ Requirements for milestone v0.4.1 — Node Display Polish.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TREE-01 | — | Pending |
-| TREE-02 | — | Pending |
-| TREE-03 | — | Pending |
+| TREE-01 | 9 | Pending |
+| TREE-02 | 9 | Pending |
+| TREE-03 | 9 | Pending |
 
 **Coverage:**
 - v0.4.1 requirements: 3 total
-- Mapped to phases: 0
-- Unmapped: 3 (roadmap pending)
+- Mapped to phases: 3
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 after initial definition*
+*Last updated: 2026-02-20 after roadmap creation*

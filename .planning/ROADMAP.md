@@ -10,6 +10,7 @@
 
 - ✅ **v0.3.x Toolbar UX Improvements** — Phases 1–5 (shipped 2026-02-19)
 - ✅ **v0.4.0 Tree UX Refinements** — Phases 6–8 (shipped 2026-02-20)
+- **v0.4.1 Node Display Polish** — Phase 9
 
 ---
 
@@ -34,5 +35,22 @@
 </details>
 
 ---
+
+## v0.4.1 Node Display Polish
+
+### Phase 9: Refine Tree Node Rendering
+
+**Goal:** Polish tree node display by showing relative paths for project scopes, removing redundant plugin text, and making hook entries expandable.
+
+**Requirements:** TREE-01, TREE-02, TREE-03
+
+**Success Criteria:**
+- Project Shared and Project Local scope nodes display relative workspace path in description field
+- Plugin nodes show only plugin name without "enabled/disabled" suffix
+- Hook entry nodes expand to reveal key-value child nodes (matching object settings UX)
+- All three changes work correctly in multi-root workspaces
+- No regressions to existing tree display or inline buttons
+
+---
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-02-20 — v0.4.0 milestone complete*
+*Last updated: 2026-02-20 — v0.4.1 roadmap defined*
