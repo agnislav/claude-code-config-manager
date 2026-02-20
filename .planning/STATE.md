@@ -46,6 +46,7 @@ Full decision log in PROJECT.md Key Decisions table.
 - Add move action for items with copy icon button (ui)
 - Multiselect for batch copy and move operations (ui)
 - Show relative path for project and local scope tree items (ui)
+- Remove enabled/disabled text from plugin nodes (ui)
 
 ### Blockers/Concerns
 
