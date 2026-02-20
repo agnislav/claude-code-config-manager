@@ -57,6 +57,11 @@
 
 **Requirements:** ERR-01, ERR-02, ERR-03
 **Rationale:** Core error handling infrastructure must be in place before other fixes can safely build on it.
+**Plans:** 2 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Propagate writeJsonFile errors with scope-aware messages and recovery buttons
+- [ ] 10-02-PLAN.md — Surface config and MCP parse errors with Open File navigation
 
 #### Tasks
 
