@@ -43,6 +43,10 @@
 **Goal:** Polish tree node display by showing relative paths for project scopes, removing redundant plugin text, and making hook entries expandable.
 
 **Requirements:** TREE-01, TREE-02, TREE-03
+**Plans:** 1 plan
+
+Plans:
+- [ ] 09-01-PLAN.md — Relative paths, plugin cleanup, expandable hooks
 
 **Success Criteria:**
 - Project Shared and Project Local scope nodes display relative workspace path in description field
