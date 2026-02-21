@@ -39,22 +39,30 @@ export class HookEntryNode extends ConfigTreeNode {
   }
 
   getChildren(): ConfigTreeNode[] {
-    const entries: ConfigTreeNode[] = [];
-    // Show all defined properties of the hook command
-    for (const [key, val] of Object.entries(this.hook)) {
-      if (val !== undefined) {
-        entries.push(
-          new HookKeyValueNode(
-            this.eventType,
-            this.matcherIndex,
-            this.hookIndex,
-            key,
-            val,
-            this.scopedConfig,
-          ),
-        );
+    try {
+      const entries: ConfigTreeNode[] = [];
+      // Show all defined properties of the hook command
+      for (const [key, val] of Object.entries(this.hook)) {
+        if (val !== undefined) {
+          entries.push(
+            new HookKeyValueNode(
+              this.eventType,
+              this.matcherIndex,
+              this.hookIndex,
+              key,
+              val,
+              this.scopedConfig,
+            ),
+          );
+        }
       }
+      return entries;
+    } catch (error) {
+      console.error(`Tree rendering error in ${this.nodeType} node:`, error);
+      vscode.window.showWarningMessage(
+        `Tree rendering error in ${this.nodeType}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return [];
     }
-    return entries;
   }
 }

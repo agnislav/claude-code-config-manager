@@ -5,6 +5,40 @@ All notable changes to the Claude Code Config Manager extension will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.5.0] - 2026-02-20
+
+### Added
+- Config parse error notifications — malformed JSON surfaces a user-facing message with "Open File" action that navigates to the exact error position
+- Scope-aware write error handler with retry and "Open File" recovery actions
+- Write path validation — blocks writes to paths outside allowed config directories
+- Input validation for `revealInFile` — rejects empty paths, traversal sequences (including Windows `..\\`), and non-file URIs
+- In-flight write tracking in `configWriter` — prevents concurrent writes to the same file
+- Watcher suppression during writes — file watcher ignores self-triggered change events
+- Max-wait timeout on file watcher debounce to guarantee reload within bounded time
+- Editor-to-tree sync timeout tracking — blocks UI during in-flight writes to prevent stale reads
+- Plugin checkbox rollback on write failure — restores previous checked state instead of showing inconsistent UI
+- Try-catch error guards on all tree node `getChildren()` and `getTreeItem()` methods
+- `ConfigTreeProvider` implements `Disposable` with `EventEmitter` disposal
+- Plugin metadata cache invalidation on config reload
+- `validateKeyPath` guards in all command handlers to prevent undefined access
+
+### Changed
+- Replaced string-based path operations (`startsWith`, `includes`) with `path.resolve`/`path.normalize` for cross-platform correctness
+- Centralized user-facing messages into constants with consistent `Claude Config:` prefix
+- Human-readable scope labels (`SCOPE_LABELS`) used consistently in all notifications
+- Extracted magic numbers (timeouts, debounce intervals) to named constants with JSDoc
+- Removed unused `_configStore` parameters from command handler signatures
+- Removed dead exports and unreferenced code
+- Removed unnecessary try-catch wrappers in leaf node `getChildren()` (McpServerNode, SandboxPropertyNode)
+- File watcher `doReload` clears both timeouts before reloading to prevent race conditions
+- `showWriteError` retry callback wrapped in try-catch for safety
+- `openTextDocument` in error handler includes rejection callback to prevent unhandled promise
+
+### Fixed
+- Plugin delete confirmation message now uses `Claude Config:` prefix consistently
+- Environment section and env var icons no longer render blue — replaced semantic `symbol-variable` with `terminal` codicon
+- Setting key-value and hook key-value child nodes no longer render blue — added explicit `icon.foreground` to `symbol-field` icons
+
 ## [0.4.1] - 2026-02-20
 
 ### Changed

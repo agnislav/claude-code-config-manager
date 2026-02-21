@@ -10,12 +10,15 @@ import { registerMoveCommands } from './commands/moveCommands';
 import { registerOpenFileCommands } from './commands/openFileCommands';
 import { registerPluginCommands } from './commands/pluginCommands';
 import { PluginDecorationProvider } from './tree/nodes/pluginNode';
-import { setPluginEnabled } from './config/configWriter';
+import { setPluginEnabled, showWriteError, initWriteTracker, isWriteInFlight, getInFlightWriteCount } from './config/configWriter';
 import { ConfigTreeNode } from './tree/nodes/baseNode';
 import { findKeyPathAtLine } from './utils/jsonLocation';
 import { SectionType, ConfigScope } from './types';
-import { SECTION_LABELS, SECTION_ICONS } from './constants';
+import { SECTION_LABELS, SECTION_ICONS, EDITOR_SYNC_SUPPRESS_MS, TREE_SYNC_SUPPRESS_MS, EDITOR_TREE_SYNC_DEBOUNCE_MS, DEACTIVATION_POLL_INTERVAL_MS, DEACTIVATION_MAX_WAIT_MS, MESSAGES } from './constants';
 import { LockDecorationProvider } from './tree/lockDecorations';
+
+// Module-scope map for tracking editor-tree sync timeouts
+const syncTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
 export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel('Claude Code Config');
@@ -109,50 +112,79 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   registerAddCommands(context, configStore);
-  registerEditCommands(context, configStore);
-  registerDeleteCommands(context, configStore);
+  registerEditCommands(context);
+  registerDeleteCommands(context);
   registerMoveCommands(context, configStore);
-  registerOpenFileCommands(context, configStore);
+  registerOpenFileCommands(context, outputChannel);
   registerPluginCommands(context, configStore);
 
   // 6. Set up file watcher for auto-refresh
   const fileWatcher = new ConfigFileWatcher(configStore);
+  initWriteTracker(outputChannel);
+  fileWatcher.setOutputChannel(outputChannel);
   fileWatcher.setup();
 
   // 7. Handle plugin checkbox toggles
-  treeView.onDidChangeCheckboxState((e) => {
+  treeView.onDidChangeCheckboxState(async (e) => {
     for (const [item, state] of e.items) {
       const node = item as ConfigTreeNode;
       if (node.nodeType !== 'plugin') continue;
       const { filePath, keyPath, isReadOnly } = node.nodeContext;
       if (isReadOnly || !filePath || keyPath.length < 2) continue;
+
+      // Block concurrent writes to the same file
+      if (isWriteInFlight(filePath)) {
+        vscode.window.showInformationMessage(MESSAGES.writeInProgress);
+        continue;
+      }
+
       const enabled = state === vscode.TreeItemCheckboxState.Checked;
-      setPluginEnabled(filePath, keyPath[1], enabled);
+      try {
+        setPluginEnabled(filePath, keyPath[1], enabled);
+      } catch (error) {
+        await showWriteError(filePath, error, () => {
+          setPluginEnabled(filePath, keyPath[1], enabled);
+        });
+        treeProvider.refresh();
+      }
     }
   });
 
   // Context menu "Toggle Plugin" — delegates to checkbox toggle
   const togglePluginCmd = vscode.commands.registerCommand(
     'claudeConfig.togglePlugin',
-    (node?: ConfigTreeNode) => {
+    async (node?: ConfigTreeNode) => {
       if (!node || node.nodeType !== 'plugin') return;
       const { filePath, keyPath, isReadOnly } = node.nodeContext;
       if (isReadOnly || !filePath || keyPath.length < 2) return;
+
+      // Block concurrent writes to the same file
+      if (isWriteInFlight(filePath)) {
+        vscode.window.showInformationMessage(MESSAGES.writeInProgress);
+        return;
+      }
+
       const currentEnabled = node.checkboxState === vscode.TreeItemCheckboxState.Checked;
-      setPluginEnabled(filePath, keyPath[1], !currentEnabled);
+      try {
+        setPluginEnabled(filePath, keyPath[1], !currentEnabled);
+      } catch (error) {
+        await showWriteError(filePath, error, () => {
+          setPluginEnabled(filePath, keyPath[1], !currentEnabled);
+        });
+        treeProvider.refresh();
+      }
     },
   );
 
   // 8. Editor ↔ Tree bidirectional sync
   let suppressEditorSync = false;
   let suppressTreeSync = false;
-  let syncTimeout: ReturnType<typeof setTimeout> | undefined;
 
   // Tree click → editor: suppress editor→tree sync to avoid loop
   treeView.onDidChangeSelection(() => {
     if (suppressTreeSync) return;
     suppressEditorSync = true;
-    setTimeout(() => { suppressEditorSync = false; }, 500);
+    setTimeout(() => { suppressEditorSync = false; }, EDITOR_SYNC_SUPPRESS_MS);
   });
 
   const syncEditorToTree = (editor: vscode.TextEditor) => {
@@ -177,26 +209,34 @@ export function activate(context: vscode.ExtensionContext): void {
 
     suppressTreeSync = true;
     treeView.reveal(node, { select: true, focus: false, expand: true }).then(
-      () => setTimeout(() => { suppressTreeSync = false; }, 100),
+      () => setTimeout(() => { suppressTreeSync = false; }, TREE_SYNC_SUPPRESS_MS),
       () => { suppressTreeSync = false; },
     );
   };
 
   const onSelectionChange = vscode.window.onDidChangeTextEditorSelection((e) => {
-    if (syncTimeout) clearTimeout(syncTimeout);
-    syncTimeout = setTimeout(() => {
+    const key = 'selection';
+    if (syncTimeouts.has(key)) {
+      clearTimeout(syncTimeouts.get(key)!);
+    }
+    const timeout = setTimeout(() => {
       syncEditorToTree(e.textEditor);
-      syncTimeout = undefined;
-    }, 150);
+      syncTimeouts.delete(key);
+    }, EDITOR_TREE_SYNC_DEBOUNCE_MS);
+    syncTimeouts.set(key, timeout);
   });
 
   const onEditorChange = vscode.window.onDidChangeActiveTextEditor((editor) => {
     if (!editor) return;
-    if (syncTimeout) clearTimeout(syncTimeout);
-    syncTimeout = setTimeout(() => {
+    const key = 'editor';
+    if (syncTimeouts.has(key)) {
+      clearTimeout(syncTimeouts.get(key)!);
+    }
+    const timeout = setTimeout(() => {
       syncEditorToTree(editor);
-      syncTimeout = undefined;
-    }, 150);
+      syncTimeouts.delete(key);
+    }, EDITOR_TREE_SYNC_DEBOUNCE_MS);
+    syncTimeouts.set(key, timeout);
   });
 
   // 9. Register file decoration providers
@@ -205,7 +245,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // 10. Push disposables
   context.subscriptions.push(
-    treeView, configStore, fileWatcher, diagnostics, refreshCmd, filterCmd, filterActiveCmd,
+    treeView, treeProvider, configStore, fileWatcher, diagnostics, refreshCmd, filterCmd, filterActiveCmd,
     toggleLockCmd, lockCmd, unlockCmd, collapseAllCmd, expandAllCmd,
     togglePluginCmd, outputChannel,
     vscode.window.registerFileDecorationProvider(pluginDecorations),
@@ -216,8 +256,21 @@ export function activate(context: vscode.ExtensionContext): void {
   outputChannel.appendLine('Claude Code Config Manager activated');
 }
 
-export function deactivate(): void {
-  // Cleanup handled by disposable subscriptions
+export async function deactivate(): Promise<void> {
+  // Clear all tracked editor-tree sync timeouts
+  for (const [key, timeout] of syncTimeouts) {
+    clearTimeout(timeout);
+    syncTimeouts.delete(key);
+  }
+
+  // Wait for any in-flight writes to complete
+  let waited = 0;
+  while (getInFlightWriteCount() > 0 && waited < DEACTIVATION_MAX_WAIT_MS) {
+    await new Promise(resolve => setTimeout(resolve, DEACTIVATION_POLL_INTERVAL_MS));
+    waited += DEACTIVATION_POLL_INTERVAL_MS;
+  }
+
+  // Disposables handled by context.subscriptions
 }
 
 const SECTION_ORDER: SectionType[] = [

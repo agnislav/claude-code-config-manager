@@ -25,9 +25,10 @@ export class SettingKeyValueNode extends ConfigTreeNode {
       filePath: scopedConfig.filePath,
     };
     super(childKey, vscode.TreeItemCollapsibleState.None, ctx);
-    this.iconPath = override.isOverridden
-      ? new vscode.ThemeIcon('symbol-field', new vscode.ThemeColor('disabledForeground'))
-      : new vscode.ThemeIcon('symbol-field');
+    this.iconPath = new vscode.ThemeIcon(
+      'symbol-field',
+      new vscode.ThemeColor(override.isOverridden ? 'disabledForeground' : 'icon.foreground'),
+    );
     this.description = formatValue(value);
     if (typeof value === 'object' && value !== null) {
       this.tooltip = new vscode.MarkdownString('```json\n' + JSON.stringify(value, null, 2) + '\n```');
@@ -36,6 +37,14 @@ export class SettingKeyValueNode extends ConfigTreeNode {
   }
 
   getChildren(): ConfigTreeNode[] {
-    return [];
+    try {
+      return [];
+    } catch (error) {
+      console.error(`Tree rendering error in ${this.nodeType} node:`, error);
+      vscode.window.showWarningMessage(
+        `Tree rendering error in ${this.nodeType}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return [];
+    }
   }
 }

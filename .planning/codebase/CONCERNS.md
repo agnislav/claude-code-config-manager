@@ -1,11 +1,11 @@
-# Codebase Concerns & Technical Debt
+# Claude Code Config Manager — Technical Debt & Concerns
 
-## Overview
+## Executive Summary
 
-Technical debt, bugs, security considerations, performance concerns, and fragile patterns in the Claude Code Config Manager extension. Each concern is rated by severity (High/Medium/Low).
+This VS Code extension manages Claude Code configuration across multiple scopes. The codebase is well-structured with clear separation of concerns, but has several critical areas requiring attention: (1) unhandled promise rejections in editor-tree sync, (2) potential race conditions in concurrent write tracking, (3) fragile file watcher debouncing with deadlock risk, and (4) incomplete error handling in tree rendering and config loading.
 
-**Last verified:** 2026-02-20 (post v0.4.1)
-**Previous concerns resolved:** 1 (#15 — error type guards now consistently use `instanceof Error`)
+**Last Analyzed:** 2026-02-20 (post v0.4.1)
+**Scope:** Full codebase review of 40 TypeScript source files
 
 ---
 

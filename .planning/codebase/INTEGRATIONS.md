@@ -240,3 +240,288 @@ It is a **purely local development tool** that reads/writes files and provides U
 | JSON Schema (Draft-7) | Format | Inbound | Config validation rules |
 | Local File System | I/O | Bidirectional | Config file read/write |
 | macOS/Linux Paths | System | Inbound | Managed config discovery |
+
+## Code Patterns & Implementation Details
+
+### TreeView Node Context Value Pattern
+
+All tree items use `contextValue` strings following the pattern: `{nodeType}.{editable|readOnly}[.{overridden}]`
+
+**Examples**:
+- `permissionRule.editable` — rule can be edited/deleted
+- `permissionRule.readOnly` — rule is from managed scope (locked)
+- `permissionRule.editable.overridden` — rule is editable and has override in higher scope
+- `scope.managed.missing` — managed scope with no config file
+
+**menu `when` clauses use regex matching** (in `package.json`):
+```json
+{
+  "when": "view == claudeConfigTree && viewItem =~ /^permissionRule\\.editable/"
+}
+```
+
+**Affected Files**:
+- `src/tree/nodes/baseNode.ts` — base ConfigTreeNode class sets contextValue
+- `src/tree/nodes/*.ts` — each node type extends baseNode
+
+### Bidirectional Editor ↔ Tree Sync
+
+**Data Flow** (in `src/extension.ts`):
+
+1. **Editor → Tree** (when cursor moves in config file):
+   - `onDidChangeTextEditorSelection` fires
+   - Debounced 300ms to avoid too many re-renders
+   - `findKeyPathAtLine()` maps cursor line → config JSON path (e.g., `["permissions", "allow", 0]`)
+   - `treeProvider.findNodeByKeyPath()` finds matching tree node
+   - `treeView.reveal()` scrolls tree to node and selects it
+   - `suppressTreeSync` flag prevents feedback loop
+
+2. **Tree → Editor** (when tree item clicked):
+   - `onDidChangeSelection` fires
+   - Sets `suppressEditorSync` flag
+   - Suppresses next editor sync for 100ms to avoid circular updates
+
+**Affected Files**:
+- `src/extension.ts` lines 100–153 (sync implementation)
+- `src/utils/jsonLocation.ts` (line-to-keyPath mapping)
+- `src/tree/configTreeProvider.ts:findNodeByKeyPath()` (tree lookup)
+
+### Write Lifecycle Tracking
+
+**In-Flight Write Prevention** (in `src/config/configWriter.ts`):
+
+The extension prevents redundant file watcher reloads during writes:
+
+```typescript
+// Track paths currently being written to
+const inFlightPaths = new Set<string>();
+
+// Before write operation
+inFlightPaths.add(filePath);
+
+// After write completes
+inFlightPaths.delete(filePath);
+
+// File watcher checks: if (isWriteInFlight(filePath)) skip reload
+```
+
+**Timestamps logged** to output channel: `[HH:MM:SS.mmm] [write] {message}`
+
+**Deactivation waits** for all writes to complete:
+- Polls `getInFlightWriteCount()` every 100ms
+- Max wait: 5 seconds
+- Ensures data integrity before extension unloads
+
+**Affected Files**:
+- `src/config/configWriter.ts` lines 29–73 (lifecycle)
+- `src/extension.ts` lines 268–271 (deactivation wait)
+- `src/watchers/fileWatcher.ts:debouncedReload()` (checks in-flight)
+
+### JSON Parsing with BOM Handling
+
+**Safe JSON parsing** (`src/utils/json.ts`):
+
+```typescript
+export function safeParseJson<T>(content: string): ParseResult<T> {
+  // Strip BOM if present (UTF-8 BOM: U+FEFF)
+  const cleaned = content.charCodeAt(0) === 0xfeff ? content.slice(1) : content;
+  const data = JSON.parse(cleaned) as T;
+  return { data };
+}
+```
+
+Handles:
+- UTF-8 BOM (common on Windows)
+- Parse errors (returns with error message)
+- Type safety with generics
+
+**Write formatting**: 2-space indent, trailing newline
+
+**Affected Files**:
+- `src/utils/json.ts` (all JSON I/O)
+- Used by `configLoader.ts` and `configWriter.ts`
+
+### Validation: Hand-Rolled vs JSON Schema
+
+**Why no runtime JSON Schema library?**
+
+The project deliberately avoids adding a runtime dependency for JSON Schema validation.
+
+**Instead**:
+- `src/validation/schemaValidator.ts` contains custom validation logic (~100 lines)
+- Validates most common mistakes: type errors, unknown keys, structure issues
+- Stays in sync with actual config types via enums (`HookEventType`, `PermissionCategory`, etc.)
+- `schemas/claude-code-settings.schema.json` serves as documentation (not parsed at runtime)
+
+**Validation Checks**:
+- Top-level keys against KNOWN_SETTING_KEYS
+- Permission categories (allow/deny/ask)
+- Hook event type names
+- Scalar property types (string, boolean, object arrays)
+- Required field presence
+
+**Affected Files**:
+- `src/validation/schemaValidator.ts` (custom validator, ~150 lines)
+- `schemas/claude-code-settings.schema.json` (reference schema)
+- `src/validation/diagnostics.ts` (error reporting)
+
+### Multi-Root Workspace Support
+
+**Workspace Folder Detection** (`src/config/configModel.ts`):
+
+```typescript
+isMultiRoot(): boolean {
+  return vscode.workspace.workspaceFolders?.length ?? 0 > 1;
+}
+
+getWorkspaceFolderKeys(): string[] {
+  return this.scopedConfigs.map((sc) => sc.workspaceFolderKey || '');
+}
+
+getAllScopes(workspaceFolderKey?: string): ScopedConfig[] {
+  // Returns all 4 scopes for given workspace (or global if no key)
+}
+```
+
+Each workspace folder gets:
+- Separate project-shared config (`.claude/settings.json`)
+- Separate project-local config (`.claude/settings.local.json`)
+- Shared user and managed scopes
+
+**TreeView Rendering**:
+- Single-root: ScopeNodes at root level
+- Multi-root: WorkspaceFolderNodes at root, then ScopeNodes nested
+
+**Affected Files**:
+- `src/config/configModel.ts` (ConfigStore)
+- `src/tree/configTreeProvider.ts` (getSingleRootChildren, getMultiRootChildren)
+- `src/config/configDiscovery.ts` (path resolution per workspace)
+
+### Permission Rule Parsing
+
+**Utility** (`src/utils/permissions.ts`):
+
+Parses permission rule strings like:
+- `"bash"` → tool by name
+- `"bash#read"` → tool + specifier
+- `"Bash"` (case-insensitive)
+
+Rules can span multiple categories (allow/deny/ask):
+- Exact match: `"bash"` in allow and `"bash#write"` in deny → same tool, different specificity
+- Custom traversal detection: checks for `../` in permission strings
+
+**Affected Files**:
+- `src/utils/permissions.ts` (parsing logic)
+- `src/tree/nodes/permissionRuleNode.ts` (displays parsed rules)
+
+### Lock Scope Feature
+
+**User Scope Locking** (`src/config/configModel.ts`):
+
+```typescript
+private lockedScopes = new Set<ConfigScope>();
+
+lockScope(scope: ConfigScope): void {
+  this.lockedScopes.add(scope);
+  // Tree refresh triggered
+}
+
+isScopeLocked(scope: ConfigScope): boolean {
+  return this.lockedScopes.has(scope);
+}
+```
+
+- Prevents accidental edits to user global config
+- Locked by default on activation
+- Lock state persisted in context key: `claudeConfig_userScope_locked`
+- UI: button toggles lock, visual feedback via decorations
+
+**Affected Files**:
+- `src/config/configModel.ts:27–38` (lock state)
+- `src/extension.ts:31–36, 70–97` (lock initialization and commands)
+- `src/tree/lockDecorations.ts` (visual decorations for locked items)
+
+### Section Filtering
+
+**Filter State** (`src/tree/configTreeProvider.ts`):
+
+```typescript
+private readonly _sectionFilter = new Set<SectionType>();
+
+setSectionFilter(sections: ReadonlySet<SectionType>): void {
+  this._sectionFilter.clear();
+  for (const s of sections) {
+    this._sectionFilter.add(s);
+  }
+  this.updateFilterUI();
+  this.refresh();
+}
+```
+
+- Empty set = show all sections
+- Non-empty = only show selected sections
+- "All" button provides mutual exclusivity (select all or custom)
+- Persisted via context key: `claudeConfig_filterActive`
+
+**Affected Files**:
+- `src/tree/configTreeProvider.ts:15–38` (filter logic)
+- `src/extension.ts:286–363` (quick pick UI)
+
+## Error Handling Patterns
+
+### File Operations
+
+**Safe file read** (in `json.ts`):
+- Check ENOENT (file not found) separately
+- Return empty object instead of erroring
+- Allow graceful degradation for missing files
+
+**Safe file write** (in `configWriter.ts`):
+- Validate path (traversal, symlink, whitelist check)
+- Create parent directories recursively
+- Track write in-flight to suppress watcher reloads
+
+### Configuration Parsing
+
+**Permissive parsing** (in `configModel.ts`):
+- Config files can be malformed → validation reports issues, tree still renders
+- Unknown keys → warnings only, no blocking errors
+- Missing files → treated as empty object per scope
+
+### Workspace Detection
+
+**Handles no-workspace scenario** (in `extension.ts`):
+- VS Code can open without a workspace folder
+- Only managed + user scopes available
+- No project-local or project-shared scopes
+
+## Performance Optimizations
+
+### TreeView Caching
+
+**Child node cache** (in `configTreeProvider.ts`):
+```typescript
+private readonly childrenCache = new Map<string, ConfigTreeNode[]>();
+```
+- Caches children per parent node ID
+- Cleared on `refresh()`
+- Avoids re-computation during tree navigation
+
+### Debouncing
+
+**File watcher reload** (in `fileWatcher.ts`):
+- 300ms debounce on file changes
+- 5 second max wait (to ensure eventual consistency)
+- Prevents thrashing from rapid changes
+
+**Editor-tree sync** (in `extension.ts`):
+- 300ms debounce on cursor movement
+- 100ms suppress window to prevent feedback loops
+- Prevents excessive tree reveals
+
+### Lazy Evaluation
+
+**Override resolution** (in `overrideResolver.ts`):
+- Computed on-demand, not cached
+- Only for currently displayed tree nodes
+- Scope precedence: managed > projectLocal > projectShared > user

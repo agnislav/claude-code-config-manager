@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ConfigScope, ScopedConfig } from '../types';
 import { discoverConfigPaths, DiscoveredPaths } from './configDiscovery';
 import { loadConfigFile, loadMcpFile } from './configLoader';
+import { PluginMetadataService } from '../utils/pluginMetadata';
 
 const GLOBAL_KEY = '__global__';
 
@@ -14,6 +15,9 @@ export class ConfigStore implements vscode.Disposable {
   private _lockedScopes = new Set<ConfigScope>();
 
   reload(workspaceFolderUri?: string): void {
+    PluginMetadataService.getInstance().invalidate();
+    console.log('[Claude Config] Plugin metadata cache invalidated on reload');
+
     const allDiscovered = discoverConfigPaths();
 
     if (workspaceFolderUri) {
@@ -113,6 +117,9 @@ export class ConfigStore implements vscode.Disposable {
 
     // Managed
     const managedResult = loadConfigFile(discovered.managed.path);
+    if (managedResult.error && discovered.managed.exists) {
+      this.showParseError(discovered.managed.path, managedResult.error, 'Managed (Enterprise) settings');
+    }
     scopes.push({
       scope: ConfigScope.Managed,
       filePath: discovered.managed.path,
@@ -123,6 +130,9 @@ export class ConfigStore implements vscode.Disposable {
 
     // User
     const userResult = loadConfigFile(discovered.user.path);
+    if (userResult.error && discovered.user.exists) {
+      this.showParseError(discovered.user.path, userResult.error, 'User settings');
+    }
     scopes.push({
       scope: ConfigScope.User,
       filePath: discovered.user.path,
@@ -134,7 +144,13 @@ export class ConfigStore implements vscode.Disposable {
     // Project Shared
     if (discovered.projectShared) {
       const sharedResult = loadConfigFile(discovered.projectShared.path);
+      if (sharedResult.error && discovered.projectShared.exists) {
+        this.showParseError(discovered.projectShared.path, sharedResult.error, 'Project (Shared) settings');
+      }
       const mcpResult = discovered.mcp ? loadMcpFile(discovered.mcp.path) : undefined;
+      if (mcpResult?.error && discovered.mcp?.exists) {
+        this.showParseError(discovered.mcp.path, mcpResult.error, 'MCP config');
+      }
       scopes.push({
         scope: ConfigScope.ProjectShared,
         filePath: discovered.projectShared.path,
@@ -149,6 +165,9 @@ export class ConfigStore implements vscode.Disposable {
     // Project Local
     if (discovered.projectLocal) {
       const localResult = loadConfigFile(discovered.projectLocal.path);
+      if (localResult.error && discovered.projectLocal.exists) {
+        this.showParseError(discovered.projectLocal.path, localResult.error, 'Project (Local) settings');
+      }
       scopes.push({
         scope: ConfigScope.ProjectLocal,
         filePath: discovered.projectLocal.path,
@@ -159,5 +178,34 @@ export class ConfigStore implements vscode.Disposable {
     }
 
     return scopes;
+  }
+
+  private showParseError(filePath: string, error: string, label: string): void {
+    // Log to Developer Tools for debugging
+    console.error(`[Claude Config] Parse error in ${filePath}: ${error}`);
+
+    // Extract line/column from JSON parse error message
+    // JSON.parse errors look like: "Unexpected token } in JSON at position 42"
+    // or in newer Node: "Expected ',' or '}' after property value in JSON at position 42 (line 3 column 5)"
+    const posMatch = error.match(/line (\d+) column (\d+)/i);
+    const line = posMatch ? parseInt(posMatch[1], 10) : 1;
+    const column = posMatch ? parseInt(posMatch[2], 10) : 1;
+
+    const message = `Failed to parse ${label} (${filePath}): ${error}`;
+
+    vscode.window.showErrorMessage(message, 'Open File').then((action) => {
+      if (action === 'Open File') {
+        vscode.workspace.openTextDocument(filePath).then(
+          (doc) => {
+            const position = new vscode.Position(Math.max(0, line - 1), Math.max(0, column - 1));
+            const selection = new vscode.Selection(position, position);
+            vscode.window.showTextDocument(doc, { selection });
+          },
+          (err) => {
+            console.error(`[Claude Config] Failed to open file ${filePath}:`, err);
+          }
+        );
+      }
+    });
   }
 }

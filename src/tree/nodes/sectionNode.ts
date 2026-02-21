@@ -34,34 +34,37 @@ export class SectionNode extends ConfigTreeNode {
     super(SECTION_LABELS[sectionType], vscode.TreeItemCollapsibleState.Collapsed, ctx);
 
     this.nodeType = `section.${sectionType}`;
-    this.iconPath = new vscode.ThemeIcon(
-      SECTION_ICONS[sectionType],
-      sectionType === SectionType.Environment
-        ? new vscode.ThemeColor('icon.foreground')
-        : undefined,
-    );
+    this.iconPath = new vscode.ThemeIcon(SECTION_ICONS[sectionType]);
     this.description = this.getItemCount();
     this.finalize();
   }
 
   getChildren(): ConfigTreeNode[] {
-    switch (this.sectionType) {
-      case SectionType.Permissions:
-        return this.getPermissionChildren();
-      case SectionType.Sandbox:
-        return this.getSandboxChildren();
-      case SectionType.Hooks:
-        return this.getHookChildren();
-      case SectionType.McpServers:
-        return this.getMcpChildren();
-      case SectionType.Environment:
-        return this.getEnvChildren();
-      case SectionType.Plugins:
-        return this.getPluginChildren();
-      case SectionType.Settings:
-        return this.getSettingChildren();
-      default:
-        return [];
+    try {
+      switch (this.sectionType) {
+        case SectionType.Permissions:
+          return this.getPermissionChildren();
+        case SectionType.Sandbox:
+          return this.getSandboxChildren();
+        case SectionType.Hooks:
+          return this.getHookChildren();
+        case SectionType.McpServers:
+          return this.getMcpChildren();
+        case SectionType.Environment:
+          return this.getEnvChildren();
+        case SectionType.Plugins:
+          return this.getPluginChildren();
+        case SectionType.Settings:
+          return this.getSettingChildren();
+        default:
+          return [];
+      }
+    } catch (error) {
+      console.error(`Tree rendering error in ${this.nodeType} node:`, error);
+      vscode.window.showWarningMessage(
+        `Tree rendering error in ${this.nodeType}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return [];
     }
   }
 

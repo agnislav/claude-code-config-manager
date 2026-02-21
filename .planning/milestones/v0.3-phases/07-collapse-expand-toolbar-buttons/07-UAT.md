@@ -3,7 +3,7 @@ status: complete
 phase: 07-collapse-expand-toolbar-buttons
 source: [07-01-SUMMARY.md]
 started: 2026-02-20T12:00:00Z
-updated: 2026-02-20T11:10:00Z
+updated: 2026-02-20T12:10:00Z
 ---
 
 ## Current Test
@@ -13,8 +13,8 @@ updated: 2026-02-20T11:10:00Z
 ## Tests
 
 ### 1. Toolbar Button Presence and Order
-expected: The TreeView toolbar shows 4 buttons left-to-right: lock icon, collapse-all icon (chevrons pointing inward), expand-all icon (chevrons pointing outward), filter icon.
-result: issue
+expected: The TreeView toolbar shows 4 buttons left-to-right: lock icon, filter icon, collapse-all icon (chevrons pointing inward), expand-all icon (chevrons pointing outward).
+result: pass
 reported: "should be: lock, filter, collapse, expand"
 severity: major
 

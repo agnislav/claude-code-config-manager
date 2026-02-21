@@ -50,26 +50,34 @@ export class SettingNode extends ConfigTreeNode {
   }
 
   getChildren(): ConfigTreeNode[] {
-    // Only object types (non-null, non-array) have children
-    if (
-      typeof this.value !== 'object' ||
-      this.value === null ||
-      Array.isArray(this.value)
-    ) {
+    try {
+      // Only object types (non-null, non-array) have children
+      if (
+        typeof this.value !== 'object' ||
+        this.value === null ||
+        Array.isArray(this.value)
+      ) {
+        return [];
+      }
+
+      // Create a SettingKeyValueNode for each key/value pair
+      return Object.entries(this.value).map(
+        ([childKey, childValue]) =>
+          new SettingKeyValueNode(
+            this.key,
+            childKey,
+            childValue,
+            this.scopedConfig,
+            this.allScopes,
+          ),
+      );
+    } catch (error) {
+      console.error(`Tree rendering error in ${this.nodeType} node:`, error);
+      vscode.window.showWarningMessage(
+        `Tree rendering error in ${this.nodeType}: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return [];
     }
-
-    // Create a SettingKeyValueNode for each key/value pair
-    return Object.entries(this.value).map(
-      ([childKey, childValue]) =>
-        new SettingKeyValueNode(
-          this.key,
-          childKey,
-          childValue,
-          this.scopedConfig,
-          this.allScopes,
-        ),
-    );
   }
 }
 

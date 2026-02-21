@@ -56,20 +56,3 @@ export function discoverConfigPaths(): DiscoveredPaths[] {
     };
   });
 }
-
-/**
- * Returns all unique config file paths that should be watched.
- */
-export function getAllWatchPaths(discovered: DiscoveredPaths[]): string[] {
-  const paths = new Set<string>();
-
-  for (const d of discovered) {
-    paths.add(d.managed.path);
-    paths.add(d.user.path);
-    if (d.projectShared) paths.add(d.projectShared.path);
-    if (d.projectLocal) paths.add(d.projectLocal.path);
-    if (d.mcp) paths.add(d.mcp.path);
-  }
-
-  return Array.from(paths);
-}

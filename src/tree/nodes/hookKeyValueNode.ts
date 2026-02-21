@@ -21,13 +21,21 @@ export class HookKeyValueNode extends ConfigTreeNode {
       filePath: scopedConfig.filePath,
     };
     super(propertyKey, vscode.TreeItemCollapsibleState.None, ctx);
-    this.iconPath = new vscode.ThemeIcon('symbol-field');
+    this.iconPath = new vscode.ThemeIcon('symbol-field', new vscode.ThemeColor('icon.foreground'));
     this.description = formatHookValue(value);
     this.finalize();
   }
 
   getChildren(): ConfigTreeNode[] {
-    return [];
+    try {
+      return [];
+    } catch (error) {
+      console.error(`Tree rendering error in ${this.nodeType} node:`, error);
+      vscode.window.showWarningMessage(
+        `Tree rendering error in ${this.nodeType}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return [];
+    }
   }
 }
 

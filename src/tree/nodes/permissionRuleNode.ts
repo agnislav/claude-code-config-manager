@@ -41,6 +41,14 @@ export class PermissionRuleNode extends ConfigTreeNode {
   }
 
   getChildren(): ConfigTreeNode[] {
-    return [];
+    try {
+      return [];
+    } catch (error) {
+      console.error(`Tree rendering error in ${this.nodeType} node:`, error);
+      vscode.window.showWarningMessage(
+        `Tree rendering error in ${this.nodeType}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return [];
+    }
   }
 }

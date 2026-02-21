@@ -49,3 +49,29 @@ Hook entry nodes expand to reveal key-value child nodes matching the object sett
 
 ---
 
+
+## v0.5.0 — Hardening (Complete)
+
+**Completed:** 2026-02-21
+**Phases:** 10–15 (6 phases, 10 plans, 18 requirements)
+**Requirements:** 18/18 satisfied (15 fully verified, 3 partial — cosmetic gaps only)
+**Git range:** feat(10-02)..fix(semantic-icons)
+**LOC:** 5,241 TypeScript (+1,314 / -379 source changes)
+
+Fixed all identified bugs, reduced technical debt, and hardened error handling across the extension. Every write operation now has error propagation with recovery buttons, race conditions eliminated through in-flight write tracking, paths validated against whitelists with traversal/symlink protection, and all user-facing messages centralized with consistent prefixing.
+
+**Key accomplishments:**
+- Error propagation with scope-aware messages and retry/open-file recovery across all write operations
+- Tree operation error guards and plugin checkbox rollback for resilient UI under failure
+- In-flight write tracking with watcher suppression and maxWait debounce ceiling to eliminate race conditions
+- Path safety hardening with write-path validation (whitelist, traversal, symlink checks) and input validation
+- Resource leak fixes — Disposable pattern on tree provider, plugin metadata cache invalidation on reload
+- Code quality cleanup — dead code removal, named constants for all timeouts, centralized "Claude Config:" messages
+
+### Known Gaps
+
+- Phase 14 missing VERIFICATION.md (implementation confirmed correct via code inspection)
+- QUAL-04: pluginCommands.ts:39 missing "Claude Config:" prefix (cosmetic, 1-line fix)
+
+---
+

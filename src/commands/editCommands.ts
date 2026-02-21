@@ -1,16 +1,17 @@
 import * as vscode from 'vscode';
-import { ConfigStore } from '../config/configModel';
 import {
   setEnvVar,
   setScalarSetting,
   setSandboxProperty,
+  showWriteError,
 } from '../config/configWriter';
 import { ConfigScope } from '../types';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
+import { validateKeyPath } from '../utils/validation';
+import { MESSAGES } from '../constants';
 
 export function registerEditCommands(
   context: vscode.ExtensionContext,
-  _configStore: ConfigStore,
 ): void {
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -21,14 +22,14 @@ export function registerEditCommands(
 
         if (isReadOnly || !filePath) {
           if (isReadOnly && node.nodeContext.scope === ConfigScope.User) {
-            vscode.window.showInformationMessage(
-              'User scope is currently locked. Click the lock icon in the toolbar to unlock.',
-            );
+            vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
           } else {
-            vscode.window.showWarningMessage('This setting is read-only.');
+            vscode.window.showWarningMessage(MESSAGES.readOnlySetting);
           }
           return;
         }
+
+        if (!validateKeyPath(keyPath, 1, 'editValue')) return;
 
         const currentDesc = node.description?.toString() ?? '';
 
@@ -54,9 +55,18 @@ export function registerEditCommands(
             setScalarSetting(filePath, rootKey, parsed);
           }
         } catch (error) {
-          vscode.window.showErrorMessage(
-            `Failed to edit setting: ${error instanceof Error ? error.message : String(error)}`,
-          );
+          await showWriteError(filePath, error, () => {
+            if (rootKey === 'env' && keyPath.length === 2) {
+              setEnvVar(filePath, keyPath[1], newValue);
+            } else if (rootKey === 'sandbox') {
+              const sandboxKey = keyPath.slice(1).join('.');
+              const parsed = parseInputValue(newValue);
+              setSandboxProperty(filePath, sandboxKey, parsed);
+            } else {
+              const parsed = parseInputValue(newValue);
+              setScalarSetting(filePath, rootKey, parsed);
+            }
+          });
         }
       },
     ),

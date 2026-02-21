@@ -117,6 +117,75 @@ The extension is fully self-contained after bundling.
 
 ## Version Information
 
-- **Extension Version**: 0.3.1 (semantic versioning)
+- **Extension Version**: 0.4.1 (semantic versioning)
 - **Node Target**: ES2022 (modern JavaScript features available)
 - **Min VS Code**: 1.90.0 (January 2024)
+
+## Platform-Specific Considerations
+
+### macOS (Primary Development Platform)
+- Managed config: `/Library/Application Support/ClaudeCode/managed-settings.json`
+- User config: `~/.claude/settings.json`
+- Detected via `process.platform === 'darwin'`
+
+### Linux/WSL
+- Managed config: `/etc/claude-code/managed-settings.json`
+- User config: `~/.claude/settings.json`
+- Home directory resolution via `os.homedir()`
+
+**Cross-Platform Utilities** (`src/utils/platform.ts`):
+```typescript
+- getManagedSettingsPath()  // OS-specific managed config location
+- getUserSettingsPath()     // Home dir + .claude/settings.json
+- getUserSettingsDir()      // Home dir + .claude/
+```
+
+## Extension Architecture Files
+
+### Core Modules
+- **`src/extension.ts`** — Entry point (activate/deactivate), 391 lines
+- **`src/types.ts`** — TypeScript interfaces and enums (config schemas, scopes)
+- **`src/constants.ts`** — Configuration strings, paths, icons, labels
+
+### Config Management (`src/config/`)
+- **`configDiscovery.ts`** — Finds config files across all scopes
+- **`configLoader.ts`** — Parses JSON config files
+- **`configModel.ts`** — In-memory ConfigStore with event emitter
+- **`configWriter.ts`** — Writes config changes back to disk (with write lifecycle tracking)
+- **`overrideResolver.ts`** — Computes effective values across scope hierarchy
+
+### TreeView UI (`src/tree/`)
+- **`configTreeProvider.ts`** — Implements VS Code TreeDataProvider
+- **`nodes/baseNode.ts`** — ConfigTreeNode base class
+- **`nodes/scopeNode.ts`** — Scope-level tree nodes (Managed/User/Project)
+- **`nodes/sectionNode.ts`** — Section-level nodes (Permissions/Hooks/etc.)
+- Individual node files for each item type (PermissionRuleNode, EnvVarNode, etc.)
+
+### Commands (`src/commands/`)
+- **`addCommands.ts`** — Add permission, env var, MCP server, hook
+- **`editCommands.ts`** — Edit scalar values, toggle plugins
+- **`deleteCommands.ts`** — Delete items from config
+- **`moveCommands.ts`** — Move/copy items between scopes
+- **`openFileCommands.ts`** — Open config files in editor
+- **`pluginCommands.ts`** — Plugin-specific operations
+
+### Watchers (`src/watchers/`)
+- **`fileWatcher.ts`** — ConfigFileWatcher with auto-reload on external changes
+
+### Validation (`src/validation/`)
+- **`schemaValidator.ts`** — Lightweight hand-rolled JSON Schema validator
+- **`diagnostics.ts`** — ConfigDiagnostics (VS Code error reporting)
+
+### Utilities (`src/utils/`)
+- **`platform.ts`** — OS-specific path resolution
+- **`json.ts`** — Safe JSON parsing/writing with error handling
+- **`permissions.ts`** — Permission rule parsing utilities
+- **`jsonLocation.ts`** — Line-to-keyPath mapping for editor sync
+
+## No External Runtime Libraries
+
+After esbuild bundling, the extension contains **zero npm package dependencies** at runtime:
+- No JSON Schema library (uses hand-rolled validator in `schemaValidator.ts`)
+- No utility libraries (path, file I/O via Node.js built-ins)
+- No validation library (custom logic in `validators/`)
+- Only external: `vscode` module (provided by VS Code host)

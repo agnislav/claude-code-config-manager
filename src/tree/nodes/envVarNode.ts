@@ -25,15 +25,22 @@ export class EnvVarNode extends ConfigTreeNode {
 
     super(key, vscode.TreeItemCollapsibleState.None, ctx);
 
-    this.iconPath = new vscode.ThemeIcon(
-      'symbol-variable',
-      new vscode.ThemeColor(override.isOverridden ? 'disabledForeground' : 'icon.foreground'),
-    );
+    this.iconPath = override.isOverridden
+      ? new vscode.ThemeIcon('terminal', new vscode.ThemeColor('disabledForeground'))
+      : new vscode.ThemeIcon('terminal');
     this.description = value;
     this.finalize();
   }
 
   getChildren(): ConfigTreeNode[] {
-    return [];
+    try {
+      return [];
+    } catch (error) {
+      console.error(`Tree rendering error in ${this.nodeType} node:`, error);
+      vscode.window.showWarningMessage(
+        `Tree rendering error in ${this.nodeType}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return [];
+    }
   }
 }

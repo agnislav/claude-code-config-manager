@@ -5,6 +5,7 @@ import {
   setEnvVar,
   setMcpServer,
   addHookEntry,
+  showWriteError,
 } from '../config/configWriter';
 import { SCOPE_LABELS, ALL_HOOK_EVENT_TYPES } from '../constants';
 import {
@@ -45,9 +46,9 @@ export function registerAddCommands(
         try {
           addPermissionRule(filePath, category.value, rule.trim());
         } catch (error) {
-          vscode.window.showErrorMessage(
-            `Failed to add permission rule: ${error instanceof Error ? error.message : String(error)}`,
-          );
+          await showWriteError(filePath, error, () => {
+            addPermissionRule(filePath, category.value, rule.trim());
+          });
         }
       },
     ),
@@ -76,9 +77,9 @@ export function registerAddCommands(
         try {
           setEnvVar(filePath, key.trim(), value);
         } catch (error) {
-          vscode.window.showErrorMessage(
-            `Failed to add environment variable: ${error instanceof Error ? error.message : String(error)}`,
-          );
+          await showWriteError(filePath, error, () => {
+            setEnvVar(filePath, key.trim(), value);
+          });
         }
       },
     ),
@@ -138,9 +139,9 @@ export function registerAddCommands(
         try {
           setMcpServer(mcpFilePath, serverName.trim(), config);
         } catch (error) {
-          vscode.window.showErrorMessage(
-            `Failed to add MCP server: ${error instanceof Error ? error.message : String(error)}`,
-          );
+          await showWriteError(mcpFilePath, error, () => {
+            setMcpServer(mcpFilePath, serverName.trim(), config);
+          });
         }
       },
     ),
@@ -177,9 +178,12 @@ export function registerAddCommands(
             hooks: [{ type: 'command', command: command.trim() }],
           });
         } catch (error) {
-          vscode.window.showErrorMessage(
-            `Failed to add hook: ${error instanceof Error ? error.message : String(error)}`,
-          );
+          await showWriteError(filePath, error, () => {
+            addHookEntry(filePath, eventType.value as HookEventType, {
+              matcher: matcher?.trim() || undefined,
+              hooks: [{ type: 'command', command: command.trim() }],
+            });
+          });
         }
       },
     ),

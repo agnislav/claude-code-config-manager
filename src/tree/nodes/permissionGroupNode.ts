@@ -35,21 +35,29 @@ export class PermissionGroupNode extends ConfigTreeNode {
   }
 
   getChildren(): ConfigTreeNode[] {
-    const seen = new Set<string>();
-    return this.rules
-      .filter((rule) => {
-        if (seen.has(rule)) return false;
-        seen.add(rule);
-        return true;
-      })
-      .map(
-        (rule) =>
-          new PermissionRuleNode(
-            rule,
-            this.category as PermissionCategory,
-            this.scopedConfig,
-            this.allScopes,
-          ),
+    try {
+      const seen = new Set<string>();
+      return this.rules
+        .filter((rule) => {
+          if (seen.has(rule)) return false;
+          seen.add(rule);
+          return true;
+        })
+        .map(
+          (rule) =>
+            new PermissionRuleNode(
+              rule,
+              this.category as PermissionCategory,
+              this.scopedConfig,
+              this.allScopes,
+            ),
+        );
+    } catch (error) {
+      console.error(`Tree rendering error in ${this.nodeType} node:`, error);
+      vscode.window.showWarningMessage(
+        `Tree rendering error in ${this.nodeType}: ${error instanceof Error ? error.message : String(error)}`,
       );
+      return [];
+    }
   }
 }

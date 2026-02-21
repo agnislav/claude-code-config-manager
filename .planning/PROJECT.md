@@ -8,16 +8,9 @@ A VS Code extension that provides a visual config viewer and editor for Claude C
 
 Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
 
-## Current Milestone: v0.5.0 Hardening
+## Current State
 
-**Goal:** Fix all identified bugs, reduce technical debt, and harden error handling across the extension.
-
-**Target areas:**
-- Error handling for file writes, JSON parsing, and tree operations
-- Race condition prevention in file watcher / config writer
-- Path validation and security hardening
-- Resource leak fixes and cache invalidation
-- Code quality cleanup (dead code, magic numbers, unused params)
+Shipped v0.5.0 Hardening (2026-02-21). No active milestone — ready for next milestone planning.
 
 ## Requirements
 
@@ -43,10 +36,31 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 - ✓ Project scope nodes show workspace-relative paths — v0.4.1
 - ✓ Plugin nodes show only name without enabled/disabled text — v0.4.1
 - ✓ Hook entries expandable with key-value child nodes — v0.4.1
+- ✓ Write failures propagate scope-aware error messages with retry/open-file recovery — v0.5.0
+- ✓ Config and MCP parse errors surface visible warnings with file navigation — v0.5.0
+- ✓ Tree operations wrapped in try-catch with safe fallbacks — v0.5.0
+- ✓ Plugin checkbox rolls back UI state on write failure — v0.5.0
+- ✓ In-flight write tracking suppresses redundant file watcher reloads — v0.5.0
+- ✓ Editor-tree sync timeouts tracked and cleaned up on deactivation — v0.5.0
+- ✓ File watcher debounce enforces maxWait ceiling — v0.5.0
+- ✓ All path parsing uses Node.js path module — v0.5.0
+- ✓ Write path validation with whitelist, traversal, and symlink checks — v0.5.0
+- ✓ revealInFile validates inputs (path whitelist, keyPath type/depth) — v0.5.0
+- ✓ ConfigTreeProvider implements Disposable for proper EventEmitter cleanup — v0.5.0
+- ✓ Plugin metadata cache invalidated on config reload — v0.5.0
+- ✓ Dead code removed, unused parameters cleaned up — v0.5.0
+- ✓ All timeout values extracted to named constants — v0.5.0
+- ✓ User-facing messages centralized with "Claude Config:" prefix — v0.5.0
+- ✓ keyPath array access guarded with bounds checks — v0.5.0
 
 ### Active
 
-(See `.planning/REQUIREMENTS.md` for v0.5.0 requirements)
+- [ ] Add "go to (scope/entity)" to the command palette
+- [ ] Multiselect for batch copy and move operations
+- [ ] Replace sync file I/O with async in diagnostics validation
+- [ ] Add memoization to override resolver functions
+- [ ] Reduce tight coupling between tree nodes and ConfigStore
+- [ ] Add JSDoc documentation for exported functions
 
 ### Out of Scope
 
@@ -59,7 +73,7 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 
 ## Context
 
-4,471 LOC TypeScript. Toolbar has 4 buttons: lock (locked by default), filter (with active variant), collapse all, expand all. Lock toggle is in toolbar with state-semantic icons. Object settings and hook entries expand to show key/value children. Project scope nodes display workspace-relative paths. Plugin and editValue inline buttons remain temporarily disabled.
+5,241 LOC TypeScript. Shipped v0.5.0 with comprehensive error handling, write-path validation, race condition prevention, and resource cleanup. Toolbar has 4 buttons: lock, filter, collapse, expand. All user-facing messages centralized with "Claude Config:" prefix. Write operations protected by in-flight tracking, path whitelisting, and traversal/symlink validation. Plugin and editValue inline buttons remain temporarily disabled. Known deferred items: command palette navigation, batch operations, async diagnostics, override memoization.
 
 ## Constraints
 
@@ -85,6 +99,17 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 | asRelativePath(path, false) for project scopes | Clean workspace-relative paths; false omits workspace folder prefix in single-root | ✓ Good |
 | Remove enabled/disabled text from plugins | Checkbox + dimming already convey state; text was redundant | ✓ Good |
 | Hook entries follow object settings expandable pattern | Consistent UX; same key-value child node approach | ✓ Good |
+| showWriteError with scope-aware recovery buttons | Reusable across all command handlers; retry + open file | ✓ Good |
+| Error handling at command level, not in configWriter | Commands own UX decisions; writer stays pure I/O | ✓ Good |
+| In-flight write tracking via Set<string> | Simple, efficient; watcher suppression prevents double-reload | ✓ Good |
+| MaxWait debounce ceiling (2s) independent of regular debounce | Guarantees timely reload even during rapid changes | ✓ Good |
+| Deactivation polls in-flight writes up to 5s | Prevents data loss on rapid close; graceful shutdown | ✓ Good |
+| Write path validation via whitelist + traversal + symlink checks | Defense-in-depth; centralized in trackedWrite() | ✓ Good |
+| revealInFile 7-stage validation pipeline | Comprehensive input validation; whitelisted known paths | ✓ Good |
+| Plugin metadata cache invalidated at start of reload() | Covers both full and single-folder reloads | ✓ Good |
+| MESSAGES object with functions for parameterized messages | Centralized, discoverable; consistent "Claude Config:" prefix | ✓ Good |
+| validateKeyPath returns boolean for guard pattern | Simple early-return; logs + shows error for bad state | ✓ Good |
+| Named constants for all timeout values | Discoverable in constants.ts; JSDoc explains rationale | ✓ Good |
 
 ---
-*Last updated: 2026-02-20 after v0.5.0 milestone start*
+*Last updated: 2026-02-21 after v0.5.0 milestone*

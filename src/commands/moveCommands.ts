@@ -9,11 +9,13 @@ import {
   removeScalarSetting,
   setPluginEnabled,
   removePlugin,
+  showWriteError,
 } from '../config/configWriter';
-import { PERMISSION_CATEGORY_LABELS, SCOPE_LABELS } from '../constants';
+import { PERMISSION_CATEGORY_LABELS, SCOPE_LABELS, MESSAGES } from '../constants';
 import { ClaudeCodeConfig, ConfigScope, PermissionCategory } from '../types';
 import { readJsonFile } from '../utils/json';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
+import { validateKeyPath } from '../utils/validation';
 
 export function registerMoveCommands(
   context: vscode.ExtensionContext,
@@ -28,11 +30,9 @@ export function registerMoveCommands(
 
         if (isReadOnly || !filePath) {
           if (isReadOnly && scope === ConfigScope.User) {
-            vscode.window.showInformationMessage(
-              'User scope is currently locked. Click the lock icon in the toolbar to unlock.',
-            );
+            vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
           } else {
-            vscode.window.showWarningMessage('Cannot move read-only items.');
+            vscode.window.showWarningMessage(MESSAGES.readOnlyMove);
           }
           return;
         }
@@ -40,7 +40,7 @@ export function registerMoveCommands(
         // Get available target scopes (exclude current scope and Managed)
         const keys = configStore.getWorkspaceFolderKeys();
         if (keys.length === 0) {
-          vscode.window.showInformationMessage('No workspace folders available.');
+          vscode.window.showInformationMessage(MESSAGES.noWorkspaceFolders);
           return;
         }
 
@@ -52,7 +52,7 @@ export function registerMoveCommands(
         );
 
         if (targetScopes.length === 0) {
-          vscode.window.showInformationMessage('No other editable scopes available.');
+          vscode.window.showInformationMessage(MESSAGES.noEditableScopes);
           return;
         }
 
@@ -69,9 +69,11 @@ export function registerMoveCommands(
         const pick = movePick;
         const targetFilePath = pick.value.filePath;
         if (!targetFilePath) {
-          vscode.window.showWarningMessage('Cannot move to this scope: no configuration file available.');
+          vscode.window.showWarningMessage(MESSAGES.noTargetFileMove);
           return;
         }
+
+        if (!validateKeyPath(keyPath, 1, 'moveToScope')) return;
 
         const rootKey = keyPath[0];
 
@@ -104,12 +106,39 @@ export function registerMoveCommands(
             }
           }
         } catch (error) {
-          vscode.window.showErrorMessage(`Failed to move setting: ${error instanceof Error ? error.message : String(error)}`);
+          await showWriteError(targetFilePath, error, () => {
+            if (rootKey === 'permissions' && keyPath.length === 3) {
+              const category = keyPath[1] as PermissionCategory;
+              const rule = keyPath[2];
+              addPermissionRule(targetFilePath, category, rule);
+              removePermissionRule(filePath, category, rule);
+            } else if (rootKey === 'env' && keyPath.length === 2) {
+              const envKey = keyPath[1];
+              const currentSc = allScopes.find((s) => s.scope === scope);
+              const currentValue = currentSc?.config.env?.[envKey] ?? '';
+              setEnvVar(targetFilePath, envKey, currentValue);
+              removeEnvVar(filePath, envKey);
+            } else if (rootKey === 'enabledPlugins' && keyPath.length === 2) {
+              const pluginId = keyPath[1];
+              const currentSc = allScopes.find((s) => s.scope === scope);
+              const enabled = currentSc?.config.enabledPlugins?.[pluginId] ?? true;
+              setPluginEnabled(targetFilePath, pluginId, enabled);
+              removePlugin(filePath, pluginId);
+            } else {
+              const currentSc = allScopes.find((s) => s.scope === scope);
+              const value = currentSc?.config[rootKey];
+              if (value !== undefined) {
+                setScalarSetting(targetFilePath, rootKey, value);
+                removeScalarSetting(filePath, rootKey);
+              }
+            }
+          });
           return;
         }
 
+        const itemName = node.label?.toString() ?? '';
         vscode.window.showInformationMessage(
-          `Moved "${node.label}" to ${SCOPE_LABELS[pick.value.scope]}`,
+          MESSAGES.movedItem(itemName, SCOPE_LABELS[pick.value.scope]),
         );
       },
     ),
@@ -129,15 +158,17 @@ export function registerMoveCommands(
         // Allow copy from locked User scope (non-destructive).
         // Block copy from truly read-only scopes (Managed).
         if (isReadOnly && scope !== ConfigScope.User) {
-          vscode.window.showWarningMessage('Cannot copy read-only items.');
+          vscode.window.showWarningMessage(MESSAGES.readOnlyCopy);
           return;
         }
+
+        if (!validateKeyPath(keyPath, 1, 'copySettingToScope')) return;
 
         const settingKey = keyPath[0];
 
         const keys = configStore.getWorkspaceFolderKeys();
         if (keys.length === 0) {
-          vscode.window.showInformationMessage('No workspace folders available.');
+          vscode.window.showInformationMessage(MESSAGES.noWorkspaceFolders);
           return;
         }
         const key = node.nodeContext.workspaceFolderUri ?? keys[0];
@@ -148,7 +179,7 @@ export function registerMoveCommands(
         );
 
         if (copySettingTargetScopes.length === 0) {
-          vscode.window.showInformationMessage('No other editable scopes available.');
+          vscode.window.showInformationMessage(MESSAGES.noEditableScopes);
           return;
         }
 
@@ -165,9 +196,7 @@ export function registerMoveCommands(
         const pick = copySettingPick;
         const targetFilePath = pick.value.filePath;
         if (!targetFilePath) {
-          vscode.window.showWarningMessage(
-            'Cannot copy to this scope: no configuration file available.',
-          );
+          vscode.window.showWarningMessage(MESSAGES.noTargetFile);
           return;
         }
 
@@ -175,7 +204,7 @@ export function registerMoveCommands(
         const targetConfig = readJsonFile<ClaudeCodeConfig>(targetFilePath).data ?? {};
         if (settingKey in targetConfig) {
           const overwrite = await vscode.window.showWarningMessage(
-            `"${settingKey}" already exists in ${SCOPE_LABELS[pick.value.scope]}. Overwrite?`,
+            `Claude Config: "${settingKey}" already exists in ${SCOPE_LABELS[pick.value.scope]}. Overwrite?`,
             { modal: true },
             'Overwrite',
           );
@@ -185,14 +214,18 @@ export function registerMoveCommands(
         const currentSc = allScopes.find((s) => s.scope === scope);
         const value = currentSc?.config[settingKey];
         if (value !== undefined) {
-          setScalarSetting(targetFilePath, settingKey, value);
-          vscode.window.showInformationMessage(
-            `Copied "${settingKey}" to ${SCOPE_LABELS[pick.value.scope]}`,
-          );
+          try {
+            setScalarSetting(targetFilePath, settingKey, value);
+            vscode.window.showInformationMessage(
+              MESSAGES.copiedSetting(settingKey, SCOPE_LABELS[pick.value.scope]),
+            );
+          } catch (error) {
+            await showWriteError(targetFilePath, error, () => {
+              setScalarSetting(targetFilePath, settingKey, value);
+            });
+          }
         } else {
-          vscode.window.showWarningMessage(
-            `Could not copy "${settingKey}": value not found in source scope.`,
-          );
+          vscode.window.showWarningMessage(MESSAGES.permissionValueNotFound(settingKey));
         }
       },
     ),
@@ -209,9 +242,12 @@ export function registerMoveCommands(
         // Allow copy from locked User scope (non-destructive).
         // Block copy from truly read-only scopes (Managed).
         if (isReadOnly && scope !== ConfigScope.User) {
-          vscode.window.showWarningMessage('Cannot copy read-only items.');
+          vscode.window.showWarningMessage(MESSAGES.readOnlyCopy);
           return;
         }
+
+        if (!validateKeyPath(keyPath, 1, 'copyPermissionToScope')) return;
+
         if (keyPath[0] !== 'permissions' || keyPath.length !== 3) return;
 
         const category = keyPath[1] as PermissionCategory;
@@ -220,7 +256,7 @@ export function registerMoveCommands(
 
         const keys = configStore.getWorkspaceFolderKeys();
         if (keys.length === 0) {
-          vscode.window.showInformationMessage('No workspace folders available.');
+          vscode.window.showInformationMessage(MESSAGES.noWorkspaceFolders);
           return;
         }
         const key = node.nodeContext.workspaceFolderUri ?? keys[0];
@@ -231,7 +267,7 @@ export function registerMoveCommands(
         );
 
         if (copyPermTargetScopes.length === 0) {
-          vscode.window.showInformationMessage('No other editable scopes available.');
+          vscode.window.showInformationMessage(MESSAGES.noEditableScopes);
           return;
         }
 
@@ -248,9 +284,7 @@ export function registerMoveCommands(
         const scopePick = permScopePick;
         const targetFilePath = scopePick.value.filePath;
         if (!targetFilePath) {
-          vscode.window.showWarningMessage(
-            'Cannot copy to this scope: no configuration file available.',
-          );
+          vscode.window.showWarningMessage(MESSAGES.noTargetFile);
           return;
         }
 
@@ -268,7 +302,7 @@ export function registerMoveCommands(
             // Same category — already exists, nothing to do
             const catLabel = PERMISSION_CATEGORY_LABELS[cat] ?? cat;
             vscode.window.showInformationMessage(
-              `"${rule}" already exists in ${catLabel} in ${scopeLabel}.`,
+              MESSAGES.permissionAlreadyExists(rule, catLabel, scopeLabel),
             );
             return;
           }
@@ -276,7 +310,7 @@ export function registerMoveCommands(
           // Different category — ask user
           const existingLabel = PERMISSION_CATEGORY_LABELS[cat] ?? cat;
           const choice = await vscode.window.showWarningMessage(
-            `"${rule}" already exists as ${existingLabel} in ${scopeLabel}. Change to ${categoryLabel}?`,
+            `Claude Config: "${rule}" already exists as ${existingLabel} in ${scopeLabel}. Change to ${categoryLabel}?`,
             { modal: true },
             'Change permission',
             'Keep existing',
@@ -287,10 +321,16 @@ export function registerMoveCommands(
           break;
         }
 
-        addPermissionRule(targetFilePath, category, rule);
-        vscode.window.showInformationMessage(
-          `Copied "${rule}" to ${categoryLabel} in ${scopeLabel}`,
-        );
+        try {
+          addPermissionRule(targetFilePath, category, rule);
+          vscode.window.showInformationMessage(
+            MESSAGES.copiedPermission(rule, categoryLabel, scopeLabel),
+          );
+        } catch (error) {
+          await showWriteError(targetFilePath, error, () => {
+            addPermissionRule(targetFilePath, category, rule);
+          });
+        }
       },
     ),
   );

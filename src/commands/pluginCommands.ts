@@ -1,11 +1,12 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ConfigStore } from '../config/configModel';
-import { removePlugin, setPluginEnabled } from '../config/configWriter';
-import { SCOPE_LABELS } from '../constants';
+import { removePlugin, setPluginEnabled, showWriteError } from '../config/configWriter';
+import { SCOPE_LABELS, MESSAGES } from '../constants';
 import { ConfigScope } from '../types';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { PluginMetadataService } from '../utils/pluginMetadata';
+import { validateKeyPath } from '../utils/validation';
 
 export function registerPluginCommands(
   context: vscode.ExtensionContext,
@@ -21,26 +22,33 @@ export function registerPluginCommands(
 
         if (isReadOnly || !filePath) {
           if (isReadOnly && scope === ConfigScope.User) {
-            vscode.window.showInformationMessage(
-              'User scope is currently locked. Click the lock icon in the toolbar to unlock.',
-            );
+            vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
           } else {
-            vscode.window.showWarningMessage('Cannot delete read-only items.');
+            vscode.window.showWarningMessage(MESSAGES.readOnlyDelete);
           }
           return;
         }
+
+        if (!validateKeyPath(keyPath, 2, 'deletePlugin')) return;
+
         if (keyPath[0] !== 'enabledPlugins' || keyPath.length !== 2) return;
 
         const pluginId = keyPath[1];
         const itemName = node.label?.toString() ?? pluginId;
         const confirmed = await vscode.window.showWarningMessage(
-          `Delete "${itemName}" from ${SCOPE_LABELS[scope]} scope?`,
+          `Claude Config: Delete "${itemName}" from ${SCOPE_LABELS[scope]}?`,
           { modal: true },
           'Delete',
         );
         if (confirmed !== 'Delete') return;
 
-        removePlugin(filePath, pluginId);
+        try {
+          removePlugin(filePath, pluginId);
+        } catch (error) {
+          await showWriteError(filePath, error, () => {
+            removePlugin(filePath, pluginId);
+          });
+        }
       },
     ),
   );
@@ -52,12 +60,15 @@ export function registerPluginCommands(
       async (node?: ConfigTreeNode) => {
         if (!node?.nodeContext) return;
         const { keyPath } = node.nodeContext;
+
+        if (!validateKeyPath(keyPath, 2, 'openPluginReadme')) return;
+
         if (keyPath[0] !== 'enabledPlugins' || keyPath.length !== 2) return;
 
         const pluginId = keyPath[1];
         const installPath = PluginMetadataService.getInstance().getInstallPath(pluginId);
         if (!installPath) {
-          vscode.window.showWarningMessage(`Plugin "${pluginId}" is not installed locally.`);
+          vscode.window.showWarningMessage(MESSAGES.pluginNotInstalled(pluginId));
           return;
         }
 
@@ -67,7 +78,7 @@ export function registerPluginCommands(
           await vscode.workspace.fs.stat(uri);
           await vscode.commands.executeCommand('markdown.showPreview', uri);
         } catch {
-          vscode.window.showWarningMessage(`No README.md found for "${pluginId}".`);
+          vscode.window.showWarningMessage(MESSAGES.pluginNoReadme(pluginId));
         }
       },
     ),
@@ -84,9 +95,12 @@ export function registerPluginCommands(
         // Allow copy from locked User scope (non-destructive).
         // Block copy from truly read-only scopes (Managed).
         if (isReadOnly && scope !== ConfigScope.User) {
-          vscode.window.showWarningMessage('Cannot copy from a read-only scope.');
+          vscode.window.showWarningMessage(MESSAGES.readOnlyCopy);
           return;
         }
+
+        if (!validateKeyPath(keyPath, 2, 'copyPluginToScope')) return;
+
         if (keyPath[0] !== 'enabledPlugins' || keyPath.length !== 2) return;
 
         const pluginId = keyPath[1];
@@ -94,7 +108,7 @@ export function registerPluginCommands(
         // Build list of writable target scopes, excluding current and Managed
         const keys = configStore.getWorkspaceFolderKeys();
         if (keys.length === 0) {
-          vscode.window.showInformationMessage('No workspace folders available.');
+          vscode.window.showInformationMessage(MESSAGES.noWorkspaceFolders);
           return;
         }
         const key = node.nodeContext.workspaceFolderUri ?? keys[0];
@@ -105,7 +119,7 @@ export function registerPluginCommands(
         );
 
         if (pluginTargetScopes.length === 0) {
-          vscode.window.showInformationMessage('No other editable scopes available.');
+          vscode.window.showInformationMessage(MESSAGES.noEditableScopes);
           return;
         }
 
@@ -124,9 +138,7 @@ export function registerPluginCommands(
 
         const targetFilePath = scopePick.value.filePath;
         if (!targetFilePath) {
-          vscode.window.showWarningMessage(
-            'Cannot copy to this scope: no configuration file path available.',
-          );
+          vscode.window.showWarningMessage(MESSAGES.noTargetFile);
           return;
         }
 
@@ -140,12 +152,17 @@ export function registerPluginCommands(
         );
         if (!statePick) return;
 
-        setPluginEnabled(targetFilePath, pluginId, statePick.value);
-
-        const itemName = node.label?.toString() ?? pluginId;
-        vscode.window.showInformationMessage(
-          `Copied "${itemName}" to ${SCOPE_LABELS[scopePick.value.scope]} as ${statePick.label.toLowerCase()}`,
-        );
+        try {
+          setPluginEnabled(targetFilePath, pluginId, statePick.value);
+          const itemName = node.label?.toString() ?? pluginId;
+          vscode.window.showInformationMessage(
+            MESSAGES.copiedPlugin(itemName, SCOPE_LABELS[scopePick.value.scope], statePick.label.toLowerCase()),
+          );
+        } catch (error) {
+          await showWriteError(targetFilePath, error, () => {
+            setPluginEnabled(targetFilePath, pluginId, statePick.value);
+          });
+        }
       },
     ),
   );
