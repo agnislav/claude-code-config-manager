@@ -130,7 +130,12 @@ export function activate(context: vscode.ExtensionContext): void {
       const node = item as ConfigTreeNode;
       if (node.nodeType !== 'plugin') continue;
       const { filePath, keyPath, isReadOnly } = node.nodeContext;
-      if (isReadOnly || !filePath || keyPath.length < 2) continue;
+      if (isReadOnly || !filePath || keyPath.length < 2) {
+        if (isReadOnly && node.nodeContext.scope === ConfigScope.User) {
+          vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
+        }
+        continue;
+      }
 
       // Block concurrent writes to the same file
       if (isWriteInFlight(filePath)) {
@@ -156,7 +161,12 @@ export function activate(context: vscode.ExtensionContext): void {
     async (node?: ConfigTreeNode) => {
       if (!node || node.nodeType !== 'plugin') return;
       const { filePath, keyPath, isReadOnly } = node.nodeContext;
-      if (isReadOnly || !filePath || keyPath.length < 2) return;
+      if (isReadOnly || !filePath || keyPath.length < 2) {
+        if (isReadOnly && node.nodeContext.scope === ConfigScope.User) {
+          vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
+        }
+        return;
+      }
 
       // Block concurrent writes to the same file
       if (isWriteInFlight(filePath)) {
