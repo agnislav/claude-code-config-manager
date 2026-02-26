@@ -1,6 +1,7 @@
 .vscode/**
 .github/**
 .claude/**
+docs/**
 src/**
 test/**
 test-fixtures/**
@@ -20,6 +21,7 @@ icon.svg
 icon.png
 icon-v2.svg
 icon-v2.png
+icon-v3.png
 icon-v3.svg
 resources/icons/claude-config.svg
 resources/icons/filters/*.svg

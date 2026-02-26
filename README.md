@@ -4,6 +4,8 @@ Visual config viewer and editor for [Claude Code](https://docs.anthropic.com/en/
 
 Browse, edit, and manage all your Claude Code configuration files through a scope-aware TreeView with override detection, inline editing, and real-time file watching.
 
+![Claude Code Config Manager - Tree View](docs/images/tree-overview.png)
+
 ## Features
 
 ### Scope-Aware Configuration
@@ -14,6 +16,8 @@ Claude Code uses a layered config system with four scopes (highest precedence fi
 2. **Project Local** — `.claude/settings.local.json` (gitignored)
 3. **Project Shared** — `.claude/settings.json` (committed)
 4. **User** — `~/.claude/settings.json` (global)
+
+![Toolbar with scope navigation and filter controls](docs/images/toolbar-overview.png)
 
 The extension displays all scopes in a single tree, clearly showing which values are overridden and where the effective value comes from.
 
@@ -29,9 +33,15 @@ Manage every section of Claude Code configuration:
 - **Environment Variables** — Custom env vars passed to Claude Code
 - **Sandbox** — Sandbox mode and networking configuration
 
+Each item supports inline actions -- hover to reveal move, copy, and delete buttons:
+
+![Inline action buttons on hover](docs/images/inline-actions.png)
+
 ### Section Filters
 
 Quickly focus on what matters with toolbar filter buttons for each config section. Toggle visibility of Permissions, MCP Servers, Plugins, Hooks, Settings, Environment, and Sandbox sections independently.
+
+![Filter Sections dialog](docs/images/filter-sections.png)
 
 ### File Watching
 
