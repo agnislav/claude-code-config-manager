@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 Phase: — (between milestones)
 Plan: —
 Status: Milestone v0.5.0 shipped
-Last activity: 2026-02-23 — Completed quick task 1: Fix User scope lock feedback for plugin toggle
+Last activity: 2026-02-26 — Completed quick task 2: Add images for README.md
 
 Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓
 
@@ -30,15 +30,16 @@ None.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 1 | Fix User scope lock feedback for plugin toggle | 2026-02-23 | e045596 | [1-fix-user-scope-lock-plugin-toggle-and-au](./quick/1-fix-user-scope-lock-plugin-toggle-and-au/) |
+| 2 | Add images for README.md | 2026-02-26 | 4891d9d | [2-add-images-for-readme-md](./quick/2-add-images-for-readme-md/) |
 
 ## Session Continuity
 
-Last session: 2026-02-23
-Stopped at: Completed quick-fix-01 (plugin toggle lock feedback)
+Last session: 2026-02-26
+Stopped at: Completed quick task 2 (add images for README.md)
 Resume file: None
 Next action: `/gsd:new-milestone` to start next milestone cycle
 
 ---
 
 *State initialized: 2026-02-20*
-*Last updated: 2026-02-23 — Quick fix 01 completed (plugin toggle lock feedback)*
+*Last updated: 2026-02-26 — Quick task 2 completed (add images for README.md)*

@@ -1,6 +1,7 @@
 .vscode/**
 .github/**
 .claude/**
+docs/**
 src/**
 test/**
 test-fixtures/**
