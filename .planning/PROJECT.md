@@ -8,9 +8,14 @@ A VS Code extension that provides a visual config viewer and editor for Claude C
 
 Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
 
-## Current State
+## Current Milestone: v0.6.0 Visual Fidelity
 
-Shipped v0.5.0 Hardening (2026-02-21). No active milestone — ready for next milestone planning.
+**Goal:** Make the tree reflect true state — overlaps visible across scopes, lock toggle respected by plugin checkbox, hook leaf navigation correct.
+
+**Target features:**
+- Visual overlap indicators showing config entities that exist across multiple scopes
+- Fix plugin checkbox toggling despite locked User scope
+- Fix hook leaf click navigating editor to wrong JSON line
 
 ## Requirements
 
@@ -55,15 +60,18 @@ Shipped v0.5.0 Hardening (2026-02-21). No active milestone — ready for next mi
 
 ### Active
 
-- [ ] Add "go to (scope/entity)" to the command palette
-- [ ] Multiselect for batch copy and move operations
-- [ ] Replace sync file I/O with async in diagnostics validation
-- [ ] Add memoization to override resolver functions
-- [ ] Reduce tight coupling between tree nodes and ConfigStore
-- [ ] Add JSDoc documentation for exported functions
+- [ ] Visual overlap indicators for config entities across scopes
+- [ ] Fix plugin checkbox toggling despite locked User scope
+- [ ] Fix hook leaf click navigating editor to wrong JSON line
 
 ### Out of Scope
 
+- Add "go to (scope/entity)" to the command palette — deferred to future milestone
+- Multiselect for batch copy and move operations — deferred to future milestone
+- Replace sync file I/O with async in diagnostics validation — deferred, internal quality
+- Add memoization to override resolver functions — deferred, internal quality
+- Reduce tight coupling between tree nodes and ConfigStore — deferred, internal quality
+- Add JSDoc documentation for exported functions — deferred, internal quality
 - EditValue inline improvements — deferred to separate phase
 - Overridden entities visual management — deferred to separate milestone
 - Sort items — deferred to separate task
@@ -73,7 +81,7 @@ Shipped v0.5.0 Hardening (2026-02-21). No active milestone — ready for next mi
 
 ## Context
 
-5,241 LOC TypeScript. Shipped v0.5.0 with comprehensive error handling, write-path validation, race condition prevention, and resource cleanup. Toolbar has 4 buttons: lock, filter, collapse, expand. All user-facing messages centralized with "Claude Config:" prefix. Write operations protected by in-flight tracking, path whitelisting, and traversal/symlink validation. Plugin and editValue inline buttons remain temporarily disabled. Known deferred items: command palette navigation, batch operations, async diagnostics, override memoization.
+5,241 LOC TypeScript. Shipped v0.5.0 with comprehensive error handling, write-path validation, race condition prevention, and resource cleanup. Toolbar has 4 buttons: lock, filter, collapse, expand. All user-facing messages centralized with "Claude Config:" prefix. Write operations protected by in-flight tracking, path whitelisting, and traversal/symlink validation. Plugin and editValue inline buttons remain temporarily disabled. Starting v0.6.0 to address visual fidelity: overlap indicators, lock enforcement on plugin toggle, and hook leaf navigation.
 
 ## Constraints
 
@@ -112,4 +120,4 @@ Shipped v0.5.0 Hardening (2026-02-21). No active milestone — ready for next mi
 | Named constants for all timeout values | Discoverable in constants.ts; JSDoc explains rationale | ✓ Good |
 
 ---
-*Last updated: 2026-02-21 after v0.5.0 milestone*
+*Last updated: 2026-03-05 after v0.6.0 milestone start*
