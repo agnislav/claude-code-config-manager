@@ -21,6 +21,7 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓
 - Add "go to (scope/entity)" to the command palette (ui)
 - Multiselect for batch copy and move operations (ui)
 - Plugin checkbox state changes despite locked User scope (ui)
+- Hook leaf click does not navigate editor to correct line (ui)
 
 ## Blockers/Concerns
 
