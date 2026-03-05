@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
-**Current focus:** v0.6.0 Visual Fidelity
+**Current focus:** v0.6.0 Decouple State from Tree
 
 ## Current Position
 
 Phase: Not started (defining requirements)
 Plan: —
 Status: Defining requirements
-Last activity: 2026-03-05 — Milestone v0.6.0 started
+Last activity: 2026-03-05 — Milestone v0.6.0 started (v0.7.0 Visual Fidelity research parked)
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ◆
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ◆ | v0.7.0 ○
 
 ## Pending Todos
 
@@ -39,9 +39,9 @@ None.
 Last session: 2026-02-23
 Stopped at: Completed quick-fix-01 (plugin toggle lock feedback)
 Resume file: None
-Next action: Define requirements and create roadmap for v0.6.0
+Next action: Define requirements and create roadmap for v0.6.0 (Decouple State from Tree)
 
 ---
 
 *State initialized: 2026-02-20*
-*Last updated: 2026-03-05 — Milestone v0.6.0 started*
+*Last updated: 2026-03-05 — Milestone v0.6.0 restructured (Visual Fidelity moved to v0.7.0)*
