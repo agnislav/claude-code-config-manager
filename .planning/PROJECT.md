@@ -8,12 +8,20 @@ A VS Code extension that provides a visual config viewer and editor for Claude C
 
 Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
 
-## Current Milestone: v0.6.0 Visual Fidelity
+## Current Milestone: v0.6.0 Decouple State from Tree
+
+**Goal:** Reduce tight coupling between tree nodes and ConfigStore so the data model is cleanly separated from the presentation layer.
+
+**Target features:**
+- Decouple tree node construction from direct ConfigStore access
+- Establish clear boundaries between state management and tree rendering
+
+## Next Milestone: v0.7.0 Visual Fidelity
 
 **Goal:** Make the tree reflect true state — overlaps visible across scopes, lock toggle respected by plugin checkbox, hook leaf navigation correct.
 
 **Target features:**
-- Visual overlap indicators showing config entities that exist across multiple scopes
+- Visual overlap indicators (description text, badge, tooltip) for config entities across multiple scopes
 - Fix plugin checkbox toggling despite locked User scope
 - Fix hook leaf click navigating editor to wrong JSON line
 
@@ -60,9 +68,8 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 
 ### Active
 
-- [ ] Visual overlap indicators for config entities across scopes
-- [ ] Fix plugin checkbox toggling despite locked User scope
-- [ ] Fix hook leaf click navigating editor to wrong JSON line
+- [ ] Decouple tree node construction from direct ConfigStore access
+- [ ] Establish clear boundaries between state management and tree rendering
 
 ### Out of Scope
 
@@ -70,7 +77,9 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 - Multiselect for batch copy and move operations — deferred to future milestone
 - Replace sync file I/O with async in diagnostics validation — deferred, internal quality
 - Add memoization to override resolver functions — deferred, internal quality
-- Reduce tight coupling between tree nodes and ConfigStore — deferred, internal quality
+- Visual overlap indicators for config entities across scopes — v0.7.0
+- Fix plugin checkbox toggling despite locked User scope — v0.7.0
+- Fix hook leaf click navigating editor to wrong JSON line — v0.7.0
 - Add JSDoc documentation for exported functions — deferred, internal quality
 - EditValue inline improvements — deferred to separate phase
 - Overridden entities visual management — deferred to separate milestone
@@ -81,7 +90,7 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 
 ## Context
 
-5,241 LOC TypeScript. Shipped v0.5.0 with comprehensive error handling, write-path validation, race condition prevention, and resource cleanup. Toolbar has 4 buttons: lock, filter, collapse, expand. All user-facing messages centralized with "Claude Config:" prefix. Write operations protected by in-flight tracking, path whitelisting, and traversal/symlink validation. Plugin and editValue inline buttons remain temporarily disabled. Starting v0.6.0 to address visual fidelity: overlap indicators, lock enforcement on plugin toggle, and hook leaf navigation.
+5,241 LOC TypeScript. Shipped v0.5.0 with comprehensive error handling, write-path validation, race condition prevention, and resource cleanup. Toolbar has 4 buttons: lock, filter, collapse, expand. All user-facing messages centralized with "Claude Config:" prefix. Write operations protected by in-flight tracking, path whitelisting, and traversal/symlink validation. Plugin and editValue inline buttons remain temporarily disabled. Starting v0.6.0 to decouple state from tree nodes. v0.7.0 Visual Fidelity (overlap indicators, lock enforcement, hook navigation) planned next with research complete.
 
 ## Constraints
 
@@ -120,4 +129,4 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 | Named constants for all timeout values | Discoverable in constants.ts; JSDoc explains rationale | ✓ Good |
 
 ---
-*Last updated: 2026-03-05 after v0.6.0 milestone start*
+*Last updated: 2026-03-05 after v0.6.0/v0.7.0 milestone restructure*
