@@ -1,373 +1,428 @@
 # Architecture Research
 
-**Domain:** VS Code TreeView extension — toolbar UX improvements and scope-level write protection
-**Researched:** 2026-02-18
-**Confidence:** HIGH (based on direct codebase inspection + official VS Code API documentation)
+**Domain:** VS Code TreeView extension — visual overlap indicators, plugin lock enforcement, hook leaf navigation
+**Researched:** 2026-03-05
+**Confidence:** HIGH (based on direct codebase inspection of all affected files + VS Code API knowledge)
 
 ---
 
-## Standard Architecture
-
-### System Overview
+## System Overview (Current State)
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         VS Code TreeView UI                              │
-│   ┌──────────────────────────────────────────────────────────────────┐  │
-│   │  Toolbar: [filter icon] [refresh icon]                           │  │
-│   │  Tree: ScopeNode > SectionNode > PermissionRuleNode / etc.       │  │
-│   └──────────────────────────────────────────────────────────────────┘  │
-├─────────────────────────────────────────────────────────────────────────┤
-│                      ConfigTreeProvider                                  │
-│   _sectionFilter: Set<SectionType>   syncFilterContext() → setContext   │
-│   toggleSectionFilter() / selectAllSections()                           │
-│   getChildren() → ScopeNode → SectionNode → leaf nodes                 │
-├─────────────────────────────────────────────────────────────────────────┤
-│                      ConfigStore (in-memory model)                       │
-│   configs: Map<workspaceFolderKey, ScopedConfig[]>                      │
-│   onDidChange: EventEmitter → fires → ConfigTreeProvider.refresh()      │
-├──────────────┬────────────────────────────────────────────────────────  │
-│ configWriter │ configLoader │ configDiscovery │ overrideResolver         │
-│  (pure fns)  │ (pure fns)   │ (pure fns)      │ (pure fns)               │
-└──────────────┴────────────────────────────────────────────────────────  ┘
-                         ↕ disk (JSON files)
+Config Files on disk
+  -> configDiscovery -> configLoader -> ConfigStore (in-memory, emits change events)
+  -> overrideResolver (compute effective values per scope)
+  -> ConfigTreeProvider (build tree, cache children, manage parent map)
+  -> Tree nodes: ScopeNode > SectionNode > leaf nodes (PluginNode, HookEntryNode, etc.)
+  -> VS Code TreeView UI (checkbox toggles, click-to-reveal, context menus)
+
+Write path:
+  Command handler (checks isReadOnly) -> configWriter -> disk -> fileWatcher -> ConfigStore.reload()
 ```
-
-### Component Responsibilities (Current State)
-
-| Component | Responsibility | Notes |
-|-----------|----------------|-------|
-| `extension.ts` | Activate, wire all pieces, register commands | Registers 16+ filter commands via loop |
-| `ConfigStore` | In-memory model of all scoped configs, reload, events | `ScopedConfig.isReadOnly` only set for Managed scope |
-| `ConfigTreeProvider` | TreeDataProvider + section filter state + context key sync | `_sectionFilter: Set<SectionType>` lives here |
-| `ScopeNode` | Passes `sectionFilter` down to `SectionNode` children | Filter is prop-drilled |
-| `baseNode` | Computes `contextValue` from `nodeContext.isReadOnly` | Pattern: `{type}.editable|readOnly[.overridden]` |
-| `configWriter` | Pure functions, write JSON to disk | No lock awareness; callers check `isReadOnly` |
-| `package.json` | 16 command entries (8 pairs normal/.active) + `when` clause icon-swap | Context keys: `claudeConfig_filter_*` |
 
 ---
 
-## Recommended Architecture (Post-Milestone)
+## Feature 1: Visual Overlap Indicators
 
-### Feature 1: QuickPick Multi-Select Filter Replacing Toolbar Icon Buttons
+### Problem
 
-**What changes:** Replace the 16 command / 8 context-key / 8 icon-pair system with a single `claudeConfig.filterSections` command that opens a `vscode.QuickPick` with `canSelectMany: true`.
+When the same config entity (env var, plugin, setting, MCP server, hook event) exists in multiple scopes, only the lower-precedence scope shows "overridden by X." There is no visual indicator on the higher-precedence (winning) scope that it is shadowing something below. Users cannot see at a glance which entities overlap across scopes.
 
-**Component boundaries:**
+### What "Overlap" Means vs "Override"
+
+The existing override system answers: "Is this value being overridden by a higher-precedence scope?" Overlap is the inverse question: "Does this value shadow something in a lower-precedence scope?" Both directions need visibility.
+
+Current override resolver functions return `{ isOverridden, overriddenByScope }` — indicating the current scope's value is being overridden from above. Overlap detection needs the opposite: "does a lower-precedence scope also define this?"
+
+### Architecture: Where Overlap Detection Lives
+
+**Recommended: Add `resolveOverlap*` functions to `overrideResolver.ts`**
+
+Rationale: `overrideResolver.ts` already contains all cross-scope resolution logic. Adding overlap detection here keeps the pattern consistent — pure functions that take `(entityId, currentScope, allScopes)` and return overlap metadata.
+
+**New function signatures:**
+
+```typescript
+// In overrideResolver.ts:
+export function resolveScalarOverlap(
+  key: string,
+  currentScope: ConfigScope,
+  allScopes: ScopedConfig[],
+): { overlaps: boolean; overlappedScopes: ConfigScope[] };
+
+export function resolveEnvOverlap(
+  envKey: string,
+  currentScope: ConfigScope,
+  allScopes: ScopedConfig[],
+): { overlaps: boolean; overlappedScopes: ConfigScope[] };
+
+export function resolvePluginOverlap(
+  pluginId: string,
+  currentScope: ConfigScope,
+  allScopes: ScopedConfig[],
+): { overlaps: boolean; overlappedScopes: ConfigScope[] };
+
+// Similar for hooks, MCP servers, sandbox, permissions
+```
+
+These functions check lower-precedence scopes (higher index in SCOPE_PRECEDENCE) for the same entity. Logic is the mirror of the existing `resolve*Override` functions.
+
+### Architecture: How Overlap Flows Through Tree Nodes
+
+**Option A (recommended): Extend `NodeContext` with overlap fields**
+
+```typescript
+// In types.ts:
+export interface NodeContext {
+  // ... existing fields ...
+  hasOverlap: boolean;           // NEW: this entity shadows something below
+  overlappedScopes?: ConfigScope[]; // NEW: which scopes are shadowed
+}
+```
+
+This is consistent with how `isOverridden` and `overriddenByScope` already exist in `NodeContext`.
+
+**Option B (rejected): Separate decoration provider**
+
+A `FileDecorationProvider` could apply overlap badges via `resourceUri`. However, not all leaf nodes use custom `resourceUri` schemes (only PluginNode and ScopeNode do today). Adding `resourceUri` to every leaf type just for overlap badges adds more complexity than extending `NodeContext`.
+
+### Visual Representation
+
+**Recommended: Description suffix + tooltip, mirroring existing override pattern**
+
+The existing override indicator in `baseNode.applyOverrideStyle()` appends `(overridden by {scope})` to the description. The overlap indicator should follow the same pattern:
+
+```typescript
+// In baseNode.ts, new method:
+protected applyOverlapStyle(): void {
+  if (this.nodeContext.hasOverlap && this.nodeContext.overlappedScopes?.length) {
+    const scopeLabels = this.nodeContext.overlappedScopes
+      .map(s => SCOPE_LABELS[s])
+      .join(', ');
+    this.description = `${this.description ?? ''} (also in ${scopeLabels})`.trim();
+  }
+}
+```
+
+Call `applyOverlapStyle()` from `finalize()` in `baseNode.ts`, after `applyOverrideStyle()`.
+
+### Component Boundaries
 
 | File | Change Type | What Changes |
 |------|-------------|--------------|
-| `src/tree/configTreeProvider.ts` | Modify | `toggleSectionFilter()` / `selectAllSections()` / `syncFilterContext()` removed or gutted. New method: `setSectionFilter(sections: Set<SectionType>)`. Remove all `vscode.commands.executeCommand('setContext', ...)` calls. |
-| `src/extension.ts` | Modify | Remove the `for (const st of Object.values(SectionType))` loop registering 14 filter commands. Remove `filterAllCmd` / `filterAllActiveCmd`. Register single `claudeConfig.filterSections` command. |
-| `package.json` | Modify | Delete 16 command entries (`claudeConfig.filter.*`, `claudeConfig.filter.*.active`, `claudeConfig.filterAll`, `claudeConfig.filterAll.active`). Delete all 16 `view/title` filter menu entries. Delete 16 `commandPalette` hidden entries. Add one `claudeConfig.filterSections` command with a filter icon. Add one `view/title` entry for it. Remove `claudeConfig_filter_*` context keys (they become unused). |
-| `src/commands/` (new file optional) | New or inline | `filterCommands.ts` — registers `claudeConfig.filterSections` command handler that calls `vscode.window.showQuickPick` with `canSelectMany: true`, maps result back to `Set<SectionType>`, calls `treeProvider.setSectionFilter(...)`. |
+| `src/types.ts` | Modify | Add `hasOverlap: boolean` and `overlappedScopes?: ConfigScope[]` to `NodeContext` |
+| `src/config/overrideResolver.ts` | Modify | Add `resolveScalarOverlap`, `resolveEnvOverlap`, `resolvePluginOverlap`, `resolveSandboxOverlap`, `resolvePermissionOverlap` (overlap variants), possibly `resolveHookOverlap`, `resolveMcpOverlap` |
+| `src/tree/nodes/baseNode.ts` | Modify | Add `applyOverlapStyle()` method; call from `finalize()` after `applyOverrideStyle()`. Update `computeTooltip()` to include overlap info. Update `computeContextValue()` to include `overlapped` segment if needed. |
+| `src/tree/nodes/settingNode.ts` | Modify | Call `resolveScalarOverlap` in constructor, pass results into `NodeContext` |
+| `src/tree/nodes/envVarNode.ts` | Modify | Call `resolveEnvOverlap` in constructor |
+| `src/tree/nodes/pluginNode.ts` | Modify | Call `resolvePluginOverlap` in constructor |
+| `src/tree/nodes/sandboxPropertyNode.ts` | Modify | Call `resolveSandboxOverlap` in constructor |
+| `src/tree/nodes/permissionRuleNode.ts` | Modify | Call overlap variant in constructor |
+| `src/tree/nodes/hookEventNode.ts` | Modify | Call `resolveHookOverlap` in constructor (overlap at event type level, not individual hook) |
+| `src/tree/nodes/mcpServerNode.ts` | Modify | Call `resolveMcpOverlap` in constructor |
+| `src/tree/nodes/sectionNode.ts` | No change | Already passes `allScopes` to leaf node constructors |
 
-**Data flow (new):**
+### Data Flow
 
 ```
-User clicks [filter icon]
-    ↓
-claudeConfig.filterSections command handler
-    ↓
-vscode.window.showQuickPick(sectionItems, { canSelectMany: true, activeItems: currentlySelected })
-    ↓ user picks (or cancels)
-ConfigTreeProvider.setSectionFilter(new Set(selectedSections))
-    ↓
-_sectionFilter updated → refresh() → TreeView re-renders
+ConfigStore.getAllScopes(key)
+  -> overrideResolver.resolveScalarOverlap(key, scope, allScopes)
+       checks SCOPE_PRECEDENCE indexes > currentScope's index for same key
+       returns { overlaps: true, overlappedScopes: [ConfigScope.User] }
+  -> NodeContext { hasOverlap: true, overlappedScopes: [...] }
+  -> baseNode.finalize() -> applyOverlapStyle() -> description suffix
+  -> baseNode.computeTooltip() -> includes overlap info
 ```
-
-**Key implementation detail:** `QuickPickItem` has a `picked` boolean field. To pre-select currently active filters when reopening the QuickPick, set `picked: this._sectionFilter.has(st)` on each item before showing. This preserves state across invocations without any context keys.
-
-**What is NOT needed anymore:** `syncFilterContext()`, all `claudeConfig_filter_*` setContext calls, FILTER_CTX_KEYS map, the `.active` command variants, and all 8 pairs of icon SVGs (or they can be kept for the single button, using a ThemeIcon instead).
 
 ---
 
-### Feature 2: Removing a Toolbar Command
+## Feature 2: Plugin Checkbox Lock Enforcement
 
-**What changes:** Identify and remove the unwanted command from both `package.json` (commands array, menus/view/title, menus/commandPalette) and `extension.ts` (command registration + subscriptions push).
+### Problem
 
-**Component boundaries:**
+When User scope is locked (via the lock toggle toolbar button), plugin checkboxes in the User scope can still be toggled. The `onDidChangeCheckboxState` handler in `extension.ts` checks `isReadOnly` and shows a message, but VS Code has already visually toggled the checkbox in the UI. The user sees a checkbox flip followed by an info message, then the tree refreshes reverting the checkbox — a jarring UX.
+
+### Root Cause Analysis
+
+The VS Code TreeView checkbox API does not support preventing a toggle before it happens. `onDidChangeCheckboxState` fires after the UI state has already changed. The current code at `extension.ts:127-156` does:
+
+1. Checkbox toggles visually (VS Code internal)
+2. `onDidChangeCheckboxState` fires
+3. Handler checks `isReadOnly` -> shows message, skips write
+4. No `treeProvider.refresh()` call in the skip path -> **checkbox stays in wrong state**
+
+The `continue` statement on line 138 skips the write but does not refresh the tree, leaving the checkbox visually toggled but with no corresponding disk change. Eventually a file watcher event or other action may trigger a refresh, but the immediate state is incorrect.
+
+### Architecture: The Fix
+
+**Add `treeProvider.refresh()` after the `isReadOnly` early return in the `onDidChangeCheckboxState` handler.**
+
+This is the minimal, correct fix. After showing the lock message, refresh the tree to rebuild all nodes from disk state, which reverts the checkbox to its correct checked/unchecked state.
+
+```typescript
+// In extension.ts, onDidChangeCheckboxState handler:
+treeView.onDidChangeCheckboxState(async (e) => {
+  for (const [item, state] of e.items) {
+    const node = item as ConfigTreeNode;
+    if (node.nodeType !== 'plugin') continue;
+    const { filePath, keyPath, isReadOnly } = node.nodeContext;
+    if (isReadOnly || !filePath || keyPath.length < 2) {
+      if (isReadOnly && node.nodeContext.scope === ConfigScope.User) {
+        vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
+      }
+      treeProvider.refresh(); // <-- ADD THIS: revert checkbox visual state
+      return;                 // <-- CHANGE from 'continue' to 'return'
+    }
+    // ... rest of handler
+  }
+});
+```
+
+**Why `return` instead of `continue`:** If any item in the batch is read-only, we should refresh the entire tree to revert all checkbox states in that batch, then stop processing. Processing further items in a partially-reverted tree could lead to inconsistent state.
+
+### Alternative Considered and Rejected
+
+**Remove checkbox entirely when locked, use icon-only representation:** This would require conditionally setting `checkboxState` based on `isReadOnly`. While technically clean, it would cause the visual layout to shift when locking/unlocking (checkboxes appearing/disappearing), which is more disruptive than the current approach of keeping checkboxes visible but reverting unauthorized toggles.
+
+### Component Boundaries
 
 | File | Change Type | What Changes |
 |------|-------------|--------------|
-| `package.json` | Modify | Remove command entry from `contributes.commands[]`, from `menus.view/title[]`, and from `menus.commandPalette[]` |
-| `src/extension.ts` | Modify | Remove `vscode.commands.registerCommand(...)` call and remove from `context.subscriptions.push(...)` |
-| `src/commands/*.ts` | Modify | Remove the registration function call if command lives in a grouped file, or delete the file if it only contained that command |
+| `src/extension.ts` | Modify | Add `treeProvider.refresh()` in the `isReadOnly` early-return path of `onDidChangeCheckboxState` handler. Change `continue` to `return`. |
 
-**No data flow changes required.** This is purely a surface-area reduction. No other components reference toolbar button registrations.
+**One file, two lines changed.** This is the entire fix.
 
 ---
 
-### Feature 3: User Scope Lock Toggle — Preventing Writes
+## Feature 3: Hook Leaf Click Navigation Fix
 
-**What changes:** Add a toggle that marks the User scope as write-locked at runtime, preventing any write command from modifying `~/.claude/settings.json`. The lock is ephemeral (session state, not persisted to disk).
+### Problem
 
-**Where lock state should live: ConfigStore**
+When clicking a `HookKeyValueNode` (a leaf child of `HookEntryNode`), the editor opens the config file but the cursor lands on the wrong line. The `revealInFile` command receives the `keyPath` from `nodeContext` and calls `findKeyLine()` to locate the JSON key.
 
-Rationale: `ConfigStore` is the authoritative source of `ScopedConfig` objects. It already carries `isReadOnly` per `ScopedConfig`. The natural extension is to add a runtime override set that marks additional scopes as locked beyond the Managed-scope-only current behavior. Keeping it in `ConfigStore` means commands, nodes, and the tree provider all have a single place to query lock state — consistent with how `isReadOnly` already flows through `nodeContext.isReadOnly`.
+### Root Cause Analysis
 
-Alternatives rejected:
-- **ConfigTreeProvider**: Too UI-layer — write commands don't go through the tree provider.
-- **Separate LockService/singleton**: Adds a new dependency edge when ConfigStore already owns scope state.
+`HookKeyValueNode` has keyPath: `['hooks', eventType, matcherIndex, hookIndex, propertyKey]`
 
-**Proposed ConfigStore additions:**
+Example: `['hooks', 'PreToolUse', '0', '0', 'command']`
 
+`findKeyLine()` in `jsonLocation.ts` walks the keyPath segments sequentially. For numeric segments, it uses `findArrayElement()` which counts elements at the array level. The issue is in how `findKeyLine` processes the hook JSON structure:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo hello",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The keyPath `['hooks', 'PreToolUse', '0', '0', 'command']` navigates:
+1. `hooks` -> found at indent 2 (correct)
+2. `PreToolUse` -> found at indent 4 (correct)
+3. `0` (matcherIndex) -> `findArrayElement` finds the first `{...}` object in the `PreToolUse` array (correct)
+4. `0` (hookIndex) -> This is the problem. After finding the matcher object at step 3, `searchFromLine` points to the opening `{` of the matcher. Now `findArrayElement` looks for a `[` bracket, but the next relevant `[` is the inner `"hooks": [` array. However, `findArrayElement` does a naive search for `[` on any line after `searchFromLine`, and may find the wrong bracket.
+5. `command` -> If step 4 landed wrong, this also lands wrong.
+
+The structural issue: `findArrayElement` searches forward from `searchFromLine` for the first `[` character, but the matcher object contains a `"hooks"` key whose value is an array. The function needs to find the `[` that is the value of the property at the current context level, but it has no concept of JSON nesting depth.
+
+Additionally, the keyPath structure `['hooks', eventType, matcherIndex, hookIndex, propertyKey]` treats `matcherIndex` as an index into the event type's array and `hookIndex` as an index into the matcher's `hooks` array. But `findKeyLine` has no awareness that between `matcherIndex` and `hookIndex`, there needs to be a descent into the `hooks` property of the matcher object. The keyPath skips the intermediate `hooks` key.
+
+### Architecture: The Fix
+
+**Option A (recommended): Fix the keyPath to include the intermediate `hooks` key**
+
+The `HookEntryNode` constructor currently builds keyPath as:
 ```typescript
-// In ConfigStore:
-private readonly _lockedScopes = new Set<ConfigScope>();
-
-lockScope(scope: ConfigScope): void {
-  this._lockedScopes.add(scope);
-  this._onDidChange.fire(undefined); // trigger tree refresh
-}
-
-unlockScope(scope: ConfigScope): void {
-  this._lockedScopes.delete(scope);
-  this._onDidChange.fire(undefined);
-}
-
-isScopeLocked(scope: ConfigScope): boolean {
-  return this._lockedScopes.has(scope);
-}
+keyPath: ['hooks', eventType, String(matcherIndex), String(hookIndex)]
 ```
 
-**How lock state propagates through the system:**
-
+But the actual JSON path is:
 ```
-claudeConfig.toggleUserLock command
-    ↓
-configStore.lockScope(ConfigScope.User) / unlockScope(ConfigScope.User)
-    ↓
-configStore._onDidChange.fire() → ConfigTreeProvider.refresh()
-    ↓
-ScopeNode re-constructed: nodeContext.isReadOnly = scopedConfig.isReadOnly || configStore.isScopeLocked(scope)
-    ↓
-baseNode.computeContextValue() → "scope.readOnly" (was "scope.editable")
-    ↓ All child nodes inherit isReadOnly from ScopedConfig via SectionNode/leaf nodes
-    ↓
-package.json when-clauses: viewItem =~ /\.editable/ → edit/delete/move commands hidden
+hooks -> PreToolUse -> [matcherIndex] -> hooks -> [hookIndex]
 ```
 
-**Critical propagation point:** `ScopeNode` currently passes `scopedConfig.isReadOnly` into `NodeContext`. After this change, `ScopeNode` must receive (or query) the lock state. The cleanest approach is to pass it directly in `ConfigTreeProvider.getSingleRootChildren()` and `getMultiRootChildren()` when constructing `ScopeNode`:
-
+The keyPath should be:
 ```typescript
-// In ConfigTreeProvider:
-private getSingleRootChildren(): ConfigTreeNode[] {
-  const key = keys[0];
-  const allScopes = this.configStore.getAllScopes(key);
-  return allScopes
-    .filter((s) => s.scope !== ConfigScope.Managed)
-    .map((scopedConfig) => {
-      const effectiveReadOnly =
-        scopedConfig.isReadOnly || this.configStore.isScopeLocked(scopedConfig.scope);
-      return new ScopeNode(scopedConfig, allScopes, key, this._sectionFilter, effectiveReadOnly);
-    });
-}
+keyPath: ['hooks', eventType, String(matcherIndex), 'hooks', String(hookIndex)]
 ```
 
-Then `ScopeNode` sets `nodeContext.isReadOnly = effectiveReadOnly` which propagates downward into all child `SectionNode` and leaf node constructors via the existing `isReadOnly` field threading.
-
-**SectionNode / leaf nodes:** These already receive `isReadOnly` from their parent `ScopedConfig`. After the change, they must receive the effective value. Current code passes `scopedConfig` directly into `SectionNode`. To keep things clean, `ScopeNode.getChildren()` should override `isReadOnly` on the scopedConfig reference it passes, or `SectionNode` should accept an `overrideReadOnly` parameter. The simplest approach: create a shallow-cloned `ScopedConfig` with `isReadOnly` overridden when locking:
-
+And `HookKeyValueNode` should be:
 ```typescript
-// In ScopeNode.getChildren() when effectiveReadOnly differs from scopedConfig.isReadOnly:
-const effectiveScopedConfig = effectiveReadOnly
-  ? { ...this.scopedConfig, isReadOnly: true }
-  : this.scopedConfig;
-new SectionNode(type, effectiveScopedConfig, this.allScopes)
+keyPath: ['hooks', eventType, String(matcherIndex), 'hooks', String(hookIndex), propertyKey]
 ```
 
-**Command-level enforcement:** All write commands already check `nodeContext.isReadOnly` as a guard. Since the tree rebuilds after lock toggle, all nodes will have the correct `isReadOnly` before any user action occurs. No changes needed in `configWriter.ts` — the UI layer blocks writes before they reach configWriter.
+This makes the keyPath accurately reflect the JSON structure, allowing `findKeyLine()` to navigate correctly without any changes to the JSON location utility.
 
-**VS Code context key for lock toggle icon swap:** Add one context key `claudeConfig_userScope_locked` (boolean). Set it in `extension.ts` when the toggle command runs. This controls the toolbar button icon (locked vs unlocked padlock icon using `$(lock)` / `$(unlock)` ThemeIcons — no custom SVGs needed).
+**Impact on other consumers of keyPath:** The keyPath is used in:
+1. `findKeyLine()` for reveal-in-file navigation (fixed by this change)
+2. `baseNode.computeId()` for tree node identity (IDs change, but this is safe since they are recomputed on every refresh)
+3. `findNodeByKeyPath()` for editor-to-tree sync (must verify this still works)
+4. `findKeyPathAtLine()` for reverse lookup (editor line -> keyPath) — this function walks backward through JSON indentation, and already correctly produces paths that include intermediate object keys. The current tree keyPath is the one that is wrong, not `findKeyPathAtLine()`.
 
-**Component boundaries for Feature 3:**
+**Critical verification:** `findKeyPathAtLine()` already produces `['hooks', 'PreToolUse', '0', 'hooks', '0', 'command']` when the cursor is on the `"command"` line inside a hook entry. This means the editor-to-tree sync is currently broken too, because `findNodeByKeyPath` tries to match this against the tree's `['hooks', 'PreToolUse', '0', '0', 'command']` which does not match. Fixing the tree keyPath fixes both directions simultaneously.
+
+**Option B (rejected): Modify `findKeyLine()` to handle keyPath gaps**
+
+Adding special-case logic to `findKeyLine()` for hook structures couples the JSON parser to domain knowledge about hook config shape. This violates the function's design as a generic JSON key path walker.
+
+### Component Boundaries
 
 | File | Change Type | What Changes |
 |------|-------------|--------------|
-| `src/config/configModel.ts` | Modify | Add `_lockedScopes: Set<ConfigScope>`, `lockScope()`, `unlockScope()`, `isScopeLocked()` |
-| `src/tree/configTreeProvider.ts` | Modify | `getSingleRootChildren()` / `getMultiRootChildren()`: compute `effectiveReadOnly`, pass to `ScopeNode` |
-| `src/tree/nodes/scopeNode.ts` | Modify | Accept `effectiveReadOnly` parameter; use it in `NodeContext`; pass effective `ScopedConfig` to `SectionNode` children |
-| `src/extension.ts` | Modify | Register `claudeConfig.toggleUserLock` command; call `configStore.lockScope/unlockScope`; set `claudeConfig_userScope_locked` context key |
-| `package.json` | Modify | Add `claudeConfig.toggleUserLock` command with `$(lock)` / `$(unlock)` icon pair; add `view/title` entry with `when` clause on `claudeConfig_userScope_locked` |
-| `src/types.ts` | No change | `isReadOnly: boolean` in `NodeContext` already covers this |
-| `src/config/configWriter.ts` | No change | Pure functions; callers gate on `isReadOnly` |
+| `src/tree/nodes/hookEntryNode.ts` | Modify | Change keyPath from `['hooks', eventType, String(matcherIndex), String(hookIndex)]` to `['hooks', eventType, String(matcherIndex), 'hooks', String(hookIndex)]` |
+| `src/tree/nodes/hookKeyValueNode.ts` | Modify | Change keyPath from `['hooks', eventType, String(matcherIndex), String(hookIndex), propertyKey]` to `['hooks', eventType, String(matcherIndex), 'hooks', String(hookIndex), propertyKey]` |
 
----
+**Two files, one line each.** The `findKeyLine()` and `findKeyPathAtLine()` utilities require no changes.
 
-## Data Flow Summary (All Three Features)
-
-### Read path (tree rendering):
+### Data Flow (Fixed)
 
 ```
-Config files on disk
-    → configDiscovery → configLoader → ConfigStore (reload)
-    → ConfigStore.isScopeLocked(scope) [NEW — layered on top of ScopedConfig.isReadOnly]
-    → ConfigTreeProvider.getSingleRootChildren()
-          effectiveReadOnly = scopedConfig.isReadOnly || configStore.isScopeLocked(scope) [NEW]
-    → ScopeNode(scopedConfig, allScopes, key, sectionFilter, effectiveReadOnly) [MODIFIED]
-    → ScopeNode.getChildren() → SectionNode(effectiveScopedConfig, ...) [MODIFIED]
-    → SectionNode → leaf nodes (SettingNode, PermissionRuleNode, etc.)
-          nodeContext.isReadOnly = effectiveScopedConfig.isReadOnly [unchanged logic]
-    → baseNode.computeContextValue() → "setting.readOnly" or "setting.editable"
-    → VS Code TreeView renders, package.json when-clauses gate context menus
-```
+HookKeyValueNode click
+  -> command: claudeConfig.revealInFile
+  -> args: [filePath, ['hooks', 'PreToolUse', '0', 'hooks', '0', 'command']]
+  -> findKeyLine(filePath, keyPath):
+       'hooks'      -> findObjectKey at indent 2 -> found line 2
+       'PreToolUse' -> findObjectKey at indent 4 -> found line 3
+       '0'          -> findArrayElement index 0 -> found line 4 (opening { of matcher)
+       'hooks'      -> findObjectKey at indent 8 -> found line 6 (the matcher's "hooks" key)
+       '0'          -> findArrayElement index 0 -> found line 7 (opening { of hook entry)
+       'command'    -> findObjectKey at indent 12 -> found line 9 (correct!)
+  -> editor cursor placed at line 9
 
-### Filter path (new):
-
-```
-User clicks [filter icon] in toolbar
-    → claudeConfig.filterSections command
-    → vscode.window.showQuickPick(sections, { canSelectMany: true })
-         items pre-selected via QuickPickItem.picked from current _sectionFilter
-    → user selects sections, confirms
-    → ConfigTreeProvider.setSectionFilter(new Set(selectedItems.map(i => i.value)))
-    → _onDidChangeTreeData.fire() → TreeView re-renders
-    [NO setContext calls, NO context keys written]
-```
-
-### Write path (commands → disk):
-
-```
-User invokes edit/delete/add command on a tree node
-    → command handler checks nodeContext.isReadOnly [existing guard]
-         if locked: shows warning, returns early
-         if not locked: proceeds
-    → configWriter function (pure, no lock awareness)
-    → writes JSON to disk
-    → fileWatcher detects change → configStore.reload() → tree refresh
+Editor-to-tree sync (reverse):
+  -> cursor on line 9 ("command": "echo hello")
+  -> findKeyPathAtLine -> walks backward through indentation
+  -> produces ['hooks', 'PreToolUse', '0', 'hooks', '0', 'command']
+  -> findNodeByKeyPath matches HookKeyValueNode (keyPaths now agree)
+  -> tree node highlighted (correct!)
 ```
 
 ---
 
 ## Suggested Build Order
 
-**Build order is dictated by dependency and risk, not feature size.**
-
-### Phase 1: QuickPick Filter (Feature 1)
+### Phase 1: Hook Leaf Navigation Fix (Feature 3)
 
 Build first because:
-- It is a net reduction in complexity (removing 16 commands, 8 context keys, icon-swap machinery)
-- No new state added to existing components
-- Self-contained: only touches `ConfigTreeProvider`, `extension.ts`, and `package.json`
-- Validates the QuickPick API integration pattern before Feature 3 uses the same technique (scope QuickPick already exists in `moveCommands.ts`, so the pattern is proven)
-- Unblocks a cleaner `package.json` before Feature 3 adds new toolbar entries
+- Smallest change (2 lines in 2 files)
+- Zero risk of regression to other features
+- Fixes both click-to-reveal AND editor-to-tree sync for hooks simultaneously
+- No new APIs, no new state, no UI changes
+- Can be verified in isolation with a simple manual test
 
-### Phase 2: Remove Toolbar Command (Feature 2)
+### Phase 2: Plugin Checkbox Lock Enforcement (Feature 2)
 
 Build second because:
-- Zero architectural changes — pure deletion
-- Should be done after Feature 1 clears the old filter commands, so `package.json` edits are not interleaved between two PRs touching the same section
-- Cheapest feature, lowest risk of regressions
+- Small change (2 lines in 1 file)
+- Low risk, but needs manual testing with lock toggle + checkbox interaction
+- Depends on understanding the tree refresh lifecycle, which Phase 1 exercises
+- Self-contained: does not interact with overlap indicators
 
-### Phase 3: User Scope Lock Toggle (Feature 3)
+### Phase 3: Visual Overlap Indicators (Feature 1)
 
 Build last because:
-- It is the only feature that adds new state to `ConfigStore`
-- It requires coordinated changes across 5 files
-- It modifies the `ScopeNode` constructor signature, which could cause type errors across node construction sites
-- With Features 1 and 2 done first, the codebase is in a cleaner state (fewer commands, no filter noise in `extension.ts`) making the lockScope wiring easier to reason about
+- Largest change: touches `types.ts`, `overrideResolver.ts`, `baseNode.ts`, and 7 leaf node files
+- Adds new fields to `NodeContext` (schema change)
+- Adds new functions to `overrideResolver.ts` (new logic)
+- Benefits from the codebase being stable after Phases 1 and 2
+- Can be tested incrementally: implement for one entity type first (e.g., env vars), verify, then extend to all types
 
 ---
 
 ## Architectural Patterns to Follow
 
-### Pattern 1: Effective ReadOnly as Shallow Override
+### Pattern 1: KeyPath Must Match JSON Structure Exactly
 
-**What:** When extending `isReadOnly` beyond `ScopedConfig.isReadOnly`, do not mutate the stored `ScopedConfig`. Instead compute `effectiveReadOnly` at tree construction time and pass it through.
-**When to use:** Any time a transient/session override needs to layer on top of a persisted property.
-**Example:**
-```typescript
-// ConfigTreeProvider.getSingleRootChildren()
-const effectiveReadOnly = scopedConfig.isReadOnly || this.configStore.isScopeLocked(scopedConfig.scope);
-const effectiveScopedConfig: ScopedConfig = effectiveReadOnly
-  ? { ...scopedConfig, isReadOnly: true }
-  : scopedConfig;
-new ScopeNode(effectiveScopedConfig, allScopes, key, this._sectionFilter);
-```
+**What:** Tree node `keyPath` arrays must mirror the actual JSON key path from root to the target property, including intermediate object keys and array indices.
+**When to use:** Always, for any node whose keyPath is used in `findKeyLine()` or `findNodeByKeyPath()`.
+**Why:** `findKeyLine()` is a generic JSON walker that descends one level per keyPath segment. Skipping intermediate keys breaks navigation.
 
-### Pattern 2: QuickPick with Stateful Pre-Selection
+### Pattern 2: Symmetric Override/Overlap in overrideResolver
 
-**What:** When a QuickPick replaces a stateful toggle system, preserve current state by setting `picked: true` on already-active items.
-**When to use:** Replacing context-key-driven icon swap with a single multi-select dialog.
-**Example:**
-```typescript
-const items = Object.values(SectionType).map((st) => ({
-  label: SECTION_LABELS[st],
-  value: st,
-  picked: this._sectionFilter.size === 0 || this._sectionFilter.has(st),
-}));
-const picks = await vscode.window.showQuickPick(items, {
-  canPickMany: true,
-  placeHolder: 'Select sections to show (empty = show all)',
-});
-if (picks === undefined) return; // user cancelled — preserve existing filter
-const newFilter = picks.length === Object.values(SectionType).length
-  ? new Set<SectionType>()  // all selected = no filter
-  : new Set(picks.map((p) => p.value));
-treeProvider.setSectionFilter(newFilter);
-```
+**What:** For every `resolve*Override()` function that checks higher-precedence scopes, add a corresponding `resolve*Overlap()` function that checks lower-precedence scopes.
+**When to use:** When adding overlap detection for a new entity type.
+**Why:** Keeps cross-scope resolution logic centralized. Both directions use the same `SCOPE_PRECEDENCE` ordering and the same entity-matching logic; only the comparison direction differs.
 
-### Pattern 3: ConfigStore as Lock Authority
+### Pattern 3: Tree Refresh as Checkbox Revert
 
-**What:** Ephemeral session state that affects read/write permissions lives in `ConfigStore`, not in the tree layer or a separate service.
-**When to use:** Any runtime override of scope capabilities that commands need to check.
-**Why:** Commands receive `nodeContext.isReadOnly` which is derived from `ScopedConfig` which comes from `ConfigStore`. Keeping lock state in `ConfigStore` keeps the authority chain intact without adding a new dependency.
+**What:** When a checkbox toggle must be rejected (read-only scope), call `treeProvider.refresh()` to rebuild all nodes from disk state, which naturally reverts the checkbox.
+**When to use:** Any `onDidChangeCheckboxState` handler that needs to reject a change.
+**Why:** VS Code does not expose a way to prevent checkbox toggles before they happen. The only reliable revert mechanism is a full tree refresh that reconstructs `TreeItem.checkboxState` from the authoritative config data.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Propagating Lock via Context Keys Alone
+### Anti-Pattern 1: Domain-Specific Logic in findKeyLine
 
-**What people do:** Set a VS Code context key `claudeConfig_userScope_locked` and use it in `when` clauses to hide menu items, without also propagating `isReadOnly` to `nodeContext`.
-**Why it's wrong:** Context menus disappear but command handlers still run if invoked via keyboard or command palette. The `isReadOnly` guard in each command handler must also be respected.
-**Do this instead:** Propagate `effectiveReadOnly` through `nodeContext` AND use context keys only for icon/visibility; rely on `nodeContext.isReadOnly` in command handlers as the authoritative gate.
+**What:** Adding hooks-specific (or any entity-specific) parsing logic to `findKeyLine()`.
+**Why bad:** `findKeyLine()` is designed as a generic JSON key path walker. Adding domain knowledge couples it to config schema changes. Every schema change would require updating the walker.
+**Instead:** Fix the keyPath at the source (tree node constructors) so the generic walker works correctly.
 
-### Anti-Pattern 2: Mutating ScopedConfig Stored in ConfigStore
+### Anti-Pattern 2: Overlap Detection in Tree Nodes
 
-**What people do:** When locking, set `configStore.getAllScopes(key)[n].isReadOnly = true` directly.
-**Why it's wrong:** This mutates the stored config object in place. On `configStore.reload()`, the mutation is lost; also creates hidden shared-object bugs between tree nodes that reference the same `ScopedConfig`.
-**Do this instead:** Spread-clone at tree construction time (`{ ...scopedConfig, isReadOnly: true }`), keeping `ConfigStore` as the single source of truth for what's on disk.
+**What:** Computing overlap by iterating `allScopes` inside each leaf node constructor.
+**Why bad:** Duplicates logic across 7+ node files. Each node would independently implement the "check lower-precedence scopes" pattern, with subtle variations.
+**Instead:** Centralize in `overrideResolver.ts` and call from node constructors, same as the existing override pattern.
 
-### Anti-Pattern 3: Keeping the Context-Key + Icon-Pair System Alongside QuickPick
+### Anti-Pattern 3: Conditional Checkbox Removal for Lock
 
-**What people do:** Add the QuickPick command but leave the old 16 filter commands in place "for keyboard users."
-**Why it's wrong:** Doubles the surface area, the 16 commands still need context key updates to stay in sync with QuickPick-driven filter changes, and the motivation for the refactor (reducing complexity) is negated.
-**Do this instead:** Remove the old system entirely. The QuickPick is keyboard-accessible (Cmd+Shift+P → "Filter Sections"); no icon-based shortcut is lost for keyboard users.
+**What:** Setting `checkboxState = undefined` when `isReadOnly` to hide the checkbox entirely.
+**Why bad:** Visual layout shifts when locking/unlocking. Plugins with no checkbox look like non-plugin nodes. The absence of a checkbox does not clearly communicate "this scope is locked" — it communicates "this is not a toggleable item."
+**Instead:** Keep the checkbox visible, revert unauthorized toggles via `treeProvider.refresh()`, and show an informational message.
 
 ---
 
 ## Integration Points
 
-### Internal Boundaries
+### New vs Modified Components
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| `ConfigStore` ↔ `ConfigTreeProvider` | `onDidChange` event + direct method calls | Lock toggle fires `onDidChange` to trigger refresh |
-| `ConfigTreeProvider` ↔ `ScopeNode` | Constructor parameter `effectiveReadOnly` | Currently implicit via `scopedConfig.isReadOnly` |
-| `ScopeNode` ↔ `SectionNode` ↔ leaf nodes | `ScopedConfig.isReadOnly` on shared object | Shallow-clone pattern at `ScopeNode.getChildren()` level |
-| Commands ↔ `ConfigStore` | Direct method calls | Lock toggle command calls `configStore.lockScope()` |
-| `extension.ts` ↔ `ConfigTreeProvider` | Direct method calls | Filter command calls `treeProvider.setSectionFilter()` |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `overrideResolver.ts` | Modified | Add 5-7 overlap functions (mirrors of existing override functions) |
+| `types.ts` (NodeContext) | Modified | Add `hasOverlap`, `overlappedScopes` fields |
+| `baseNode.ts` | Modified | Add `applyOverlapStyle()`, update `computeTooltip()` |
+| `hookEntryNode.ts` | Modified | Fix keyPath (add intermediate `hooks` segment) |
+| `hookKeyValueNode.ts` | Modified | Fix keyPath (add intermediate `hooks` segment) |
+| `extension.ts` | Modified | Add `treeProvider.refresh()` in checkbox reject path |
+| All leaf nodes (7 files) | Modified | Call overlap resolver, pass results to NodeContext |
+| `jsonLocation.ts` | No change | Generic walker works correctly with fixed keyPaths |
+| `configModel.ts` | No change | No new state needed |
+| `configWriter.ts` | No change | No write behavior changes |
+| `configTreeProvider.ts` | No change | Already passes `allScopes` through the node hierarchy |
+| `sectionNode.ts` | No change | Already passes `allScopes` to leaf constructors |
 
-### package.json When-Clause Changes
+### Cross-Feature Dependencies
 
-| Current | After Feature 1 | After Feature 3 |
-|---------|-----------------|-----------------|
-| 8 `claudeConfig_filter_*` context keys | 0 (removed) | 0 |
-| 16 filter commands | 1 (`claudeConfig.filterSections`) | 1 |
-| 16 `view/title` filter entries | 1 | 2 (filter + lock toggle) |
-| `claudeConfig_userScope_locked` | not present | added |
+```
+Feature 3 (hook keyPath fix) -- independent, no deps
+Feature 2 (plugin lock fix) -- independent, no deps
+Feature 1 (overlap indicators) -- independent, no deps
+
+No cross-feature dependencies. All three can be built in any order.
+Build order recommendation is based on risk and size, not dependency.
+```
 
 ---
 
 ## Sources
 
-- Direct codebase inspection: `/Users/agnislav/Projects/Dardes/claude-code-config-manager/src/` (HIGH confidence)
-- VS Code Extension API — QuickPick: https://code.visualstudio.com/api/references/vscode-api (MEDIUM confidence via WebSearch verification)
-- VS Code UX Guidelines — Quick Picks: https://code.visualstudio.com/api/ux-guidelines/quick-picks (MEDIUM confidence)
-- `vscode.window.showQuickPick` `canPickMany` option: confirmed stable in multiple VS Code issues and the Haxe extern docs (MEDIUM confidence, multiple sources agree)
+- Direct codebase inspection of all affected source files (HIGH confidence)
+- VS Code TreeView checkbox API: [Allow TreeItems to have optional checkboxes](https://github.com/microsoft/vscode/issues/116141) (MEDIUM confidence)
+- VS Code Tree View API guide: [Tree View API](https://code.visualstudio.com/api/extension-guides/tree-view) (MEDIUM confidence)
+- VS Code TreeView checkbox state management: [Test tree checkbox API](https://github.com/microsoft/vscode/issues/183549) (MEDIUM confidence)
 
 ---
-*Architecture research for: Claude Code Config Manager — toolbar UX improvements*
-*Researched: 2026-02-18*
+*Architecture research for: Claude Code Config Manager v0.6.0 Visual Fidelity*
+*Researched: 2026-03-05*
