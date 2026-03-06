@@ -1,428 +1,584 @@
-# Architecture Research
+# Architecture Patterns: State-View Separation for ConfigStore / TreeView
 
-**Domain:** VS Code TreeView extension — visual overlap indicators, plugin lock enforcement, hook leaf navigation
+**Domain:** VS Code TreeView extension — decoupling state management from tree rendering
 **Researched:** 2026-03-05
-**Confidence:** HIGH (based on direct codebase inspection of all affected files + VS Code API knowledge)
+**Confidence:** HIGH (analysis based on full codebase audit of all 14 node files, ConfigStore, overrideResolver, ConfigTreeProvider, commands, and extension.ts)
 
 ---
 
-## System Overview (Current State)
+## Problem Statement
+
+Tree nodes currently reach directly into `ScopedConfig` and `allScopes` to compute their own display state. Every node constructor calls `overrideResolver` functions, accesses `scopedConfig.config.*`, and derives visual properties (icons, descriptions, tooltips, dimming) inline. This creates three problems:
+
+1. **Tight coupling** — nodes cannot be rendered without the full `ScopedConfig[]` array and knowledge of override resolution logic.
+2. **Scattered computation** — the same override pattern (call resolver, build NodeContext, set icon color) is repeated across 8+ node constructors.
+3. **Untestable presentation** — testing what a node displays requires constructing real `ScopedConfig` objects with full config data.
+
+### Concrete Evidence From Codebase
+
+- **6 node files** import from `overrideResolver.ts`: `settingNode`, `settingKeyValueNode`, `permissionRuleNode`, `envVarNode`, `pluginNode`, `sandboxPropertyNode`
+- **`allScopes: ScopedConfig[]`** is threaded through 4 constructor levels: `ConfigTreeProvider` -> `ScopeNode` -> `SectionNode` -> leaf nodes
+- **Lock-aware readOnly** is computed in 2 places: `configTreeProvider.ts:211` and `configTreeProvider.ts:264` (WorkspaceFolderNode)
+- **Display formatting** lives in node files: `formatValue()` in settingNode.ts, `formatSandboxValue()` in sandboxPropertyNode.ts, `formatHookValue()` in hookKeyValueNode.ts
+
+---
+
+## Current Data Flow (Before)
 
 ```
-Config Files on disk
-  -> configDiscovery -> configLoader -> ConfigStore (in-memory, emits change events)
-  -> overrideResolver (compute effective values per scope)
-  -> ConfigTreeProvider (build tree, cache children, manage parent map)
-  -> Tree nodes: ScopeNode > SectionNode > leaf nodes (PluginNode, HookEntryNode, etc.)
-  -> VS Code TreeView UI (checkbox toggles, click-to-reveal, context menus)
-
-Write path:
-  Command handler (checks isReadOnly) -> configWriter -> disk -> fileWatcher -> ConfigStore.reload()
+ConfigStore.getAllScopes(key) -> ScopedConfig[]
+  |
+ConfigTreeProvider.getSingleRootChildren()
+  reads configStore.isScopeLocked()
+  computes effective ScopedConfig (locked -> isReadOnly: true)
+  passes (scopedConfig, allScopes, workspaceFolderUri, sectionFilter) to ScopeNode
+    |
+ScopeNode.getChildren()
+  reads scopedConfig.config.permissions/hooks/env/etc.
+  decides which sections exist
+  passes (sectionType, scopedConfig, allScopes) to SectionNode
+    |
+SectionNode.getChildren()
+  reads scopedConfig.config[section] to extract data
+  passes (entity, scopedConfig, allScopes) to leaf nodes
+    |
+Leaf node constructor:
+  1. Calls overrideResolver(key, scope, allScopes)  <-- computation in view
+  2. Builds NodeContext from result                   <-- mixing concerns
+  3. Sets icon/description/tooltip from context       <-- presentation logic
 ```
 
 ---
 
-## Feature 1: Visual Overlap Indicators
+## Recommended Architecture
 
-### Problem
+### Introduce a ViewModel Layer Between ConfigStore and Tree Nodes
 
-When the same config entity (env var, plugin, setting, MCP server, hook event) exists in multiple scopes, only the lower-precedence scope shows "overridden by X." There is no visual indicator on the higher-precedence (winning) scope that it is shadowing something below. Users cannot see at a glance which entities overlap across scopes.
+A new `TreeViewModelBuilder` (single class, one file) transforms `ScopedConfig[]` into a tree of plain data objects (`*ViewModel` interfaces) that contain all pre-computed display state. Tree nodes become pure renderers that map ViewModel properties to VS Code TreeItem properties.
 
-### What "Overlap" Means vs "Override"
+### New Data Flow (After)
 
-The existing override system answers: "Is this value being overridden by a higher-precedence scope?" Overlap is the inverse question: "Does this value shadow something in a lower-precedence scope?" Both directions need visibility.
-
-Current override resolver functions return `{ isOverridden, overriddenByScope }` — indicating the current scope's value is being overridden from above. Overlap detection needs the opposite: "does a lower-precedence scope also define this?"
-
-### Architecture: Where Overlap Detection Lives
-
-**Recommended: Add `resolveOverlap*` functions to `overrideResolver.ts`**
-
-Rationale: `overrideResolver.ts` already contains all cross-scope resolution logic. Adding overlap detection here keeps the pattern consistent — pure functions that take `(entityId, currentScope, allScopes)` and return overlap metadata.
-
-**New function signatures:**
-
-```typescript
-// In overrideResolver.ts:
-export function resolveScalarOverlap(
-  key: string,
-  currentScope: ConfigScope,
-  allScopes: ScopedConfig[],
-): { overlaps: boolean; overlappedScopes: ConfigScope[] };
-
-export function resolveEnvOverlap(
-  envKey: string,
-  currentScope: ConfigScope,
-  allScopes: ScopedConfig[],
-): { overlaps: boolean; overlappedScopes: ConfigScope[] };
-
-export function resolvePluginOverlap(
-  pluginId: string,
-  currentScope: ConfigScope,
-  allScopes: ScopedConfig[],
-): { overlaps: boolean; overlappedScopes: ConfigScope[] };
-
-// Similar for hooks, MCP servers, sandbox, permissions
+```
+ConfigStore.getAllScopes(key) -> ScopedConfig[]
+  |
+TreeViewModelBuilder.build(allScopes, lockedScopes, sectionFilter, workspaceFolderUri)
+  calls overrideResolver internally
+  computes all display state (labels, icons, descriptions, tooltips, override status)
+  returns ScopeViewModel[]
+  |
+ConfigTreeProvider receives ScopeViewModel[]
+  passes to ScopeNode(viewModel)
+    |
+ScopeNode.getChildren()
+  maps viewModel.sections -> SectionNode(sectionViewModel)
+    |
+Leaf node constructor:
+  receives pre-computed ViewModel
+  maps label/description/icon/tooltip directly  <-- pure rendering, no logic
 ```
 
-These functions check lower-precedence scopes (higher index in SCOPE_PRECEDENCE) for the same entity. Logic is the mirror of the existing `resolve*Override` functions.
+### Component Boundaries
 
-### Architecture: How Overlap Flows Through Tree Nodes
+| Component | Responsibility | Communicates With |
+|-----------|---------------|-------------------|
+| `ConfigStore` | Raw config data, reload, lock state, change events | TreeViewModelBuilder (provides data) |
+| `TreeViewModelBuilder` | Transforms ScopedConfig[] into display-ready ViewModels; calls overrideResolver; owns all formatting | ConfigStore (reads), overrideResolver (calls), ConfigTreeProvider (returns ViewModels) |
+| `overrideResolver` | Pure functions computing override status across scopes | TreeViewModelBuilder (called by) — no longer called by nodes |
+| `ConfigTreeProvider` | Orchestrates tree refresh, caches nodes, manages parent map and reveal | TreeViewModelBuilder (calls), Tree nodes (creates from ViewModels) |
+| Tree nodes | Map ViewModel properties to VS Code TreeItem properties. Zero logic. | ConfigTreeProvider (created by) |
+| Commands | Read `node.nodeContext` to get scope, keyPath, filePath, isReadOnly | Tree nodes (read context) — unchanged |
 
-**Option A (recommended): Extend `NodeContext` with overlap fields**
+---
+
+## New File: `src/tree/viewModel.ts`
+
+This file contains three things: ViewModel interfaces, the TreeViewModelBuilder class, and a `createNodeFromViewModel` factory function.
+
+### ViewModel Interfaces
 
 ```typescript
-// In types.ts:
-export interface NodeContext {
-  // ... existing fields ...
-  hasOverlap: boolean;           // NEW: this entity shadows something below
-  overlappedScopes?: ConfigScope[]; // NEW: which scopes are shadowed
+// Primitive display properties — no vscode imports needed for types
+interface BaseViewModel {
+  readonly nodeContext: NodeContext;  // preserved unchanged for commands
+  readonly label: string;
+  readonly description: string;
+  readonly tooltipMarkdown: string | undefined;  // raw markdown, nodes wrap in MarkdownString
+  readonly iconId: string;
+  readonly iconColor: string | undefined;  // ThemeColor ID (e.g. 'disabledForeground') or undefined
+  readonly collapsible: boolean;  // true = Collapsed, false = None
+  readonly contextValue: string;
+}
+
+interface ScopeViewModel extends BaseViewModel {
+  readonly type: 'scope';
+  readonly scopeEnum: ConfigScope;
+  readonly resourceUri: { scheme: string; path: string; query: string } | undefined;
+  readonly sections: SectionViewModel[];
+}
+
+interface SectionViewModel extends BaseViewModel {
+  readonly type: 'section';
+  readonly sectionType: SectionType;
+  readonly children: NodeViewModel[];  // mixed leaf types
+}
+
+// Discriminated union for all view models that can appear as children
+type NodeViewModel =
+  | PermissionGroupViewModel
+  | PermissionRuleViewModel
+  | EnvVarViewModel
+  | SettingViewModel
+  | SettingKeyValueViewModel
+  | PluginViewModel
+  | SandboxPropertyViewModel
+  | McpServerViewModel
+  | HookEventViewModel
+  | HookEntryViewModel
+  | HookKeyValueViewModel;
+
+interface PermissionGroupViewModel extends BaseViewModel {
+  readonly type: 'permissionGroup';
+  readonly children: PermissionRuleViewModel[];
+}
+
+interface PermissionRuleViewModel extends BaseViewModel {
+  readonly type: 'permissionRule';
+}
+
+interface EnvVarViewModel extends BaseViewModel {
+  readonly type: 'envVar';
+}
+
+interface SettingViewModel extends BaseViewModel {
+  readonly type: 'setting';
+  readonly children: SettingKeyValueViewModel[];  // empty for scalar settings
+}
+
+interface SettingKeyValueViewModel extends BaseViewModel {
+  readonly type: 'settingKeyValue';
+}
+
+interface PluginViewModel extends BaseViewModel {
+  readonly type: 'plugin';
+  readonly checkboxChecked: boolean;
+  readonly resourceUri: { scheme: string; path: string; query: string } | undefined;
+}
+
+interface SandboxPropertyViewModel extends BaseViewModel {
+  readonly type: 'sandboxProperty';
+  readonly arrayTooltipItems: string[] | undefined;  // for array values
+}
+
+interface McpServerViewModel extends BaseViewModel {
+  readonly type: 'mcpServer';
+}
+
+interface HookEventViewModel extends BaseViewModel {
+  readonly type: 'hookEvent';
+  readonly children: HookEntryViewModel[];
+}
+
+interface HookEntryViewModel extends BaseViewModel {
+  readonly type: 'hookEntry';
+  readonly children: HookKeyValueViewModel[];
+}
+
+interface HookKeyValueViewModel extends BaseViewModel {
+  readonly type: 'hookKeyValue';
 }
 ```
 
-This is consistent with how `isOverridden` and `overriddenByScope` already exist in `NodeContext`.
+**Design rationale:** ViewModels use only primitive types and plain objects (no `vscode.ThemeIcon`, `vscode.ThemeColor`, `vscode.MarkdownString`). This means ViewModel construction and the builder itself can be unit-tested without mocking the VS Code API. The one exception is `NodeContext`, which is already a plain interface defined in `types.ts`.
 
-**Option B (rejected): Separate decoration provider**
-
-A `FileDecorationProvider` could apply overlap badges via `resourceUri`. However, not all leaf nodes use custom `resourceUri` schemes (only PluginNode and ScopeNode do today). Adding `resourceUri` to every leaf type just for overlap badges adds more complexity than extending `NodeContext`.
-
-### Visual Representation
-
-**Recommended: Description suffix + tooltip, mirroring existing override pattern**
-
-The existing override indicator in `baseNode.applyOverrideStyle()` appends `(overridden by {scope})` to the description. The overlap indicator should follow the same pattern:
+### TreeViewModelBuilder Class
 
 ```typescript
-// In baseNode.ts, new method:
-protected applyOverlapStyle(): void {
-  if (this.nodeContext.hasOverlap && this.nodeContext.overlappedScopes?.length) {
-    const scopeLabels = this.nodeContext.overlappedScopes
-      .map(s => SCOPE_LABELS[s])
-      .join(', ');
-    this.description = `${this.description ?? ''} (also in ${scopeLabels})`.trim();
+export class TreeViewModelBuilder {
+  build(
+    allScopes: ScopedConfig[],
+    lockedScopes: ReadonlySet<ConfigScope>,
+    sectionFilter: ReadonlySet<SectionType>,
+    workspaceFolderUri?: string,
+  ): ScopeViewModel[] {
+    return allScopes
+      .filter(sc => sc.scope !== ConfigScope.Managed)
+      .map(sc => {
+        const effective = lockedScopes.has(sc.scope) && !sc.isReadOnly
+          ? { ...sc, isReadOnly: true }
+          : sc;
+        return this.buildScope(effective, allScopes, sectionFilter, workspaceFolderUri);
+      });
+  }
+
+  private buildScope(...): ScopeViewModel { /* ... */ }
+  private buildSections(...): SectionViewModel[] { /* ... */ }
+  private buildPermissionGroup(...): PermissionGroupViewModel { /* ... */ }
+  private buildPermissionRule(...): PermissionRuleViewModel {
+    // Calls resolvePermissionOverride() HERE, not in node
+  }
+  private buildSetting(...): SettingViewModel {
+    // Calls resolveScalarOverride() HERE, not in node
+    // Calls formatValue() HERE, not in node
+  }
+  // ... one builder method per node type
+}
+```
+
+The builder encapsulates ALL current logic from node constructors:
+
+| Current Location | Moves To Builder |
+|-----------------|------------------|
+| `resolveScalarOverride()` calls in settingNode, settingKeyValueNode | `buildSetting()`, `buildSettingKeyValue()` |
+| `resolvePermissionOverride()` call in permissionRuleNode | `buildPermissionRule()` |
+| `resolveEnvOverride()` call in envVarNode | `buildEnvVar()` |
+| `resolvePluginOverride()` call in pluginNode | `buildPlugin()` |
+| `resolveSandboxOverride()` call in sandboxPropertyNode | `buildSandboxProperty()` |
+| `formatValue()` in settingNode.ts | Builder utility or stays as shared function |
+| `formatSandboxValue()` in sandboxPropertyNode.ts | Builder utility |
+| `formatHookValue()` in hookKeyValueNode.ts | Builder utility |
+| `PluginMetadataService.getInstance().getDescription()` in pluginNode | `buildPlugin()` |
+| Lock-aware isReadOnly in configTreeProvider | `build()` method |
+| Section existence checks in scopeNode.getChildren() | `buildSections()` |
+| Item counts in sectionNode.getItemCount() | `buildSection()` |
+| Plugin display name splitting in pluginNode | `buildPlugin()` |
+| MCP server type detection in mcpServerNode | `buildMcpServer()` |
+
+### Factory Function
+
+```typescript
+export function createNodeFromViewModel(vm: NodeViewModel): ConfigTreeNode {
+  switch (vm.type) {
+    case 'permissionGroup': return new PermissionGroupNode(vm);
+    case 'permissionRule': return new PermissionRuleNode(vm);
+    case 'envVar': return new EnvVarNode(vm);
+    case 'setting': return new SettingNode(vm);
+    case 'settingKeyValue': return new SettingKeyValueNode(vm);
+    case 'plugin': return new PluginNode(vm);
+    case 'sandboxProperty': return new SandboxPropertyNode(vm);
+    case 'mcpServer': return new McpServerNode(vm);
+    case 'hookEvent': return new HookEventNode(vm);
+    case 'hookEntry': return new HookEntryNode(vm);
+    case 'hookKeyValue': return new HookKeyValueNode(vm);
   }
 }
 ```
 
-Call `applyOverlapStyle()` from `finalize()` in `baseNode.ts`, after `applyOverrideStyle()`.
-
-### Component Boundaries
-
-| File | Change Type | What Changes |
-|------|-------------|--------------|
-| `src/types.ts` | Modify | Add `hasOverlap: boolean` and `overlappedScopes?: ConfigScope[]` to `NodeContext` |
-| `src/config/overrideResolver.ts` | Modify | Add `resolveScalarOverlap`, `resolveEnvOverlap`, `resolvePluginOverlap`, `resolveSandboxOverlap`, `resolvePermissionOverlap` (overlap variants), possibly `resolveHookOverlap`, `resolveMcpOverlap` |
-| `src/tree/nodes/baseNode.ts` | Modify | Add `applyOverlapStyle()` method; call from `finalize()` after `applyOverrideStyle()`. Update `computeTooltip()` to include overlap info. Update `computeContextValue()` to include `overlapped` segment if needed. |
-| `src/tree/nodes/settingNode.ts` | Modify | Call `resolveScalarOverlap` in constructor, pass results into `NodeContext` |
-| `src/tree/nodes/envVarNode.ts` | Modify | Call `resolveEnvOverlap` in constructor |
-| `src/tree/nodes/pluginNode.ts` | Modify | Call `resolvePluginOverlap` in constructor |
-| `src/tree/nodes/sandboxPropertyNode.ts` | Modify | Call `resolveSandboxOverlap` in constructor |
-| `src/tree/nodes/permissionRuleNode.ts` | Modify | Call overlap variant in constructor |
-| `src/tree/nodes/hookEventNode.ts` | Modify | Call `resolveHookOverlap` in constructor (overlap at event type level, not individual hook) |
-| `src/tree/nodes/mcpServerNode.ts` | Modify | Call `resolveMcpOverlap` in constructor |
-| `src/tree/nodes/sectionNode.ts` | No change | Already passes `allScopes` to leaf node constructors |
-
-### Data Flow
-
-```
-ConfigStore.getAllScopes(key)
-  -> overrideResolver.resolveScalarOverlap(key, scope, allScopes)
-       checks SCOPE_PRECEDENCE indexes > currentScope's index for same key
-       returns { overlaps: true, overlappedScopes: [ConfigScope.User] }
-  -> NodeContext { hasOverlap: true, overlappedScopes: [...] }
-  -> baseNode.finalize() -> applyOverlapStyle() -> description suffix
-  -> baseNode.computeTooltip() -> includes overlap info
-```
-
 ---
 
-## Feature 2: Plugin Checkbox Lock Enforcement
+## Refactored Tree Nodes (Example)
 
-### Problem
-
-When User scope is locked (via the lock toggle toolbar button), plugin checkboxes in the User scope can still be toggled. The `onDidChangeCheckboxState` handler in `extension.ts` checks `isReadOnly` and shows a message, but VS Code has already visually toggled the checkbox in the UI. The user sees a checkbox flip followed by an info message, then the tree refreshes reverting the checkbox — a jarring UX.
-
-### Root Cause Analysis
-
-The VS Code TreeView checkbox API does not support preventing a toggle before it happens. `onDidChangeCheckboxState` fires after the UI state has already changed. The current code at `extension.ts:127-156` does:
-
-1. Checkbox toggles visually (VS Code internal)
-2. `onDidChangeCheckboxState` fires
-3. Handler checks `isReadOnly` -> shows message, skips write
-4. No `treeProvider.refresh()` call in the skip path -> **checkbox stays in wrong state**
-
-The `continue` statement on line 138 skips the write but does not refresh the tree, leaving the checkbox visually toggled but with no corresponding disk change. Eventually a file watcher event or other action may trigger a refresh, but the immediate state is incorrect.
-
-### Architecture: The Fix
-
-**Add `treeProvider.refresh()` after the `isReadOnly` early return in the `onDidChangeCheckboxState` handler.**
-
-This is the minimal, correct fix. After showing the lock message, refresh the tree to rebuild all nodes from disk state, which reverts the checkbox to its correct checked/unchecked state.
+### Before (SettingNode):
 
 ```typescript
-// In extension.ts, onDidChangeCheckboxState handler:
-treeView.onDidChangeCheckboxState(async (e) => {
-  for (const [item, state] of e.items) {
-    const node = item as ConfigTreeNode;
-    if (node.nodeType !== 'plugin') continue;
-    const { filePath, keyPath, isReadOnly } = node.nodeContext;
-    if (isReadOnly || !filePath || keyPath.length < 2) {
-      if (isReadOnly && node.nodeContext.scope === ConfigScope.User) {
-        vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
-      }
-      treeProvider.refresh(); // <-- ADD THIS: revert checkbox visual state
-      return;                 // <-- CHANGE from 'continue' to 'return'
-    }
-    // ... rest of handler
+constructor(
+  private readonly key: string,
+  private readonly value: unknown,
+  private readonly scopedConfig: ScopedConfig,
+  private readonly allScopes: ScopedConfig[],
+) {
+  const override = resolveScalarOverride(key, scopedConfig.scope, allScopes);
+  const ctx: NodeContext = {
+    scope: scopedConfig.scope,
+    keyPath: [key],
+    isReadOnly: scopedConfig.isReadOnly,
+    isOverridden: override.isOverridden,
+    overriddenByScope: override.overriddenByScope,
+    filePath: scopedConfig.filePath,
+  };
+  const isExpandableObject = typeof value === 'object' && value !== null && !Array.isArray(value);
+  const collapsibleState = isExpandableObject ? Collapsed : None;
+  super(key, collapsibleState, ctx);
+  this.iconPath = override.isOverridden
+    ? new ThemeIcon('tools', new ThemeColor('disabledForeground'))
+    : new ThemeIcon('tools');
+  this.description = isExpandableObject ? '' : formatValue(value);
+  if (typeof value === 'object' && value !== null) {
+    this.tooltip = new MarkdownString('```json\n' + JSON.stringify(value, null, 2) + '\n```');
   }
-});
-```
+  this.finalize();
+}
 
-**Why `return` instead of `continue`:** If any item in the batch is read-only, we should refresh the entire tree to revert all checkbox states in that batch, then stop processing. Processing further items in a partially-reverted tree could lead to inconsistent state.
-
-### Alternative Considered and Rejected
-
-**Remove checkbox entirely when locked, use icon-only representation:** This would require conditionally setting `checkboxState` based on `isReadOnly`. While technically clean, it would cause the visual layout to shift when locking/unlocking (checkboxes appearing/disappearing), which is more disruptive than the current approach of keeping checkboxes visible but reverting unauthorized toggles.
-
-### Component Boundaries
-
-| File | Change Type | What Changes |
-|------|-------------|--------------|
-| `src/extension.ts` | Modify | Add `treeProvider.refresh()` in the `isReadOnly` early-return path of `onDidChangeCheckboxState` handler. Change `continue` to `return`. |
-
-**One file, two lines changed.** This is the entire fix.
-
----
-
-## Feature 3: Hook Leaf Click Navigation Fix
-
-### Problem
-
-When clicking a `HookKeyValueNode` (a leaf child of `HookEntryNode`), the editor opens the config file but the cursor lands on the wrong line. The `revealInFile` command receives the `keyPath` from `nodeContext` and calls `findKeyLine()` to locate the JSON key.
-
-### Root Cause Analysis
-
-`HookKeyValueNode` has keyPath: `['hooks', eventType, matcherIndex, hookIndex, propertyKey]`
-
-Example: `['hooks', 'PreToolUse', '0', '0', 'command']`
-
-`findKeyLine()` in `jsonLocation.ts` walks the keyPath segments sequentially. For numeric segments, it uses `findArrayElement()` which counts elements at the array level. The issue is in how `findKeyLine` processes the hook JSON structure:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo hello",
-            "timeout": 5000
-          }
-        ]
-      }
-    ]
-  }
+getChildren(): ConfigTreeNode[] {
+  if (typeof this.value !== 'object' || this.value === null || Array.isArray(this.value)) return [];
+  return Object.entries(this.value).map(
+    ([childKey, childValue]) => new SettingKeyValueNode(this.key, childKey, childValue, this.scopedConfig, this.allScopes),
+  );
 }
 ```
 
-The keyPath `['hooks', 'PreToolUse', '0', '0', 'command']` navigates:
-1. `hooks` -> found at indent 2 (correct)
-2. `PreToolUse` -> found at indent 4 (correct)
-3. `0` (matcherIndex) -> `findArrayElement` finds the first `{...}` object in the `PreToolUse` array (correct)
-4. `0` (hookIndex) -> This is the problem. After finding the matcher object at step 3, `searchFromLine` points to the opening `{` of the matcher. Now `findArrayElement` looks for a `[` bracket, but the next relevant `[` is the inner `"hooks": [` array. However, `findArrayElement` does a naive search for `[` on any line after `searchFromLine`, and may find the wrong bracket.
-5. `command` -> If step 4 landed wrong, this also lands wrong.
+### After (SettingNode):
 
-The structural issue: `findArrayElement` searches forward from `searchFromLine` for the first `[` character, but the matcher object contains a `"hooks"` key whose value is an array. The function needs to find the `[` that is the value of the property at the current context level, but it has no concept of JSON nesting depth.
-
-Additionally, the keyPath structure `['hooks', eventType, matcherIndex, hookIndex, propertyKey]` treats `matcherIndex` as an index into the event type's array and `hookIndex` as an index into the matcher's `hooks` array. But `findKeyLine` has no awareness that between `matcherIndex` and `hookIndex`, there needs to be a descent into the `hooks` property of the matcher object. The keyPath skips the intermediate `hooks` key.
-
-### Architecture: The Fix
-
-**Option A (recommended): Fix the keyPath to include the intermediate `hooks` key**
-
-The `HookEntryNode` constructor currently builds keyPath as:
 ```typescript
-keyPath: ['hooks', eventType, String(matcherIndex), String(hookIndex)]
+constructor(private readonly vm: SettingViewModel) {
+  super(
+    vm.label,
+    vm.collapsible ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.None,
+    vm.nodeContext,
+  );
+  this.iconPath = new ThemeIcon(vm.iconId, vm.iconColor ? new ThemeColor(vm.iconColor) : undefined);
+  this.description = vm.description;
+  if (vm.tooltipMarkdown) {
+    this.tooltip = new MarkdownString(vm.tooltipMarkdown);
+  }
+  this.finalize();
+}
+
+getChildren(): ConfigTreeNode[] {
+  return this.vm.children.map(child => new SettingKeyValueNode(child));
+}
 ```
 
-But the actual JSON path is:
-```
-hooks -> PreToolUse -> [matcherIndex] -> hooks -> [hookIndex]
-```
-
-The keyPath should be:
-```typescript
-keyPath: ['hooks', eventType, String(matcherIndex), 'hooks', String(hookIndex)]
-```
-
-And `HookKeyValueNode` should be:
-```typescript
-keyPath: ['hooks', eventType, String(matcherIndex), 'hooks', String(hookIndex), propertyKey]
-```
-
-This makes the keyPath accurately reflect the JSON structure, allowing `findKeyLine()` to navigate correctly without any changes to the JSON location utility.
-
-**Impact on other consumers of keyPath:** The keyPath is used in:
-1. `findKeyLine()` for reveal-in-file navigation (fixed by this change)
-2. `baseNode.computeId()` for tree node identity (IDs change, but this is safe since they are recomputed on every refresh)
-3. `findNodeByKeyPath()` for editor-to-tree sync (must verify this still works)
-4. `findKeyPathAtLine()` for reverse lookup (editor line -> keyPath) — this function walks backward through JSON indentation, and already correctly produces paths that include intermediate object keys. The current tree keyPath is the one that is wrong, not `findKeyPathAtLine()`.
-
-**Critical verification:** `findKeyPathAtLine()` already produces `['hooks', 'PreToolUse', '0', 'hooks', '0', 'command']` when the cursor is on the `"command"` line inside a hook entry. This means the editor-to-tree sync is currently broken too, because `findNodeByKeyPath` tries to match this against the tree's `['hooks', 'PreToolUse', '0', '0', 'command']` which does not match. Fixing the tree keyPath fixes both directions simultaneously.
-
-**Option B (rejected): Modify `findKeyLine()` to handle keyPath gaps**
-
-Adding special-case logic to `findKeyLine()` for hook structures couples the JSON parser to domain knowledge about hook config shape. This violates the function's design as a generic JSON key path walker.
-
-### Component Boundaries
-
-| File | Change Type | What Changes |
-|------|-------------|--------------|
-| `src/tree/nodes/hookEntryNode.ts` | Modify | Change keyPath from `['hooks', eventType, String(matcherIndex), String(hookIndex)]` to `['hooks', eventType, String(matcherIndex), 'hooks', String(hookIndex)]` |
-| `src/tree/nodes/hookKeyValueNode.ts` | Modify | Change keyPath from `['hooks', eventType, String(matcherIndex), String(hookIndex), propertyKey]` to `['hooks', eventType, String(matcherIndex), 'hooks', String(hookIndex), propertyKey]` |
-
-**Two files, one line each.** The `findKeyLine()` and `findKeyPathAtLine()` utilities require no changes.
-
-### Data Flow (Fixed)
-
-```
-HookKeyValueNode click
-  -> command: claudeConfig.revealInFile
-  -> args: [filePath, ['hooks', 'PreToolUse', '0', 'hooks', '0', 'command']]
-  -> findKeyLine(filePath, keyPath):
-       'hooks'      -> findObjectKey at indent 2 -> found line 2
-       'PreToolUse' -> findObjectKey at indent 4 -> found line 3
-       '0'          -> findArrayElement index 0 -> found line 4 (opening { of matcher)
-       'hooks'      -> findObjectKey at indent 8 -> found line 6 (the matcher's "hooks" key)
-       '0'          -> findArrayElement index 0 -> found line 7 (opening { of hook entry)
-       'command'    -> findObjectKey at indent 12 -> found line 9 (correct!)
-  -> editor cursor placed at line 9
-
-Editor-to-tree sync (reverse):
-  -> cursor on line 9 ("command": "echo hello")
-  -> findKeyPathAtLine -> walks backward through indentation
-  -> produces ['hooks', 'PreToolUse', '0', 'hooks', '0', 'command']
-  -> findNodeByKeyPath matches HookKeyValueNode (keyPaths now agree)
-  -> tree node highlighted (correct!)
-```
+The constructor drops from ~20 lines of mixed logic to ~10 lines of pure property mapping. No imports from `overrideResolver`. No access to `ScopedConfig` or `allScopes`.
 
 ---
 
-## Suggested Build Order
+## ConfigTreeProvider Changes
 
-### Phase 1: Hook Leaf Navigation Fix (Feature 3)
+### Before:
 
-Build first because:
-- Smallest change (2 lines in 2 files)
-- Zero risk of regression to other features
-- Fixes both click-to-reveal AND editor-to-tree sync for hooks simultaneously
-- No new APIs, no new state, no UI changes
-- Can be verified in isolation with a simple manual test
+```typescript
+private getSingleRootChildren(): ConfigTreeNode[] {
+  const keys = this.configStore.getWorkspaceFolderKeys();
+  if (keys.length === 0) return [];
+  const key = keys[0];
+  const allScopes = this.configStore.getAllScopes(key);
+  return allScopes
+    .filter(s => s.scope !== ConfigScope.Managed)
+    .map(scopedConfig => {
+      const locked = this.configStore.isScopeLocked(scopedConfig.scope);
+      const effective = locked && !scopedConfig.isReadOnly
+        ? { ...scopedConfig, isReadOnly: true }
+        : scopedConfig;
+      return new ScopeNode(effective, allScopes, key, this._sectionFilter);
+    });
+}
+```
 
-### Phase 2: Plugin Checkbox Lock Enforcement (Feature 2)
+### After:
 
-Build second because:
-- Small change (2 lines in 1 file)
-- Low risk, but needs manual testing with lock toggle + checkbox interaction
-- Depends on understanding the tree refresh lifecycle, which Phase 1 exercises
-- Self-contained: does not interact with overlap indicators
+```typescript
+private readonly viewModelBuilder = new TreeViewModelBuilder();
 
-### Phase 3: Visual Overlap Indicators (Feature 1)
+private getSingleRootChildren(): ConfigTreeNode[] {
+  const keys = this.configStore.getWorkspaceFolderKeys();
+  if (keys.length === 0) return [];
+  const key = keys[0];
+  const allScopes = this.configStore.getAllScopes(key);
+  const lockedScopes = this.configStore.getLockedScopes();
+  const viewModels = this.viewModelBuilder.build(allScopes, lockedScopes, this._sectionFilter, key);
+  return viewModels.map(vm => new ScopeNode(vm));
+}
+```
 
-Build last because:
-- Largest change: touches `types.ts`, `overrideResolver.ts`, `baseNode.ts`, and 7 leaf node files
-- Adds new fields to `NodeContext` (schema change)
-- Adds new functions to `overrideResolver.ts` (new logic)
-- Benefits from the codebase being stable after Phases 1 and 2
-- Can be tested incrementally: implement for one entity type first (e.g., env vars), verify, then extend to all types
+The `WorkspaceFolderNode` inner class similarly changes to receive a pre-built list of ScopeViewModels instead of constructing them.
 
 ---
 
-## Architectural Patterns to Follow
+## Patterns to Follow
 
-### Pattern 1: KeyPath Must Match JSON Structure Exactly
+### Pattern 1: ViewModel as Single Source of Truth for Display
 
-**What:** Tree node `keyPath` arrays must mirror the actual JSON key path from root to the target property, including intermediate object keys and array indices.
-**When to use:** Always, for any node whose keyPath is used in `findKeyLine()` or `findNodeByKeyPath()`.
-**Why:** `findKeyLine()` is a generic JSON walker that descends one level per keyPath segment. Skipping intermediate keys breaks navigation.
+**What:** Every visual property (label, icon, color, tooltip, description) is computed once in the builder and stored in the ViewModel. Nodes never derive display state.
+**When:** Always. No exceptions.
+**Why:** Eliminates the scattered computation problem. Makes it trivial to unit-test display logic by asserting on ViewModel properties without constructing VS Code TreeItem objects.
 
-### Pattern 2: Symmetric Override/Overlap in overrideResolver
+### Pattern 2: Preserve NodeContext Unchanged
 
-**What:** For every `resolve*Override()` function that checks higher-precedence scopes, add a corresponding `resolve*Overlap()` function that checks lower-precedence scopes.
-**When to use:** When adding overlap detection for a new entity type.
-**Why:** Keeps cross-scope resolution logic centralized. Both directions use the same `SCOPE_PRECEDENCE` ordering and the same entity-matching logic; only the comparison direction differs.
+**What:** The `NodeContext` interface stays exactly as-is. ViewModels carry a `nodeContext` property. Commands continue reading `node.nodeContext` to get scope, keyPath, filePath, isReadOnly.
+**When:** For all command handlers and the editor-tree sync logic.
+**Why:** NodeContext is the stable contract between tree nodes and the command layer. Changing it would cascade into every command file. The ViewModel layer sits between ConfigStore and tree nodes, not between tree nodes and commands.
 
-### Pattern 3: Tree Refresh as Checkbox Revert
+### Pattern 3: Builder Owns Override Resolution
 
-**What:** When a checkbox toggle must be rejected (read-only scope), call `treeProvider.refresh()` to rebuild all nodes from disk state, which naturally reverts the checkbox.
-**When to use:** Any `onDidChangeCheckboxState` handler that needs to reject a change.
-**Why:** VS Code does not expose a way to prevent checkbox toggles before they happen. The only reliable revert mechanism is a full tree refresh that reconstructs `TreeItem.checkboxState` from the authoritative config data.
+**What:** The builder is the only caller of `overrideResolver` functions. No tree node imports from `overrideResolver`.
+**When:** For all override-dependent display state (dimmed icons, override tooltips, contextValue `.overridden` suffix).
+**Why:** Centralizes the override computation. Today, 6 node files import and call override functions independently. After migration, one file does.
+
+### Pattern 4: Children Pre-built in ViewModel Hierarchy
+
+**What:** Parent ViewModels contain their children as arrays, matching the tree hierarchy. `ScopeViewModel.sections` holds `SectionViewModel[]`, `SectionViewModel.children` holds `NodeViewModel[]`, etc.
+**When:** For all parent-child relationships in the tree.
+**Why:** Currently, `SectionNode.getChildren()` reads raw config data (`scopedConfig.config.permissions`, etc.) and constructs child nodes. After the refactor, `SectionNode.getChildren()` maps `vm.children` to node instances via the factory. The builder does all the data extraction.
+
+### Pattern 5: Primitives Over VS Code Types in ViewModels
+
+**What:** Use `iconId: string` not `ThemeIcon`, `tooltipMarkdown: string` not `MarkdownString`, `collapsible: boolean` not `TreeItemCollapsibleState`.
+**When:** For all ViewModel interface fields.
+**Why:** Enables unit testing without VS Code module. Nodes do the trivial conversion (`new ThemeIcon(vm.iconId)`) in their constructors.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Domain-Specific Logic in findKeyLine
+### Anti-Pattern 1: Partial Migration
 
-**What:** Adding hooks-specific (or any entity-specific) parsing logic to `findKeyLine()`.
-**Why bad:** `findKeyLine()` is designed as a generic JSON key path walker. Adding domain knowledge couples it to config schema changes. Every schema change would require updating the walker.
-**Instead:** Fix the keyPath at the source (tree node constructors) so the generic walker works correctly.
+**What:** Migrating some nodes to use ViewModels while others still receive `ScopedConfig` directly.
+**Why bad:** Creates two parallel systems. Developers must understand both paths. Override logic remains scattered across two layers.
+**Instead:** Migrate all 14 node types in a single pass. The builder produces the complete tree. This is feasible because the codebase is ~5,200 LOC and all node types follow the same constructor pattern.
 
-### Anti-Pattern 2: Overlap Detection in Tree Nodes
+### Anti-Pattern 2: ViewModel Containing VS Code Types
 
-**What:** Computing overlap by iterating `allScopes` inside each leaf node constructor.
-**Why bad:** Duplicates logic across 7+ node files. Each node would independently implement the "check lower-precedence scopes" pattern, with subtle variations.
-**Instead:** Centralize in `overrideResolver.ts` and call from node constructors, same as the existing override pattern.
+**What:** Putting `vscode.ThemeIcon`, `vscode.ThemeColor`, or `vscode.TreeItemCollapsibleState` directly in ViewModel interfaces.
+**Why bad:** Makes ViewModels untestable without the `vscode` module. Couples the data layer to VS Code API.
+**Instead:** Use primitive representations. Nodes convert these to VS Code types in 1-2 lines.
 
-### Anti-Pattern 3: Conditional Checkbox Removal for Lock
+### Anti-Pattern 3: Making the Builder a God Object
 
-**What:** Setting `checkboxState = undefined` when `isReadOnly` to hide the checkbox entirely.
-**Why bad:** Visual layout shifts when locking/unlocking. Plugins with no checkbox look like non-plugin nodes. The absence of a checkbox does not clearly communicate "this scope is locked" — it communicates "this is not a toggleable item."
-**Instead:** Keep the checkbox visible, revert unauthorized toggles via `treeProvider.refresh()`, and show an informational message.
+**What:** Putting non-display logic (command handling, write operations, file watching, diagnostics) into the builder.
+**Why bad:** The builder should only transform read data into display-ready ViewModels. It is a pure function of its inputs.
+**Instead:** Builder is stateless. Given (allScopes, lockedScopes, sectionFilter), it produces ViewModels. It writes nothing, owns no state, has no side effects.
+
+### Anti-Pattern 4: Observable/Reactive ViewModel
+
+**What:** Making ViewModels emit change events or implementing MVVM reactive bindings.
+**Why bad:** Overkill. VS Code TreeView already handles refresh via `onDidChangeTreeData`. The existing pattern (ConfigStore.onDidChange -> treeProvider.refresh() -> rebuild entire tree) is simple, correct, and fast for this codebase size.
+**Instead:** ViewModels are rebuilt from scratch on every refresh. They are cheap plain objects. No caching, no diffing, no reactivity needed.
+
+### Anti-Pattern 5: Splitting Builder Into Per-Section Classes
+
+**What:** Creating separate builder classes per section type (PermissionsViewModelBuilder, HooksViewModelBuilder, etc.).
+**Why bad:** Adds unnecessary abstraction for 7 section types that each have ~20 lines of build logic. The "builder" is really just a function that transforms data; it does not need an inheritance hierarchy.
+**Instead:** Single class with private methods. Each `buildFoo()` method is self-contained and short.
 
 ---
 
 ## Integration Points
 
-### New vs Modified Components
+### New Components
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| `overrideResolver.ts` | Modified | Add 5-7 overlap functions (mirrors of existing override functions) |
-| `types.ts` (NodeContext) | Modified | Add `hasOverlap`, `overlappedScopes` fields |
-| `baseNode.ts` | Modified | Add `applyOverlapStyle()`, update `computeTooltip()` |
-| `hookEntryNode.ts` | Modified | Fix keyPath (add intermediate `hooks` segment) |
-| `hookKeyValueNode.ts` | Modified | Fix keyPath (add intermediate `hooks` segment) |
-| `extension.ts` | Modified | Add `treeProvider.refresh()` in checkbox reject path |
-| All leaf nodes (7 files) | Modified | Call overlap resolver, pass results to NodeContext |
-| `jsonLocation.ts` | No change | Generic walker works correctly with fixed keyPaths |
-| `configModel.ts` | No change | No new state needed |
-| `configWriter.ts` | No change | No write behavior changes |
-| `configTreeProvider.ts` | No change | Already passes `allScopes` through the node hierarchy |
-| `sectionNode.ts` | No change | Already passes `allScopes` to leaf constructors |
+| File | Type | Description |
+|------|------|-------------|
+| `src/tree/viewModel.ts` | **NEW** | ViewModel interfaces, TreeViewModelBuilder class, createNodeFromViewModel factory, format utilities |
 
-### Cross-Feature Dependencies
+### Modified Components
 
+| File | Change Summary |
+|------|---------------|
+| `src/config/configModel.ts` | Add `getLockedScopes(): ReadonlySet<ConfigScope>` (3-line getter) |
+| `src/tree/configTreeProvider.ts` | Instantiate TreeViewModelBuilder, call `.build()` in getSingle/MultiRootChildren, simplify WorkspaceFolderNode |
+| `src/tree/nodes/baseNode.ts` | Simplify `finalize()` — most logic moves to builder; some methods may become no-ops |
+| `src/tree/nodes/scopeNode.ts` | Constructor takes `ScopeViewModel`, getChildren maps `vm.sections` |
+| `src/tree/nodes/sectionNode.ts` | Constructor takes `SectionViewModel`, getChildren maps `vm.children` via factory |
+| `src/tree/nodes/settingNode.ts` | Constructor takes `SettingViewModel`, remove overrideResolver import |
+| `src/tree/nodes/settingKeyValueNode.ts` | Constructor takes `SettingKeyValueViewModel` |
+| `src/tree/nodes/permissionGroupNode.ts` | Constructor takes `PermissionGroupViewModel` |
+| `src/tree/nodes/permissionRuleNode.ts` | Constructor takes `PermissionRuleViewModel`, remove overrideResolver import |
+| `src/tree/nodes/envVarNode.ts` | Constructor takes `EnvVarViewModel`, remove overrideResolver import |
+| `src/tree/nodes/pluginNode.ts` | Constructor takes `PluginViewModel`, remove overrideResolver + PluginMetadataService imports |
+| `src/tree/nodes/sandboxPropertyNode.ts` | Constructor takes `SandboxPropertyViewModel`, remove overrideResolver import |
+| `src/tree/nodes/mcpServerNode.ts` | Constructor takes `McpServerViewModel` |
+| `src/tree/nodes/hookEventNode.ts` | Constructor takes `HookEventViewModel` |
+| `src/tree/nodes/hookEntryNode.ts` | Constructor takes `HookEntryViewModel` |
+| `src/tree/nodes/hookKeyValueNode.ts` | Constructor takes `HookKeyValueViewModel` |
+
+### Unchanged Components
+
+| File | Why Unchanged |
+|------|--------------|
+| `src/types.ts` | NodeContext, ScopedConfig, all config types — stable contracts |
+| `src/config/overrideResolver.ts` | Pure functions, now called from builder instead of nodes — API unchanged |
+| `src/config/configWriter.ts` | Write path unaffected by view layer changes |
+| `src/config/configDiscovery.ts` | Discovery unaffected |
+| `src/config/configLoader.ts` | Loading unaffected |
+| `src/commands/*.ts` | Commands read `node.nodeContext` which is preserved in ViewModels |
+| `src/watchers/fileWatcher.ts` | Triggers ConfigStore.reload() — unchanged |
+| `src/extension.ts` | Wiring unchanged (ConfigStore -> TreeProvider -> TreeView). Commands read `node.nodeContext`. |
+| `src/validation/*.ts` | Validation unaffected |
+| `src/utils/*.ts` | Utilities unaffected |
+
+### Why Commands Are Unaffected
+
+Commands do:
+```typescript
+const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
 ```
-Feature 3 (hook keyPath fix) -- independent, no deps
-Feature 2 (plugin lock fix) -- independent, no deps
-Feature 1 (overlap indicators) -- independent, no deps
 
-No cross-feature dependencies. All three can be built in any order.
-Build order recommendation is based on risk and size, not dependency.
-```
+`nodeContext` is preserved in ViewModels and passed through to tree nodes unchanged. The `node.description` read in `editCommands.ts:34` also works because nodes still set `this.description` from the ViewModel.
+
+The plugin checkbox handler in `extension.ts` reads `node.nodeContext` and `node.checkboxState` — both are set from the ViewModel in the PluginNode constructor.
+
+---
+
+## Suggested Build Order
+
+The ordering ensures each step compiles and preserves existing behavior before the next begins.
+
+### Step 1: Define ViewModel Interfaces
+
+Create `src/tree/viewModel.ts` with all ViewModel interfaces and the `NodeViewModel` discriminated union. No builder, no factory. Just types.
+
+**Files:** `src/tree/viewModel.ts` (new, types only)
+**Risk:** None. Purely additive. Zero runtime impact.
+**Verification:** `npm run typecheck` passes.
+
+### Step 2: Add `ConfigStore.getLockedScopes()`
+
+Add a 3-line getter returning `ReadonlySet<ConfigScope>` from the existing private `_lockedScopes` field.
+
+**Files:** `src/config/configModel.ts` (add method)
+**Risk:** None. Additive.
+**Verification:** `npm run typecheck` passes.
+
+### Step 3: Implement TreeViewModelBuilder + Factory
+
+Build the complete builder class and `createNodeFromViewModel` factory in `src/tree/viewModel.ts`. Extract logic from existing node constructors. Move format utilities (`formatValue`, `formatSandboxValue`, `formatHookValue`) to this file (or keep as shared exports — design choice during implementation).
+
+**Files:** `src/tree/viewModel.ts` (add builder class + factory)
+**Risk:** Low. No existing code modified yet. Builder can be tested by calling `.build()` and verifying ViewModel output against current node behavior.
+**Verification:** Write integration test: `builder.build(allScopes, ...)` produces ViewModels matching current tree output.
+
+### Step 4: Wire Builder Into ConfigTreeProvider
+
+Modify `getSingleRootChildren()`, `getMultiRootChildren()`, and `WorkspaceFolderNode` to use the builder. The provider now creates nodes from ViewModels.
+
+**Files:** `src/tree/configTreeProvider.ts` (modify)
+**Risk:** Medium. This is the switch-over point. The tree must render identically after this change. Run extension in debug mode and visually verify.
+**Verification:** F5 debug launch, verify all tree nodes render as before.
+
+### Step 5: Migrate All Node Types (Single Pass)
+
+Refactor all 14 node files to accept ViewModel constructors. Remove `ScopedConfig`/`allScopes` parameters, remove `overrideResolver` imports, remove display computation from constructors. Each node becomes a thin ViewModel-to-TreeItem mapper.
+
+**Files:** All 14 files in `src/tree/nodes/`
+**Risk:** Medium. Large surface area but mechanical — each node follows the same refactor pattern. Do this in a single commit to avoid the partial-migration anti-pattern.
+**Verification:** F5 debug launch, verify all node types (permissions, env, plugins, settings, hooks, MCP, sandbox).
+
+### Step 6: Simplify `baseNode.ts`
+
+With display properties pre-computed in ViewModels, evaluate `finalize()`. The `applyOverrideStyle()` method becomes a no-op if the builder handles override description suffixes. `computeTooltip()` may simplify to just wrapping `vm.tooltipMarkdown`. `computeContextValue()` can be removed if contextValue comes from the ViewModel.
+
+**Files:** `src/tree/nodes/baseNode.ts` (simplify)
+**Risk:** Low. Simplification only.
+
+### Step 7: Clean Up
+
+Remove dead imports, unused local format functions from node files, verify no node file imports from `overrideResolver`. Run `npm run lint` to catch any remaining issues.
+
+**Files:** Various
+**Risk:** None. Cleanup only.
+
+---
+
+## Scalability Considerations
+
+| Concern | Current (100s of nodes) | At 1K+ nodes | Notes |
+|---------|------------------------|--------------|-------|
+| ViewModel allocation | Negligible | Negligible | Plain objects, no event emitters, GC-friendly |
+| Tree rebuild time | <5ms | <20ms | Builder does same work nodes did, just centralized |
+| Memory | +1 ViewModel per node | Same | Short-lived, GC'd after tree nodes are constructed |
+| Override resolution | Same total calls | Same | Moved from 6 node files to 1 builder, count unchanged |
+| Code size | +1 new file (~300-400 LOC) | Same | Node files shrink by roughly same amount |
+
+The ViewModel layer adds no meaningful performance overhead. It restructures existing computation rather than adding new computation.
 
 ---
 
 ## Sources
 
-- Direct codebase inspection of all affected source files (HIGH confidence)
-- VS Code TreeView checkbox API: [Allow TreeItems to have optional checkboxes](https://github.com/microsoft/vscode/issues/116141) (MEDIUM confidence)
-- VS Code Tree View API guide: [Tree View API](https://code.visualstudio.com/api/extension-guides/tree-view) (MEDIUM confidence)
-- VS Code TreeView checkbox state management: [Test tree checkbox API](https://github.com/microsoft/vscode/issues/183549) (MEDIUM confidence)
+- Full codebase audit: `src/tree/nodes/` (14 files), `src/tree/configTreeProvider.ts`, `src/config/configModel.ts`, `src/config/overrideResolver.ts`, `src/commands/editCommands.ts`, `src/extension.ts`
+- VS Code TreeView API: TreeDataProvider, TreeItem, TreeItemCollapsibleState patterns
+- Confidence: HIGH — all findings based on direct source code inspection with zero external dependencies
 
 ---
-*Architecture research for: Claude Code Config Manager v0.6.0 Visual Fidelity*
+*Architecture research for: Claude Code Config Manager v0.6.0 — Decouple State from Tree*
 *Researched: 2026-03-05*
