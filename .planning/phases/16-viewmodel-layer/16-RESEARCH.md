@@ -396,6 +396,78 @@ function applyOverrideSuffix(description: string, isOverridden: boolean, overrid
    - What's unclear: Whether builder should call this service or leave plugin description out of VM
    - Recommendation: Builder should call it. The service is already a singleton with caching. Pre-computing plugin descriptions in the ViewModel is consistent with the "all display state pre-computed" principle.
 
+## Validation Architecture
+
+### Test Framework
+| Property | Value |
+|----------|-------|
+| Framework | Mocha ^10.2.0 |
+| Config file | `tsconfig.test.json` (extends tsconfig.json, includes `test/**/*.ts`) |
+| Quick run command | `npm run typecheck` |
+| Full suite command | `npm test` |
+
+### Testing Strategy for Phase 16
+
+Phase 16 produces purely additive code (new files in `src/viewmodel/`). Since this code does NOT modify existing files, validation focuses on:
+
+1. **TypeScript compilation** -- the ViewModel types and builder must compile under strict mode with no errors
+2. **Builder output correctness** -- the builder must produce ViewModel trees that match what existing node constructors produce
+3. **Type completeness** -- all 14 node kinds (plus WorkspaceFolderVM) must have corresponding ViewModel interfaces with their special fields
+
+**Key constraint:** The builder imports `vscode` types (ThemeIcon, TreeItemCollapsibleState, etc.) which are only available in VS Code's extension host. Unit tests outside the extension host need to either:
+- Mock the `vscode` module (common pattern for VS Code extension testing)
+- Run via VS Code's `@vscode/test-electron` runner (already configured via `tsconfig.test.json`)
+
+**Recommended approach:** Since this project uses Mocha with VS Code test infrastructure (`tsconfig.test.json` includes `test/**/*.ts`), tests should run via the existing `npm test` pipeline which compiles and runs in the extension host. However, for faster iteration during development, `npm run typecheck` catches type errors without needing the full extension host.
+
+### Phase Requirements -> Test Map
+
+| Req ID | Behavior | Test Type | Automated Command | File Exists? |
+|--------|----------|-----------|-------------------|-------------|
+| VM-01 | ViewModel interfaces cover all 14 node types with per-type data shapes | typecheck | `npm run typecheck` | N/A (type-level) |
+| VM-01 | NodeKind enum has exactly 14 (or 15 with WorkspaceFolder) members | unit | `npm test` | Wave 0 |
+| VM-02 | Every ViewModel carries nodeContext with scope, keyPath, filePath | unit | `npm test` | Wave 0 |
+| VM-03 | Builder calls override resolvers for settings, permissions, env vars, plugins, sandbox | unit | `npm test` | Wave 0 |
+| VM-03 | Builder skips override resolution for hooks (hookEvent, hookEntry, hookKeyValue) | unit | `npm test` | Wave 0 |
+| VM-04 | Builder produces correct labels, descriptions, icons for each entity type | unit | `npm test` | Wave 0 |
+| VM-04 | Builder produces correct contextValue strings matching package.json when clauses | unit | `npm test` | Wave 0 |
+| VM-04 | Builder handles sectionFilter parameter (skips filtered sections) | unit | `npm test` | Wave 0 |
+| VM-04 | Builder filters out Managed scope from output | unit | `npm test` | Wave 0 |
+| VM-04 | Builder handles multi-root workspace (returns WorkspaceFolderVM[]) | unit | `npm test` | Wave 0 |
+
+### Validation Assertions (What Tests Must Check)
+
+**Type-level validation (compile-time):**
+- `types.ts` compiles with `npm run typecheck`
+- Each ViewModel interface extends BaseVM
+- BaseVM has all required fields: kind, label, description, icon, collapsibleState, contextValue, tooltip, nodeContext, children
+- PluginVM adds checkboxState and resourceUri
+- ScopeVM adds scope-specific contextValue shape
+
+**Builder output validation (runtime):**
+- Given a mock ConfigStore with known ScopedConfig data, `builder.build()` returns the expected tree structure
+- Scope ordering matches SCOPE_PRECEDENCE (User, ProjectShared, ProjectLocal -- Managed filtered out)
+- Section ordering matches existing SectionNode dispatch (Permissions, Sandbox, Hooks, McpServers, Environment, Plugins, Settings)
+- Override resolution: a setting in User scope overridden by ProjectLocal shows `isOverridden: true` in nodeContext and appended description suffix
+- Permission cross-category conflict: a rule in Allow overridden by Deny in higher scope shows correct override tooltip
+- Plugin label parsing: `@scope/name@1.0.0` produces label `@scope/name` and description `1.0.0`
+- Leaf node command: nodes with `collapsibleState === None` and valid filePath get `claudeConfig.revealInFile` command
+- contextValue strings: spot-check against regex patterns from package.json `when` clauses
+
+### Sampling Rate
+- **Per task commit:** `npm run typecheck` (fast, catches type errors immediately)
+- **Per wave merge:** `npm test` (full compile + test suite)
+- **Phase gate:** `npm run typecheck` + `npm test` + manual review of ViewModel type catalog against node behavior catalog
+
+### Wave 0 Gaps
+- [ ] `test/` directory creation -- directory does not currently exist
+- [ ] `test/viewmodel/builder.test.ts` -- covers VM-03, VM-04 (builder output correctness)
+- [ ] `test/viewmodel/types.test.ts` -- covers VM-01 (NodeKind completeness, interface shape assertions)
+- [ ] `test/helpers/mockConfigStore.ts` -- shared mock for ConfigStore with controllable ScopedConfig[] data
+- [ ] `test/helpers/mockVscode.ts` -- vscode module mock (ThemeIcon, TreeItemCollapsibleState, etc.) if tests run outside extension host
+
+*(Note: TEST-01, TEST-02, TEST-03 from REQUIREMENTS.md are mapped to Phase 18. Phase 16 validation is lighter -- focused on type correctness and basic builder smoke tests to confirm the ViewModel layer works before downstream phases consume it. Full unit test coverage is Phase 18's responsibility. However, Wave 0 test scaffolding here enables immediate feedback during development.)*
+
 ## Sources
 
 ### Primary (HIGH confidence)
@@ -416,6 +488,7 @@ function applyOverrideSuffix(description: string, isOverridden: boolean, overrid
 - Standard stack: HIGH - no new dependencies, existing codebase fully analyzed
 - Architecture: HIGH - builder mirrors existing dispatch pattern verbatim; all node behaviors catalogued
 - Pitfalls: HIGH - derived from direct code analysis of every node constructor
+- Validation: HIGH - test strategy aligned with existing project infrastructure (Mocha + tsconfig.test.json)
 
 **Research date:** 2026-03-06
 **Valid until:** 2026-04-06 (stable internal codebase, no external dependency churn)
