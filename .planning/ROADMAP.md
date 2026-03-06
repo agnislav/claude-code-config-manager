@@ -76,7 +76,9 @@
   2. NodeContext is embedded in every ViewModel so command handlers can extract scope, keyPath, and filePath without changes
   3. TreeViewModelBuilder.build() accepts ConfigStore data and returns a complete ViewModel tree covering all 7 entity types (settings, permissions, env vars, plugins, hooks, sandbox, MCP servers)
   4. Builder pre-computes override resolution and display state (formatting, icons, descriptions) so no downstream consumer needs to call overrideResolver directly
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 16-01-PLAN.md — ViewModel types and TreeViewModelBuilder
 
 ### Phase 17: Node Migration
 **Goal**: All tree nodes accept ViewModels instead of raw config data, and ConfigTreeProvider drives rendering through the builder
@@ -122,11 +124,11 @@
 | 13. Path Safety | v0.5.0 | 2/2 | Complete | 2026-02-20 |
 | 14. Resource Mgmt | v0.5.0 | 1/1 | Complete | 2026-02-20 |
 | 15. Code Quality | v0.5.0 | 2/2 | Complete | 2026-02-20 |
-| 16. ViewModel Layer | v0.6.0 | 0/? | Not started | - |
+| 16. ViewModel Layer | v0.6.0 | 0/1 | In progress | - |
 | 17. Node Migration | v0.6.0 | 0/? | Not started | - |
 | 18. Verification and Cleanup | v0.6.0 | 0/? | Not started | - |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-06 — v0.6.0 Decouple State from Tree roadmap added (Phases 16-18)*
+*Last updated: 2026-03-06 — Phase 16 plan created (1 plan, wave 1)*
