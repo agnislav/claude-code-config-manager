@@ -70,27 +70,27 @@ Deferred to next milestone. Research complete, requirements drafted.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VM-01 | — | Pending |
-| VM-02 | — | Pending |
-| VM-03 | — | Pending |
-| VM-04 | — | Pending |
-| VM-05 | — | Pending |
-| VM-06 | — | Pending |
-| VM-07 | — | Pending |
-| VM-08 | — | Pending |
-| VM-09 | — | Pending |
-| VM-10 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
-| VM-11 | — | Pending |
-| VM-12 | — | Pending |
+| VM-01 | Phase 16 | Pending |
+| VM-02 | Phase 16 | Pending |
+| VM-03 | Phase 16 | Pending |
+| VM-04 | Phase 16 | Pending |
+| VM-05 | Phase 17 | Pending |
+| VM-06 | Phase 17 | Pending |
+| VM-07 | Phase 17 | Pending |
+| VM-08 | Phase 17 | Pending |
+| VM-09 | Phase 17 | Pending |
+| VM-10 | Phase 17 | Pending |
+| TEST-01 | Phase 18 | Pending |
+| TEST-02 | Phase 18 | Pending |
+| TEST-03 | Phase 18 | Pending |
+| VM-11 | Phase 18 | Pending |
+| VM-12 | Phase 18 | Pending |
 
 **Coverage:**
 - v0.6.0 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-06*
-*Last updated: 2026-03-06 after initial definition*
+*Last updated: 2026-03-06 — Phase mappings added for v0.6.0 (Phases 16-18)*
