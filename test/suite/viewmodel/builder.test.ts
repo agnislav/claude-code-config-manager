@@ -356,6 +356,13 @@ suite('Entity Types (TEST-01)', () => {
       vscode.TreeItemCollapsibleState.None,
       'HookEntry should be a leaf node',
     );
+
+    // Verify keyPath includes intermediate 'hooks' segment for correct JSON navigation
+    assert.deepStrictEqual(
+      entries[0].nodeContext.keyPath,
+      ['hooks', 'PreToolUse', '0', 'hooks', '0'],
+      'HookEntry keyPath should include intermediate "hooks" segment between matcher and hook index',
+    );
   });
 
   test('builds MCP server VMs', () => {

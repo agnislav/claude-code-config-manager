@@ -923,7 +923,7 @@ export class TreeViewModelBuilder {
   ): HookEntryVM {
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
-      keyPath: ['hooks', eventType, String(matcherIndex), String(hookIndex)],
+      keyPath: ['hooks', eventType, String(matcherIndex), 'hooks', String(hookIndex)],
       isReadOnly: scopedConfig.isReadOnly,
       isOverridden: false,
       filePath: scopedConfig.filePath,
