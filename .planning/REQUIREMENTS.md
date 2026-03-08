@@ -20,11 +20,11 @@ Requirements for Visual Fidelity milestone. Each maps to roadmap phases.
 
 ### Navigation
 
-- [ ] **NAV-01**: Clicking a hook entry node navigates the editor to the correct JSON line (fix keyPath to include intermediate `hooks` segment)
+- [x] **NAV-01**: Clicking a hook entry node navigates the editor to the correct JSON line (fix keyPath to include intermediate `hooks` segment)
 
 ### Cleanup
 
-- [ ] **CLEN-01**: Dead HookKeyValueVM, HookKeyValueNode, and buildHookKeyValueVM code removed
+- [x] **CLEN-01**: Dead HookKeyValueVM, HookKeyValueNode, and buildHookKeyValueVM code removed
 
 ## Future Requirements
 
@@ -57,8 +57,8 @@ Requirements for Visual Fidelity milestone. Each maps to roadmap phases.
 | LOCK-01 | Phase 20 | Pending |
 | LOCK-02 | Phase 20 | Pending |
 | LOCK-03 | Phase 20 | Pending |
-| NAV-01 | Phase 19 | Pending |
-| CLEN-01 | Phase 19 | Pending |
+| NAV-01 | Phase 19 | Complete |
+| CLEN-01 | Phase 19 | Complete |
 
 **Coverage:**
 - v0.7.0 requirements: 7 total
