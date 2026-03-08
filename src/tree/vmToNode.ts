@@ -3,7 +3,6 @@ import {
   EnvVarVM,
   HookEntryVM,
   HookEventVM,
-  HookKeyValueVM,
   McpServerVM,
   NodeKind,
   PermissionGroupVM,
@@ -20,7 +19,6 @@ import { ConfigTreeNode } from './nodes/baseNode';
 import { EnvVarNode } from './nodes/envVarNode';
 import { HookEntryNode } from './nodes/hookEntryNode';
 import { HookEventNode } from './nodes/hookEventNode';
-import { HookKeyValueNode } from './nodes/hookKeyValueNode';
 import { McpServerNode } from './nodes/mcpServerNode';
 import { PermissionGroupNode } from './nodes/permissionGroupNode';
 import { PermissionRuleNode } from './nodes/permissionRuleNode';
@@ -60,8 +58,6 @@ export function vmToNode(vm: BaseVM): ConfigTreeNode {
       return new HookEventNode(vm as HookEventVM);
     case NodeKind.HookEntry:
       return new HookEntryNode(vm as HookEntryVM);
-    case NodeKind.HookKeyValue:
-      return new HookKeyValueNode(vm as HookKeyValueVM);
     default:
       throw new Error(`Unknown NodeKind: ${(vm as BaseVM).kind}`);
   }

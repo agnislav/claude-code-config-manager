@@ -19,7 +19,6 @@ export enum NodeKind {
   SandboxProperty = 'sandboxProperty',
   HookEvent = 'hookEvent',
   HookEntry = 'hookEntry',
-  HookKeyValue = 'hookKeyValue',
 }
 
 /**
@@ -152,14 +151,3 @@ export interface HookEntryVM extends BaseVM {
   hookIndex: number;
 }
 
-export interface HookKeyValueVM extends BaseVM {
-  kind: NodeKind.HookKeyValue;
-  /** Property key within the hook command (e.g., "command", "timeout"). */
-  propertyKey: string;
-  /** Hook event type for keyPath construction. */
-  eventType: HookEventType;
-  /** Matcher index for keyPath construction. */
-  matcherIndex: number;
-  /** Hook index for keyPath construction. */
-  hookIndex: number;
-}

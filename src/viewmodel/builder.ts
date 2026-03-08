@@ -37,7 +37,6 @@ import {
   EnvVarVM,
   HookEntryVM,
   HookEventVM,
-  HookKeyValueVM,
   McpServerVM,
   NodeKind,
   PermissionGroupVM,
@@ -124,14 +123,6 @@ function formatSandboxValue(value: unknown): string {
   if (typeof value === 'string') return value;
   if (Array.isArray(value)) return `[${value.length} items]`;
   return JSON.stringify(value);
-}
-
-function formatHookValue(value: unknown): string {
-  if (value === null || value === undefined) return 'null';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number') return `${value}`;
-  if (typeof value === 'boolean') return String(value);
-  return String(value);
 }
 
 function getShortPath(filePath: string | undefined): string {
@@ -952,43 +943,6 @@ export class TreeViewModelBuilder {
       collapsibleState,
       contextValue: computeStandardContextValue('hookEntry', scopedConfig.isReadOnly, false),
       tooltip,
-      nodeContext: ctx,
-      children: [],
-      id: computeId(ctx),
-      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
-    };
-  }
-
-  private buildHookKeyValueVM(
-    eventType: HookEventType,
-    matcherIndex: number,
-    hookIndex: number,
-    propertyKey: string,
-    value: unknown,
-    scopedConfig: ScopedConfig,
-  ): HookKeyValueVM {
-    const ctx: NodeContext = {
-      scope: scopedConfig.scope,
-      keyPath: ['hooks', eventType, String(matcherIndex), String(hookIndex), propertyKey],
-      isReadOnly: scopedConfig.isReadOnly,
-      isOverridden: false,
-      filePath: scopedConfig.filePath,
-    };
-
-    const collapsibleState = vscode.TreeItemCollapsibleState.None;
-
-    return {
-      kind: NodeKind.HookKeyValue,
-      propertyKey,
-      eventType,
-      matcherIndex,
-      hookIndex,
-      label: propertyKey,
-      description: formatHookValue(value),
-      icon: new vscode.ThemeIcon('symbol-field', new vscode.ThemeColor('icon.foreground')),
-      collapsibleState,
-      contextValue: computeStandardContextValue('hookKeyValue', scopedConfig.isReadOnly, false),
-      tooltip: undefined,
       nodeContext: ctx,
       children: [],
       id: computeId(ctx),
