@@ -12,7 +12,7 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 
 Shipped v0.6.0 (2026-03-08). Tree nodes fully decoupled from ConfigStore via ViewModel layer. TreeViewModelBuilder pre-computes all display state; 14 node types accept typed VM descriptors. 23-test suite validates builder output.
 
-## Next Milestone: v0.7.0 Visual Fidelity
+## Current Milestone: v0.7.0 Visual Fidelity
 
 **Goal:** Make the tree reflect true state — overlaps visible across scopes, lock toggle respected by plugin checkbox, hook leaf navigation correct.
 
@@ -66,7 +66,10 @@ Shipped v0.6.0 (2026-03-08). Tree nodes fully decoupled from ConfigStore via Vie
 
 ### Active
 
-(No active requirements — next milestone not started)
+- [ ] Visual overlap indicators (description text, badge, tooltip) for config entities across multiple scopes
+- [ ] Fix plugin checkbox toggling despite locked User scope
+- [ ] Fix hook leaf click navigating editor to wrong JSON line
+- [ ] Clean up dead HookKeyValueVM/Node/builder code from v0.6.0
 
 ### Out of Scope
 
@@ -74,9 +77,9 @@ Shipped v0.6.0 (2026-03-08). Tree nodes fully decoupled from ConfigStore via Vie
 - Multiselect for batch copy and move operations — deferred to future milestone
 - Replace sync file I/O with async in diagnostics validation — deferred, internal quality
 - Add memoization to override resolver functions — deferred, internal quality
-- Visual overlap indicators for config entities across scopes — v0.7.0
-- Fix plugin checkbox toggling despite locked User scope — v0.7.0
-- Fix hook leaf click navigating editor to wrong JSON line — v0.7.0
+- Visual overlap indicators for config entities across scopes — moved to Active (v0.7.0)
+- Fix plugin checkbox toggling despite locked User scope — moved to Active (v0.7.0)
+- Fix hook leaf click navigating editor to wrong JSON line — moved to Active (v0.7.0)
 - Add JSDoc documentation for exported functions — deferred, internal quality
 - EditValue inline improvements — deferred to separate phase
 - Overridden entities visual management — deferred to separate milestone
@@ -131,4 +134,4 @@ Shipped v0.6.0 (2026-03-08). Tree nodes fully decoupled from ConfigStore via Vie
 | TDD Mocha UI for extension tests | VS Code extension test conventions; suite/test pattern | ✓ Good |
 
 ---
-*Last updated: 2026-03-08 after v0.6.0 milestone*
+*Last updated: 2026-03-08 after v0.7.0 milestone start*

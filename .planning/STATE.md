@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.6.0
-milestone_name: Decouple State from Tree
-status: completed
-stopped_at: Milestone v0.6.0 archived
+milestone: v0.7.0
+milestone_name: Visual Fidelity
+status: active
+stopped_at: Defining requirements
 last_updated: "2026-03-08"
-last_activity: 2026-03-08 — v0.6.0 milestone archived
+last_activity: 2026-03-08 — Milestone v0.7.0 started
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,20 +21,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
-**Current focus:** Planning next milestone
+**Current focus:** Milestone v0.7.0 — Visual Fidelity
 
 ## Current Position
 
-Milestone v0.6.0 shipped. No active milestone.
-Last activity: 2026-03-08 — v0.6.0 milestone archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-08 — Milestone v0.7.0 started
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ◆
 
 ## Pending Todos
 
 - Add "go to (scope/entity)" to the command palette (ui)
 - Multiselect for batch copy and move operations (ui)
-- Add visuals to address config entity overlapping across scopes (ui) — v0.7.0
 
 ## Blockers/Concerns
 
@@ -53,11 +54,11 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-08
-Stopped at: Milestone v0.6.0 archived
+Stopped at: Defining requirements for v0.7.0
 Resume file: None
-Next action: Start next milestone with /gsd:new-milestone
+Next action: Define requirements and create roadmap
 
 ---
 
 *State initialized: 2026-02-20*
-*Last updated: 2026-03-08 — v0.6.0 milestone complete*
+*Last updated: 2026-03-08 — Milestone v0.7.0 started*
