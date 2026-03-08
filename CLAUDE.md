@@ -104,6 +104,11 @@ ScopeNode (Managed / User / Project Shared / Project Local)
 
 Tree items use `contextValue` strings for menu visibility. Pattern: `{nodeType}.{editable|readOnly}[.overridden]`. Example: `permissionRule.editable` enables edit/delete/move context menu items. Regex matching in `package.json` `when` clauses controls which commands appear.
 
+## Milestone Workflow
+
+- **Always update `CHANGELOG.md`** at the end of each milestone, before archiving. Follow [Keep a Changelog](https://keepachangelog.com) format with Added/Changed/Removed/Fixed sections.
+- **Always bump `version` in `package.json`** to match the milestone version at the end of each milestone.
+
 ## Conventions
 
 - **TypeScript strict mode** — no implicit any, strict null checks
