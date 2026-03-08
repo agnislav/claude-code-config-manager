@@ -1,280 +1,224 @@
-# Pitfalls Research
+# Domain Pitfalls
 
-**Domain:** VS Code extension — toolbar UX improvements (QuickPick multi-select filters, command removal, TreeView write protection)
-**Researched:** 2026-02-18
-**Confidence:** HIGH (VS Code API behaviors verified against official docs and tracked GitHub issues)
+**Domain:** Decoupling state from tree rendering in a VS Code TreeView extension
+**Researched:** 2026-03-05
+**Scope:** Refactoring pitfalls specific to this codebase (5,241 LOC, 14 node files, bidirectional sync)
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: QuickPick `picked` Pre-selection Does Not Work with `createQuickPick`
+Mistakes that cause broken tree rendering, lost sync, or require reverting the refactor.
 
-**What goes wrong:**
-When replacing toolbar icon buttons with a `createQuickPick` multi-select, developers set `picked: true` on `QuickPickItem` objects to pre-check the currently active filters. The checkmarks appear in the UI but the items are NOT actually in `selectedItems` — so the `onDidAccept` handler reads an empty array, discarding the current filter state.
+### Pitfall 1: Breaking the `contextValue` Contract with `package.json` Menu Bindings
 
-**Why it happens:**
-`QuickPickItem.picked` is a static hint designed for `window.showQuickPick()` only. The `createQuickPick()` API uses a reactive model where `selectedItems` is the source of truth. Setting `picked: true` on items does not populate `selectedItems` — it must be set explicitly on the `QuickPick` instance after items are assigned. This mismatch is a documented VS Code bug (issue #119834) that was closed without a code fix.
+**What goes wrong:** Commands disappear from context menus or appear on wrong node types after refactoring node constructors. The `contextValue` string is the sole link between tree nodes and VS Code's `when` clause matching in `package.json`. If the view-model layer changes how `contextValue` is computed (e.g., renaming node types, changing the `editable`/`readOnly` suffix logic, or breaking the `{nodeType}.{editability}[.overridden]` pattern), menus silently break with no runtime error.
 
-**How to avoid:**
-After assigning `qp.items`, immediately set `qp.selectedItems` to the array of pre-checked items:
-```typescript
-const qp = vscode.window.createQuickPick<vscode.QuickPickItem>();
-qp.canSelectMany = true;
-qp.items = allSections.map(st => ({ label: SECTION_LABELS[st], id: st, picked: isActive(st) }));
-// Critical: set selectedItems explicitly — picked: true alone does NOT work
-qp.selectedItems = qp.items.filter(i => (i as any).picked);
-qp.show();
-```
+**Why it happens:** `contextValue` is assembled inside `baseNode.computeContextValue()` and overridden in `ScopeNode.computeContextValue()`. Refactoring these into a view-model means the string must be composed identically. Developers test by visual inspection ("does the tree render?") but forget to right-click every node type.
 
-**Warning signs:**
-- QuickPick opens with checkmarks visible but `qp.selectedItems` is empty on first accept.
-- Accepting with no changes resets all filters to "none selected."
-- Pre-checked state is inconsistent between `showQuickPick` and `createQuickPick` code paths.
+**Consequences:** Users lose edit/delete/move/copy buttons on specific node types. Since `when` clause mismatches are silent, this can ship undetected. The `ScopeNode` has its own `contextValue` pattern (`scope.{scopeName}.{editability}[.missing]`) that differs from all other nodes -- easy to miss.
 
-**Phase to address:**
-Feature implementation phase — must be verified in the initial QuickPick prototype before wiring to filter state.
+**Prevention:**
+- Snapshot all `contextValue` strings from every node type before refactoring. Compare after.
+- Write a test that constructs each node type and asserts `contextValue` matches the regex patterns in `package.json`.
+- Refactor `contextValue` computation last, after all other node changes are stable.
+
+**Detection:** Right-click every node type in every scope (User locked, User unlocked, Project Shared, Project Local) and verify all expected menu items appear.
 
 ---
 
-### Pitfall 2: `onDidAccept` Fires Before `onDidChangeSelection` Completes
+### Pitfall 2: Invalidating the `parentMap` and Breaking `treeView.reveal()`
 
-**What goes wrong:**
-With `canSelectMany = true`, if a user presses Enter immediately after toggling a checkbox, the `onDidAccept` handler reads `qp.selectedItems` before `onDidChangeSelection` has settled on the final selection. The last toggled item may be missing from the accepted selection.
+**What goes wrong:** Editor-to-tree sync stops working. The `ConfigTreeProvider.parentMap` is populated as a side effect of `getChildren()` calls -- it maps child `id` to parent node. `treeView.reveal()` requires a working `getParent()` chain from leaf to root. If the view-model layer introduces its own node identity scheme or caching that doesn't populate `parentMap` on the same code path, `reveal()` silently fails (no error, just no highlight).
 
-**Why it happens:**
-The VS Code QuickPick event pipeline does not guarantee that all queued `onDidChangeSelection` callbacks have been flushed before `onDidAccept` fires (documented in eclipse-theia/theia#6221 and VS Code issue #46587). The UI update and the event are decoupled.
+**Why it happens:** The current `findNodeByKeyPath()` walks the tree via `getChildren()` which populates `parentMap` as a side effect. This coupling is intentional but non-obvious. A refactor that separates "query the tree structure" from "render tree items" can easily break this side effect.
 
-**How to avoid:**
-Track selection state in a separate variable updated by `onDidChangeSelection`, and read from that variable in `onDidAccept` instead of `qp.selectedItems`:
-```typescript
-let currentSelection: readonly vscode.QuickPickItem[] = qp.selectedItems;
-qp.onDidChangeSelection(items => { currentSelection = items; });
-qp.onDidAccept(() => {
-  applyFilter(currentSelection); // safe — not qp.selectedItems
-  qp.hide();
-});
-```
+**Consequences:** Clicking in the JSON editor no longer highlights the corresponding tree node. This is the bidirectional sync feature -- a core UX element. The failure is silent: `reveal()` returns a resolved promise even when it does nothing.
 
-**Warning signs:**
-- Intermittent filter reset when user presses Enter quickly after clicking a checkbox.
-- Behavior differs in manual testing vs. automated tests (timing-dependent).
-- Bug only reproduces with fast keyboard users; mouse-only users miss it.
+**Prevention:**
+- Document the `parentMap` population contract explicitly: "Any code path that returns nodes for `reveal()` MUST populate `parentMap` for those nodes."
+- If introducing a view-model, the view-model must either own the parent map or ensure `getChildren()` still populates it.
+- Add an integration test: construct tree, call `findNodeByKeyPath()`, verify `getParent()` returns the correct chain for a leaf node.
 
-**Phase to address:**
-Feature implementation phase — add an explicit selection-tracking variable before wiring `onDidAccept`.
+**Detection:** Open a config JSON file, click on different keys, verify the tree highlights the matching node. Test with nested nodes (hook entries, setting key-value children).
 
 ---
 
-### Pitfall 3: QuickPick Instance Not Disposed — Listener Accumulation
+### Pitfall 3: Override Resolution Executed at Wrong Layer
 
-**What goes wrong:**
-Each call to `createQuickPick` registers event listeners (`onDidChangeSelection`, `onDidAccept`, `onDidHide`). If the QuickPick is not disposed after hiding, the listeners remain attached to the VS Code internal event bus. Opening the filter picker repeatedly (common with toolbar buttons) leaks listener instances, eventually causing duplicate filter applications per accept event.
+**What goes wrong:** Override detection becomes stale, duplicated, or inconsistent across node types. Currently, each node constructor calls the appropriate `resolve*Override()` function directly (e.g., `SettingNode` calls `resolveScalarOverride`, `PluginNode` calls `resolvePluginOverride`, `EnvVarNode` calls `resolveEnvOverride`). These functions take `allScopes: ScopedConfig[]` as input -- raw data from ConfigStore.
 
-**Why it happens:**
-`qp.hide()` removes the UI but does NOT release internal event listeners. `qp.dispose()` is the only call that releases all resources. The official sample explicitly uses `qp.onDidHide(() => qp.dispose())` — omitting it is easy in prototypes.
+If a view-model pre-computes override status but uses a stale snapshot of `allScopes`, or if some node types compute overrides from the view-model while others still call resolver functions directly, the tree shows inconsistent override indicators.
 
-**How to avoid:**
-Always wire `onDidHide` to `dispose`:
-```typescript
-qp.onDidHide(() => qp.dispose());
-```
-Never reuse a disposed QuickPick instance — create a new one each time the command is invoked.
+**Why it happens:** There are 5 different override resolver functions, each with different signatures and semantics. `resolvePermissionOverride` returns `overriddenByCategory` (unique to permissions). `resolveSandboxOverride` handles nested dot-separated keys. Moving these into a unified view-model requires understanding all 5 variants.
 
-**Warning signs:**
-- Filter applied multiple times per accept click (multiplies with each open/close cycle).
-- Memory usage grows after repeatedly opening the QuickPick.
-- `qp.show()` after `qp.dispose()` silently fails or opens a broken picker.
+**Consequences:** Nodes show incorrect "overridden by X" tooltips, or override dimming appears on wrong items. Users make config changes based on incorrect override information.
 
-**Phase to address:**
-Feature implementation phase — required from the first working implementation.
+**Prevention:**
+- Override resolution should remain as pure functions that take data in and return results. The view-model should call them, not replace them.
+- Move the `allScopes` parameter into the view-model so all nodes get the same snapshot.
+- Do NOT try to unify the 5 resolver functions into one -- they have legitimately different semantics (permissions have category-aware cross-matching, sandbox has nested key walking, etc.).
+
+**Detection:** Set up a config where User scope has a setting overridden by Project Local. Verify the override indicator appears on the User node, not the Project Local node. Repeat for permissions (cross-category override) and env vars.
 
 ---
 
-### Pitfall 4: Orphaned `setContext` Keys After Command Removal
+### Pitfall 4: Node `id` Collisions After Refactoring
 
-**What goes wrong:**
-The current filter system uses 9 `setContext` keys (`claudeConfig_filter_all`, `claudeConfig_filter_permissions`, etc.) to drive toolbar icon swapping via `when` clauses. When the toolbar filter commands are removed and replaced with a QuickPick approach, those `setContext` calls in `configTreeProvider.ts` become orphaned — the keys still exist in the VS Code context store after reload, causing the old `when` clauses in menu entries to evaluate against stale truthy values if any old package.json entries survive the cleanup.
+**What goes wrong:** Tree nodes collapse/expand incorrectly, wrong nodes get selected, or the tree renders duplicate items. The `id` is computed in `baseNode.computeId()` as `{workspaceFolderUri}/{scope}/{keyPath.join('/')}`. VS Code uses `id` to maintain expand/collapse state across refreshes and to match nodes in `onDidChangeTreeData`.
 
-**Why it happens:**
-VS Code context keys set via `setContext` are global singletons within the extension host session. There is no VS Code API to delete or reset a context key. Keys persist until the extension host process restarts. During development, reloading the Extension Development Host resets them — so the issue is invisible in dev but real for users upgrading from an older version without restarting VS Code.
+If the view-model changes how `id` is generated (even subtly, like trimming a trailing slash or changing the separator), VS Code treats every node as new on every refresh -- all nodes collapse, selection is lost.
 
-**How to avoid:**
-- Remove all `setContext` calls for filter keys from `syncFilterContext()` at the same time the corresponding `when` clauses are removed from `package.json`.
-- If any filter state needs to survive to a QuickPick approach, re-express it without `setContext` (e.g., store in extension state or keep in-memory only, triggering a tree refresh instead).
-- After removal, audit `package.json` `when` clauses for any remaining references to `claudeConfig_filter_*` keys.
+**Why it happens:** The `id` computation depends on `nodeContext` fields that are set during construction. If the view-model produces `nodeContext` with slightly different `workspaceFolderUri` formatting (e.g., `file:///path` vs `file:///path/`), all IDs change.
 
-**Warning signs:**
-- Toolbar buttons for removed commands still appear (or disappear incorrectly) after upgrading the extension.
-- `when` clause references a context key that no longer has a corresponding `setContext` call.
-- The `syncFilterContext()` method still exists after filter commands are removed (sign that cleanup is incomplete).
+**Consequences:** Every tree refresh collapses all nodes. Users constantly re-expand to find what they were looking at. This is immediately noticeable but the root cause (ID mismatch) is hard to diagnose.
 
-**Phase to address:**
-Command removal phase — must be done atomically: remove `setContext` calls, remove `when` clauses, and remove command registrations in the same commit.
+**Prevention:**
+- Snapshot all node IDs before refactoring (`getChildren()` walk, log all `id` values).
+- After refactoring, compare the same snapshot. Any ID change is a regression.
+- Keep `computeId()` logic in one place (either base node or view-model, not split).
+
+**Detection:** Expand several levels of the tree, trigger a config file change (which causes a refresh via file watcher), verify expand states are preserved.
 
 ---
 
-### Pitfall 5: Removing Commands Breaks User Keybindings Without Visible Error
+### Pitfall 5: `ScopedConfig` Passthrough Creating Hidden Dependencies
 
-**What goes wrong:**
-If a user has manually bound any of the 16 filter commands (e.g., `claudeConfig.filter.permissions`) to a keyboard shortcut in their `keybindings.json`, removing those commands from `package.json` causes VS Code to silently ignore the keybinding. The user sees no error — the shortcut simply stops working. If any other extension or workspace setting references these commands, VS Code logs `command 'X' not found` in the Output console, which users rarely check.
+**What goes wrong:** The "decoupled" tree nodes still depend on `ScopedConfig` shape, just indirectly through the view-model, gaining complexity without gaining separation. Currently, nearly every node constructor takes `scopedConfig: ScopedConfig` and `allScopes: ScopedConfig[]`. A naive view-model wraps these same objects and passes them through -- the coupling is identical but now has an extra layer of indirection.
 
-**Why it happens:**
-VS Code does not validate `keybindings.json` entries against installed extensions at runtime. When a command is unregistered, existing keybindings targeting it become dead references. The Command Palette does surface a "not found" message, but inline icon buttons and keybindings silently fail.
+**Why it happens:** `ScopedConfig` is used for three distinct purposes in node constructors:
+1. **Identity** -- `scope`, `filePath`, `isReadOnly` go into `NodeContext`
+2. **Data** -- `config.permissions`, `config.env`, etc. provide the content to render
+3. **Override resolution** -- `allScopes` array feeds override resolvers
 
-**How to avoid:**
-- Deprecate commands before removing: mark them `when: false` in `commandPalette` (already done for filter commands) so they are invisible but still registered. Keep the handler as a no-op for one major version.
-- If removal is required immediately (e.g., the commands are being replaced entirely), document the change in `CHANGELOG.md` under a breaking changes section.
-- The current filter commands are already hidden from the Command Palette (`when: false` in `commandPalette` menu), so the user-facing impact is limited to anyone who discovered and manually bound them.
+A proper decoupling must separate these three concerns, but the temptation is to create a `NodeViewModel` that just wraps `ScopedConfig`.
 
-**Warning signs:**
-- Extension version bump removes `commands` entries from `package.json` without a deprecation period.
-- `CHANGELOG.md` has no mention of removed commands.
-- The filter commands are registered in `extension.ts` (they currently are) — removal from `package.json` without removing from `extension.ts` creates a command registration with no contribution point (harmless but messy).
+**Consequences:** The refactor adds abstraction without reducing coupling. Future changes to `ScopedConfig` shape still ripple through every node type. The view-model becomes a pass-through layer that makes the code harder to follow without providing benefit.
 
-**Phase to address:**
-Command removal phase — treat as a breaking API change even if the commands were toolbar-only.
+**Prevention:**
+- Define what the view-model provides to each node type as a separate interface. Example: `SettingNodeData { key: string; value: unknown; isOverridden: boolean; overriddenByScope?: ConfigScope; isReadOnly: boolean; filePath: string; scope: ConfigScope }`.
+- The view-model transforms `ScopedConfig` into these per-node-type data shapes. Nodes never see `ScopedConfig`.
+- Accept that this means more interfaces. The value is that node constructors have minimal, typed contracts.
+- Measure success: after refactoring, grep for `ScopedConfig` in `src/tree/nodes/`. If any node file still imports it, the decoupling is incomplete.
 
----
-
-### Pitfall 6: User Scope Lock Collides with Managed Scope's Permanent `isReadOnly`
-
-**What goes wrong:**
-The User scope lock feature toggles `isReadOnly` dynamically on a `ScopedConfig` object. The existing codebase treats `isReadOnly: true` on Managed scope as a permanent, file-system-enforced condition. If the lock toggle is implemented by mutating `ScopedConfig.isReadOnly` directly (or by a flag on `ConfigStore` that is checked in the same path), the Managed scope's read-only status could be accidentally toggled, or the User lock could be unintentionally cleared on `ConfigStore.reload()` because `reload()` rebuilds `ScopedConfig` objects from disk.
-
-**Why it happens:**
-`ScopedConfig.isReadOnly` is set during construction in `configModel.ts` based on scope identity (Managed is always `true`; others are `false`). There is no separate "user-requested lock" field — the same `isReadOnly` field drives both permanent and voluntary restrictions. If the lock state is stored only in the `ScopedConfig` instance and `ConfigStore.reload()` reconstructs `ScopedConfig` objects, the lock is lost on every file-watcher-triggered reload.
-
-**How to avoid:**
-Implement the User lock as a separate flag in `ConfigStore` that is:
-1. Not part of `ScopedConfig` (which is a pure data object rebuilt on reload).
-2. Checked alongside `ScopedConfig.isReadOnly` when computing `NodeContext.isReadOnly` for tree nodes.
-3. Preserved across reloads (the flag lives in `ConfigStore`, not in a `ScopedConfig` instance).
-
-Example approach:
-```typescript
-class ConfigStore {
-  private _userScopeLocked = false;
-  get userScopeLocked(): boolean { return this._userScopeLocked; }
-  toggleUserLock(): void {
-    this._userScopeLocked = !this._userScopeLocked;
-    this._onDidChange.fire();
-  }
-}
-```
-Then in `ScopeNode` (or wherever `NodeContext.isReadOnly` is set):
-```typescript
-isReadOnly: scopedConfig.isReadOnly || (scope === ConfigScope.User && configStore.userScopeLocked)
-```
-
-**Warning signs:**
-- Lock disappears when an external file change triggers the file watcher.
-- Managed scope temporarily becomes editable (or User scope stays locked permanently) after `configStore.reload()`.
-- The `isReadOnly` field of `ScopedConfig` is modified directly rather than derived at node construction time.
-
-**Phase to address:**
-Lock feature implementation phase — design the data model before writing any UI code.
+**Detection:** Code review -- check whether node files import from `../types` for `ScopedConfig` or from the view-model for their specific data shape.
 
 ---
 
 ## Moderate Pitfalls
 
-### Pitfall 7: `contextValue` Change Requires `onDidChangeTreeData` Fire to Update Menu Visibility
+### Pitfall 6: Plugin Checkbox State Desync During Refactoring
 
-**What goes wrong:**
-When the User scope lock is toggled, the `ScopeNode` and all its child nodes need their `contextValue` updated from `*.editable` to `*.readOnly` (or vice versa). If `onDidChangeTreeData` is not fired immediately after the lock toggle, the inline edit/delete/move buttons remain visible on child nodes even though `isReadOnly` is now `true`.
+**What goes wrong:** Plugin checkbox toggle writes the wrong value or shows the wrong state. The checkbox flow is: user clicks checkbox -> `treeView.onDidChangeCheckboxState` fires -> handler reads `node.nodeContext.keyPath[1]` for plugin ID and `state` for enabled/disabled -> writes to file -> file watcher reloads -> tree re-renders.
 
-**Why it happens:**
-VS Code does not automatically re-evaluate `view/item/context` menu `when` clauses when a tree item's `contextValue` changes — it only re-renders affected nodes when `onDidChangeTreeData` fires. This is a known VS Code limitation (issue #140010, closed as fixed in VS Code 1.56+, but the fix requires the extension to trigger a refresh). Static `contextValue` strings set at node construction time are not reactive.
+If the view-model changes how `keyPath` is structured for plugin nodes (currently `['enabledPlugins', pluginId]`), the checkbox handler in `extension.ts` line 132 (`keyPath.length < 2`) will reject the event.
 
-**How to avoid:**
-The `ConfigStore.onDidChange` event already fires on any state mutation, and `ConfigTreeProvider.refresh()` already responds to it by clearing caches and firing `onDidChangeTreeData`. Ensure the lock toggle calls `configStore._onDidChange.fire()` (or uses the public emit method) so the existing refresh pipeline handles the re-render.
-
-Do NOT try to update individual nodes in-place — fire a full `onDidChangeTreeData(undefined)` to invalidate all nodes under the affected scope.
-
-**Warning signs:**
-- Lock icon on ScopeNode updates immediately, but child nodes' inline buttons remain visible.
-- Manual collapse/expand of the scope node makes the buttons disappear (forces re-render).
-- The lock toggle command does not call `configStore.reload()` or `_onDidChange.fire()`.
-
-**Phase to address:**
-Lock feature implementation phase.
+**Prevention:**
+- The checkbox handler reads `nodeContext` directly. If `nodeContext` shape changes, update the handler simultaneously.
+- Alternatively, add a typed accessor like `node.pluginId` rather than relying on positional `keyPath` indexing.
+- Write a test: simulate checkbox toggle, verify the correct plugin ID and state are written to disk.
 
 ---
 
-### Pitfall 8: Regex in `when` Clauses Is Not Standard JavaScript Regex
+### Pitfall 7: `finalize()` Call Order in Refactored Constructors
 
-**What goes wrong:**
-The existing `package.json` `when` clauses use regex patterns like `viewItem =~ /\.editable/` to match `contextValue` strings. When extending these patterns for the lock feature (e.g., distinguishing `scope.editable` from `scope.readOnly`), developers write patterns that work in JavaScript but fail silently in VS Code because the `when` clause parser uses a different escape ruleset.
+**What goes wrong:** Nodes render with missing IDs, wrong context values, or no click commands. The `baseNode.finalize()` method must be called at the END of every leaf-class constructor, after all subclass fields are assigned. It reads `this.nodeType`, `this.description`, `this.collapsibleState`, and `this.nodeContext` to compute ID, contextValue, tooltip, override styling, and click command.
 
-**Why it happens:**
-VS Code `when` clause regex literals require double-escaped special characters: a regex to match `file://` in JavaScript is `/file:\/\//` but in a `when` clause must be `/file:\\/\\//`. The VS Code parser also does not support `g` or `y` flags. Errors in `when` clause regex are not reported in the Output console — the condition simply evaluates to `false`, making menu items disappear silently.
+If refactoring changes the constructor to accept a view-model object, and `finalize()` is called before the view-model data is applied to the node's fields, the computed values will be wrong.
 
-**How to avoid:**
-- Test all regex patterns in the VS Code Extension Development Host after every change to a `when` clause.
-- Use simple substring patterns where possible (e.g., `viewItem =~ /readOnly/` not `/readOnly$/`).
-- For the lock feature, add `userLocked` as a new `contextValue` segment and use plain substring matching rather than anchored patterns.
-- Validate `package.json` with the VS Code extension packaging tool (`vsce package`) which parses manifests.
+**Why it happens:** JavaScript class initialization order means `super()` runs before subclass field assignments. `finalize()` is a workaround for this. Refactoring constructors to accept different parameters can accidentally move `finalize()` before all fields are set.
 
-**Warning signs:**
-- Context menu items disappear after adding a new `when` clause that contains regex.
-- Pattern works when tested in a JS REPL but the menu item never shows in VS Code.
-- The `when` clause contains `\.` or `\/` without double-escaping.
-
-**Phase to address:**
-Both command removal phase and lock feature implementation phase.
+**Prevention:**
+- Keep `finalize()` as the last line in every leaf-class constructor. This is already documented in the codebase -- enforce it.
+- If node constructors are simplified to accept pre-computed data, `finalize()` still depends on all `this.*` properties being set before it runs.
+- Consider refactoring `finalize()` to lazy computation (compute on first access) as a separate enhancement, but NOT as part of this milestone.
 
 ---
 
-### Pitfall 9: QuickPick Filter State Is Not Persisted Across VS Code Sessions
+### Pitfall 8: Commands Reading `node.description` for Current Values
 
-**What goes wrong:**
-When filter state moves from toolbar toggle buttons (persistent visual state via `setContext`) to a QuickPick modal, the selected filters are reset every time VS Code restarts or the extension is reloaded. Users who set a permanent "show only MCP Servers" filter lose that preference on restart.
+**What goes wrong:** Edit commands show stale or wrong values in input boxes. `editCommands.ts` line 34 reads `node.description?.toString()` as the current value to pre-fill the input box. If the view-model changes how `description` is formatted (e.g., adding override suffix, changing number formatting), the pre-filled value will be wrong and re-saving it could corrupt the config.
 
-**Why it happens:**
-The current icon-swap approach stores filter state in `ConfigTreeProvider._sectionFilter` (in-memory) and reflects it via `setContext` — neither is persisted. The QuickPick approach has the same issue unless the filter state is explicitly written to extension storage (`ExtensionContext.globalState` or `workspaceState`).
-
-**How to avoid:**
-Decide explicitly whether filter state should persist. If yes, store active filters in `context.globalState` on each filter change and restore them during `activate()`. If no, document this as intentional. Do not assume the QuickPick approach is regression-equivalent to the toolbar approach without checking persistence behavior.
-
-**Warning signs:**
-- Filter preference is lost after reloading the extension (F5 in dev, or after VS Code update).
-- The QuickPick opens with nothing pre-selected even when the user set a filter in the previous session.
-
-**Phase to address:**
-Feature design phase — decide persistence policy before implementation.
+**Prevention:**
+- This is an existing design smell where commands read display properties for data values.
+- During the refactor, consider adding a `nodeContext.rawValue` field or similar so commands can read the actual value, not the display string.
+- At minimum, document this coupling so it is addressed intentionally rather than accidentally broken.
 
 ---
 
-### Pitfall 10: Lock Toggle Command Not Excluded from `commandPalette`
+### Pitfall 9: `WorkspaceFolderNode` Couples to ConfigStore Directly
 
-**What goes wrong:**
-The new "Toggle User Lock" command appears in the VS Code Command Palette, allowing users to invoke it without a selected tree node. Because the command handler checks `node.nodeContext`, calling it from the palette (where `node` is `undefined`) silently does nothing — but it creates a confusing entry in the palette that does not match user expectations.
+**What goes wrong:** The multi-root workspace path breaks separately from single-root. `WorkspaceFolderNode` (defined inline in `configTreeProvider.ts`) takes `configStore: ConfigStore` as a constructor parameter to check `isScopeLocked()`. This is the only node that directly references `ConfigStore` -- all others work through `ScopedConfig` data. A refactor that removes `ConfigStore` from node constructors must handle this special case.
 
-**Why it happens:**
-By convention (already established in this codebase), commands that are tree-node-specific are hidden from the palette with `"when": "false"` in the `commandPalette` menu. New commands added by a developer unfamiliar with this convention will appear in the palette by default.
-
-**How to avoid:**
-Add the lock toggle command to the `commandPalette` menu section in `package.json` with `"when": "false"`. This follows the pattern already used by `claudeConfig.editValue`, `claudeConfig.deleteItem`, `claudeConfig.moveToScope`, etc.
-
-**Warning signs:**
-- A new command ID appears in `package.json` `commands` section but is missing from the `commandPalette` menu section.
-- The `when` clause for the command in `view/title` or `view/item/context` references a tree-node context, but no corresponding `commandPalette` suppression exists.
-
-**Phase to address:**
-Lock feature implementation phase.
+**Prevention:**
+- Pre-compute the lock state in `ConfigTreeProvider` before constructing `WorkspaceFolderNode`, passing `isLocked` as a boolean per scope instead of the entire `ConfigStore`.
+- This pattern already exists for `getSingleRootChildren()` (line 211: `configStore.isScopeLocked()` is called before `ScopeNode` construction, and the result is baked into `effective.isReadOnly`). Apply the same pattern to `WorkspaceFolderNode`.
 
 ---
 
-## Technical Debt Patterns
+### Pitfall 10: `SectionNode` Has the Most Complex `getChildren()` -- Highest Regression Risk
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Reuse `ScopedConfig.isReadOnly` for User lock | Simpler code — one field | Lock resets on every `configStore.reload()` call (file watcher trigger) | Never — creates a silent data loss |
-| Use `qp.selectedItems` directly in `onDidAccept` | Less boilerplate | Intermittent missed selection on fast keyboard input | Never — timing bug is non-deterministic |
-| Skip `qp.onDidHide(() => qp.dispose())` | One fewer line | Listener accumulation per QuickPick open/close cycle | Never for production code |
-| Leave orphaned `setContext` calls after command removal | Less refactoring | Stale context keys interfere with any future `when` clauses using similar key names | Never — remove atomically |
-| Keep both `.filter.X` and `.filter.X.active` commands during transition | Backward compatibility | Two dead command registrations confuse future developers | Acceptable for one release cycle only |
+**What goes wrong:** One of the 7 section types silently stops rendering children. `SectionNode.getChildren()` is a 7-way switch that constructs different node types for each section. Each branch reads different properties from `scopedConfig.config` (permissions, sandbox, hooks, mcpConfig.mcpServers, env, enabledPlugins, catch-all settings). If the view-model flattens or restructures the data differently for different sections, any one branch can break while others work.
+
+**Prevention:**
+- Test each section type independently after refactoring: permissions, sandbox, hooks, MCP servers, environment, plugins, settings.
+- Consider splitting `SectionNode.getChildren()` into 7 separate factory functions during the refactor, making each testable in isolation.
+- This is the node with the most data access patterns -- refactor it last, after individual leaf nodes are stable.
+
+---
+
+### Pitfall 11: Introducing a View-Model Cache That Conflicts with `childrenCache`
+
+**What goes wrong:** Tree shows stale data after a config change. `ConfigTreeProvider` caches `getChildren()` results in `childrenCache`, cleared on `refresh()`. If the view-model introduces its own caching layer, there are now two caches that must be invalidated in sync. A config change that clears one but not the other shows stale nodes.
+
+**Prevention:** Either the view-model owns caching (and `ConfigTreeProvider` stops caching), or `ConfigTreeProvider` keeps its cache and the view-model is stateless on each render pass. Do not have two caching layers for the same data.
+
+---
+
+## Minor Pitfalls
+
+### Pitfall 12: Lock Decoration Provider URI Scheme Coupling
+
+**What goes wrong:** Lock dimming stops working for User scope. `ScopeNode` constructs a special `resourceUri` with scheme `LOCK_URI_SCHEME` for the `LockDecorationProvider`. If the view-model changes how `ScopeNode` is constructed, this URI must be preserved exactly.
+
+**Prevention:** Keep the `resourceUri` construction in `ScopeNode`, not in the view-model. It is a pure presentation concern.
+
+---
+
+### Pitfall 13: Plugin `resourceUri` Scheme for Dimming
+
+**What goes wrong:** Disabled plugins stop being visually dimmed. Similar to the lock decoration, `PluginNode` uses a custom `resourceUri` scheme (`PLUGIN_URI_SCHEME`) for the `PluginDecorationProvider`. The URI encodes scope and enabled state.
+
+**Prevention:** Same as Pitfall 12 -- keep `resourceUri` construction in the node class. The view-model provides data; the node owns VS Code API presentation concerns.
+
+---
+
+### Pitfall 14: Partial Refactoring Leaves Mixed Patterns
+
+**What goes wrong:** Half the nodes use the new view-model pattern, half still take `ScopedConfig` directly. The codebase becomes harder to understand than before the refactor because developers must mentally track which pattern each node uses.
+
+**Prevention:**
+- Refactor ALL node types in a single milestone, not incrementally across milestones.
+- If the milestone must be split into phases, each phase should fully convert a vertical slice (e.g., "all leaf nodes" or "all nodes in the settings section"), not leave any section half-done.
+- Define a clear "done" criterion: zero node files import `ScopedConfig`.
+
+---
+
+## Phase-Specific Warnings
+
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Define view-model interfaces | Pitfall 5: pass-through wrapper | Define per-node-type data shapes, not `ScopedConfig` wrappers |
+| Refactor leaf node constructors | Pitfall 7: `finalize()` order | Keep `finalize()` last; run full tree render test after each node |
+| Refactor leaf node constructors | Pitfall 1: `contextValue` breakage | Snapshot all `contextValue` strings before/after; test right-click menus |
+| Refactor leaf node constructors | Pitfall 4: node `id` changes | Snapshot all IDs before/after; verify expand state preserved |
+| Move override resolution to view-model | Pitfall 3: stale/inconsistent overrides | Keep 5 resolver functions pure; view-model calls them with fresh data |
+| Wire up editor-tree sync | Pitfall 2: `parentMap` broken | Verify `findNodeByKeyPath` + `reveal()` works end-to-end |
+| Wire up checkbox handler | Pitfall 6: plugin state desync | Test checkbox toggle writes correct plugin ID |
+| Multi-root workspace support | Pitfall 9: `WorkspaceFolderNode` ConfigStore ref | Pre-compute lock state, pass boolean not store |
+| Refactor `SectionNode` | Pitfall 10: one section type breaks | Test all 7 section types independently |
+| Add caching to view-model | Pitfall 11: dual cache invalidation | Single cache owner -- view-model OR tree provider, not both |
+| All phases | Pitfall 14: mixed patterns | Refactor all nodes; zero `ScopedConfig` imports in node files when done |
 
 ---
 
@@ -282,44 +226,30 @@ Lock feature implementation phase.
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| `createQuickPick` + pre-selection | Set `picked: true` on items and expect `selectedItems` to be populated | Set `qp.selectedItems = items.filter(i => i.picked)` explicitly after `qp.items = items` |
-| `setContext` + command removal | Remove command registrations but leave `setContext` calls | Remove both atomically; audit all `when` clauses referencing removed keys |
-| `contextValue` + lock toggle | Mutate node properties in-place without re-firing `onDidChangeTreeData` | Toggle lock in `ConfigStore`, which fires `onDidChange`, which triggers `ConfigTreeProvider.refresh()` |
-| `view/item/context` menu + `enablement` | Use `command.enablement` to grey out buttons dynamically | Use `contextValue` substring matching in `when` clauses — `enablement` in tree item context is buggy (VS Code issue #110421) |
-| Lock + Managed scope `isReadOnly` | Check only `nodeContext.isReadOnly` which conflates permanent and voluntary locks | Use a separate `configStore.userScopeLocked` flag; node context assembles final `isReadOnly` from both sources |
-
----
-
-## Performance Traps
-
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Full tree refresh on every lock toggle | Tree flickers and scrolls to top on each lock/unlock | The existing `refresh()` path clears caches and fires a full tree rebuild — acceptable for infrequent lock toggles | Not a scalability concern at this extension's scale, but noticeable if toggle is animated |
-| `syncFilterContext()` called on each `setContext` | 9 async `executeCommand('setContext', ...)` calls per filter toggle | If filter toolbar is replaced by QuickPick, remove `syncFilterContext()` entirely — it becomes dead weight | Negligible performance impact but is dead code after removal |
-
----
-
-## UX Pitfalls
-
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| QuickPick closes on Escape without preserving previous filter | User clicks lock icon accidentally, hits Escape, loses filter state | Capture filter state before showing QuickPick; restore on `onDidHide` if `onDidAccept` was not called |
-| Lock icon position inconsistent with other toolbar icons | User expects lock to be near the scope it protects (tree item level) | Add lock toggle to `view/title` toolbar (consistent with Refresh position) OR as a `view/item/context` inline button on the User `ScopeNode` specifically |
-| "Show All Sections" button replaced by QuickPick with no visible count | User cannot tell how many filters are active at a glance | Add a description to the toolbar button (e.g., "Filters (2/7)") or use a badge; QuickPick title can show current count |
-| Managed scope shows no lock icon when User scope is locked | Users confused about which scope is the bottleneck | Use a distinct icon or description on User scope node when locked; Managed scope's lock is permanent and needs no toggle |
+| `contextValue` + `package.json` `when` clauses | Refactor changes string format, menus silently disappear | Snapshot strings before refactor, compare after, test right-click on every node type |
+| `parentMap` + `treeView.reveal()` | View-model bypasses `getChildren()`, parent map not populated | Ensure any node-walking code path populates parentMap for all returned nodes |
+| `onDidChangeCheckboxState` + `nodeContext.keyPath` | View-model changes keyPath structure, handler rejects with `keyPath.length < 2` | Keep keyPath contracts stable; better yet, add typed accessors instead of positional indexing |
+| `node.description` + `editCommands` | View-model adds decoration to description, edit pre-fills with decorated string | Add `rawValue` to nodeContext; commands should never read display properties for data |
+| `computeId()` + tree expand/collapse state | View-model changes nodeContext field formatting, all IDs change, tree collapses | Keep ID generation stable; snapshot and compare |
+| Override resolver functions + view-model | View-model pre-computes overrides from stale data snapshot | View-model calls resolvers at construction time with current allScopes, not cached |
+| `SectionNode.getChildren()` switch + view-model | One branch reads `scopedConfig.config.X` directly instead of through view-model | Verify all 7 branches after refactoring; each reads from view-model data |
+| `WorkspaceFolderNode` + `ConfigStore` | Only node with direct store dependency, missed during "remove store from nodes" sweep | Pre-compute lock state before node construction |
+| `childrenCache` + view-model cache | Two caching layers, one invalidated on change, one stale | Single cache owner; do not introduce competing caches |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **QuickPick pre-selection:** Verify `qp.selectedItems` is explicitly set — not just `picked: true` on items. Test by toggling one filter, closing the picker, reopening it, and confirming the correct items are pre-checked.
-- [ ] **QuickPick disposal:** Verify `qp.onDidHide(() => qp.dispose())` is wired. Test by opening the filter picker 10 times and checking the `Output` channel for errors or duplicate filter applications.
-- [ ] **Lock survives reload:** Verify lock state persists across a file-watcher-triggered `configStore.reload()`. Test by locking User scope, then editing a config file externally (triggers reload), and confirming the lock is still shown.
-- [ ] **Lock does not affect Managed scope:** Verify `ConfigScope.Managed` nodes remain `isReadOnly: true` regardless of `userScopeLocked` flag. Check all edit/delete/move commands reject Managed scope nodes.
-- [ ] **Removed commands gone from `commandPalette`:** After removing filter commands, run `vsce package` and inspect the bundled `package.json` — confirm no `claudeConfig.filter.*` entries remain in `commands` or `menus.view/title`.
-- [ ] **Orphaned `setContext` calls removed:** Search for `claudeConfig_filter_` in `src/` after removal — zero results expected.
-- [ ] **Lock command hidden from palette:** Verify the lock toggle command has `"when": "false"` in `commandPalette`. Test by opening Command Palette and typing the command ID — it should not appear.
-- [ ] **`when` clause regex double-escaping:** After any `package.json` edit, test each new `when` clause in the Extension Development Host and confirm the correct menu items appear/hide.
+- [ ] **contextValue preserved:** Right-click every node type (scope, section, permissionGroup, permissionRule, hookEvent, hookEntry, hookKeyValue, mcpServer, envVar, plugin, setting, settingKeyValue, sandboxProperty) in both editable and readOnly states. Verify expected menu items.
+- [ ] **Node IDs stable:** Expand tree fully, trigger a file watcher reload, verify expand states preserved. No nodes collapse unexpectedly.
+- [ ] **Editor-to-tree sync:** Open a config JSON, click on keys in different sections, verify tree highlights the correct node each time. Test nested nodes (hook entries, setting key-value children, sandbox network properties).
+- [ ] **Tree-to-editor sync:** Click leaf nodes in the tree, verify editor opens the correct file and jumps to the correct line.
+- [ ] **Plugin checkbox:** Toggle a plugin checkbox, verify the correct plugin ID and state are written to disk. Test with User scope locked (should revert checkbox). Test with concurrent write in flight (should show info message).
+- [ ] **Override indicators:** Set up User + Project Local with same setting. Verify User shows "overridden by Project Local" with dimmed icon. Verify Project Local does NOT show override. Repeat for permissions (cross-category), env vars, plugins, sandbox.
+- [ ] **All 7 section types render:** Create a config with entries in all 7 sections. Verify each section shows its children correctly.
+- [ ] **Multi-root workspace:** Open a multi-root workspace. Verify workspace folder nodes appear with correct scope children. Verify lock state affects correct nodes.
+- [ ] **No `ScopedConfig` in nodes:** `grep -r "ScopedConfig" src/tree/nodes/` returns zero results (decoupling complete).
+- [ ] **No `ConfigStore` in nodes:** `grep -r "ConfigStore" src/tree/nodes/` returns zero results (only `configTreeProvider.ts` should reference it).
 
 ---
 
@@ -327,44 +257,27 @@ Lock feature implementation phase.
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| QuickPick pre-selection bug in released version | LOW | One-line fix: add `qp.selectedItems = qp.items.filter(i => (i as any).picked)` after items assignment; release patch version |
-| Orphaned `setContext` keys causing toolbar artifacts | LOW | Remove `setContext` calls in a patch; context resets on VS Code restart or extension reload |
-| Lock state lost on reload (wrong data model) | HIGH | Refactor `ConfigStore` to hold lock state separately; update all node constructors to read from store; retrigger refresh |
-| Lock accidentally toggles Managed scope | MEDIUM | Add explicit `if (scope === ConfigScope.Managed) return;` guard in toggle command handler |
-| Removed commands break user keybindings | LOW–MEDIUM | Cannot be fixed server-side; document in CHANGELOG; provide migration instructions; consider re-registering command as a no-op for one version |
-
----
-
-## Pitfall-to-Phase Mapping
-
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| QuickPick `picked` pre-selection (P1) | QuickPick implementation | Open filter picker, confirm pre-checks match active filters |
-| `onDidAccept` timing (P2) | QuickPick implementation | Rapid keyboard test: toggle + Enter within 50ms |
-| QuickPick not disposed (P3) | QuickPick implementation | Open/close picker 20x; check for duplicate filter applications |
-| Orphaned `setContext` keys (P4) | Command removal | `grep -r "claudeConfig_filter_" src/` returns 0 results |
-| Command removal breaks keybindings (P5) | Command removal | Review CHANGELOG for breaking change documentation |
-| Lock vs. Managed `isReadOnly` collision (P6) | Lock feature data model design | Unit test: lock User scope, verify Managed scope child nodes still `isReadOnly: true` |
-| `contextValue` stale after lock toggle (P7) | Lock feature UI wiring | Toggle lock; confirm child node inline buttons update without expand/collapse |
-| `when` clause regex escaping (P8) | Both phases — any `package.json` edit | Manual test in Extension Development Host after each `package.json` change |
-| Filter state not persisted (P9) | Feature design decision | Reload extension; confirm filter state behavior matches documented policy |
-| Lock command in Command Palette (P10) | Lock feature implementation | Open Command Palette; search for lock command ID; it should not appear |
+| contextValue broken (P1) | LOW | Revert to pre-refactor `computeContextValue()` logic; compare strings |
+| parentMap broken (P2) | MEDIUM | Ensure `getChildren()` in tree provider still populates parentMap; add explicit test |
+| Override inconsistency (P3) | MEDIUM | Ensure view-model calls resolvers with fresh allScopes; verify all 5 resolver call sites |
+| Node ID collision (P4) | LOW | Revert `computeId()` to original logic; compare ID snapshots |
+| Pass-through wrapper (P5) | HIGH | Requires redesign of view-model interfaces; cannot be fixed incrementally |
+| Plugin desync (P6) | LOW | Fix keyPath access in checkbox handler to match new structure |
+| finalize() order (P7) | LOW | Move `finalize()` call to end of constructor |
+| description as data (P8) | MEDIUM | Add rawValue field; update all command handlers that read description |
+| WorkspaceFolderNode coupling (P9) | LOW | Pre-compute lock state; remove ConfigStore parameter |
+| SectionNode regression (P10) | MEDIUM | Test each section; fix broken branches individually |
+| Dual cache (P11) | MEDIUM | Remove one caching layer; pick single owner |
+| Mixed patterns (P14) | HIGH | Must complete the refactor for all nodes; partial state is worse than no refactor |
 
 ---
 
 ## Sources
 
-- [VS Code QuickPick UX Guidelines](https://code.visualstudio.com/api/ux-guidelines/quick-picks) — official UX guidance
-- [VS Code issue #119834 — QuickPickItem.picked does not work with createQuickPick](https://github.com/microsoft/vscode/issues/119834) — confirmed bug, no code fix
-- [VS Code issue #103084 — Using picked in QuickPick does not pre-select](https://github.com/microsoft/vscode/issues/103084) — duplicate confirmation
-- [eclipse-theia/theia issue #6221 — QuickPick onDidChangeSelection fires after onDidAccept](https://github.com/eclipse-theia/theia/issues/6221) — event ordering issue
-- [VS Code quickinput-sample — official dispose pattern](https://github.com/microsoft/vscode-extension-samples/blob/main/quickinput-sample/src/extension.ts) — `onDidHide(() => dispose())` pattern
-- [VS Code issue #140010 — when clause for view/item/context not auto-reevaluated](https://github.com/microsoft/vscode/issues/140010) — requires `onDidChangeTreeData` to refresh menu visibility
-- [VS Code issue #110421 — Command enablement buggy with tree items](https://github.com/microsoft/vscode/issues/110421) — use `contextValue` + `when` clauses, not `enablement`
-- [VS Code when clause contexts reference](https://code.visualstudio.com/api/references/when-clause-contexts) — regex escaping rules
-- Project codebase: `src/tree/nodes/baseNode.ts` — existing `contextValue` pattern (`{nodeType}.{editable|readOnly}[.overridden]`)
-- Project codebase: `.planning/codebase/CONCERNS.md` — existing technical debt inventory
+- Direct codebase analysis of all 14 files in `src/tree/nodes/`, `src/tree/configTreeProvider.ts`, `src/config/configModel.ts`, `src/config/overrideResolver.ts`, `src/commands/editCommands.ts`, `src/commands/moveCommands.ts`, and `src/extension.ts`
+- VS Code TreeDataProvider API: `parentMap`/`reveal()` contract, `contextValue`/`when` clause binding, `onDidChangeCheckboxState` post-change semantics
+- Confidence: HIGH -- all pitfalls derived from direct code reading of this specific codebase, not generic advice
 
 ---
-*Pitfalls research for: VS Code extension toolbar UX improvements (QuickPick filter, command removal, TreeView write protection)*
-*Researched: 2026-02-18*
+*Pitfalls research for v0.6.0: Decouple State from Tree*
+*Researched: 2026-03-05*

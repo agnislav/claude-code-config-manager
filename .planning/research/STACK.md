@@ -1,464 +1,358 @@
-# Stack Research
+# Technology Stack
 
-**Domain:** VS Code Extension — TreeView UX improvements (QuickPick filter, toolbar cleanup, scope lock)
-**Researched:** 2026-02-18
-**Confidence:** HIGH (all claims verified against local `@types/vscode@1.90.0` + official VS Code docs)
+**Project:** Claude Code Config Manager v0.6.0 — Decouple State from Tree
+**Researched:** 2026-03-05
+**Confidence:** HIGH (all findings verified against codebase source and VS Code TreeDataProvider API)
 
 ---
 
 ## Context
 
-This is a subsequent-milestone research document. The extension already exists with a fully working
-TreeView, `contextValue` patterns, `setContext`/`when`-clause toolbar icon-swap, `configWriter`, and
-`fileWatcher`. This document covers only the three new capabilities:
+This is a subsequent-milestone research document. The extension exists at 5,241 LOC with a working
+TreeView, override resolution, file watching, bidirectional editor-tree sync, and scope-level lock
+toggle. This document covers patterns and approaches for decoupling tree node state from tree
+rendering -- the sole objective of v0.6.0.
 
-1. Replace 8 toolbar filter icon buttons with a single filter icon that opens a QuickPick multi-select
-2. Remove existing toolbar commands/buttons cleanly
-3. Add a per-scope lock toggle that prevents write operations to that scope
-
-No new runtime dependencies are needed. All required APIs are in `vscode` itself, which is already
-external to the esbuild bundle.
+**Already validated (DO NOT re-research):** TypeScript strict mode, VS Code Extension API
+(TreeDataProvider, TreeItem, FileDecorationProvider), esbuild bundler, no runtime dependencies.
 
 ---
 
-## Recommended Stack
+## Verdict: No New Dependencies Required
 
-### Core Technologies
-
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| `vscode.window.createQuickPick<T>()` | VS Code 1.15+ (well before 1.90 min) | Multi-select filter UI | `showQuickPick` cannot pre-select items when `canPickMany:true`; `createQuickPick` gives full control over `selectedItems`, lifecycle, and dispose |
-| `vscode.commands.executeCommand('setContext', ...)` | All VS Code versions | Drive toolbar `when` clauses and contextValue-based menu visibility | Already used by this extension's `syncFilterContext()`; same mechanism drives the lock indicator |
-| `vscode.TreeItem.contextValue` (string with dot-segments) | All VS Code versions | Encode lock state per scope node for conditional menu actions | Already used via `computeContextValue()` in `baseNode.ts`; just add a `.locked` segment |
-
-### Supporting Libraries
-
-None. All required APIs are part of the `vscode` extension host API (external, not bundled).
-
-### Development Tools
-
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| `@types/vscode@^1.90.0` | Type definitions for all QuickPick APIs | Already installed as dev dep; all interfaces verified below |
-| esbuild | Bundle; no change needed | `vscode` stays external; no new bundled deps introduced |
+State-view decoupling is a structural refactor achievable entirely with existing TypeScript patterns
+and the VS Code TreeDataProvider API. Zero new npm packages. Zero new VS Code API surfaces.
 
 ---
 
-## Feature 1: QuickPick Multi-Select Filter
+## The Problem
 
-### API
+### Current Coupling Points
 
-**Use `window.createQuickPick<T>()`**, not `window.showQuickPick()`.
+Tree nodes currently do three jobs simultaneously:
 
-`showQuickPick` with `canPickMany: true` does not support pre-selecting items via the `picked` property
-when called via `createQuickPick`. The `picked` property on `QuickPickItem` is **only honored by
-`showQuickPick`**, not by `createQuickPick`. This is a documented API design decision by the VS Code
-team (closed WONTFIX, issues #119834 and #138070).
+1. **Hold config data** -- `ScopeNode`, `SectionNode`, `SettingNode`, etc. receive `ScopedConfig`
+   and `allScopes: ScopedConfig[]` in their constructors
+2. **Compute derived state** -- override resolution happens inside node constructors
+   (e.g., `resolveScalarOverride` called in `SettingNode` constructor, `resolvePluginOverride` in
+   `PluginNode` constructor)
+3. **Produce VS Code TreeItem properties** -- icon, description, tooltip, contextValue, checkbox
+   state, resourceUri
 
-For `createQuickPick`, pre-selection is done via `quickPick.selectedItems = [...]`.
+Additionally:
+- `ConfigTreeProvider.getChildren()` calls `this.configStore.getAllScopes()` and
+  `this.configStore.isMultiRoot()` directly
+- `WorkspaceFolderNode` holds a reference to `ConfigStore` for lock state queries
+- `ScopeNode` applies lock state (`configStore.isScopeLocked`) inline during construction
+- Override resolver functions are called per-node during tree construction, meaning the same
+  `allScopes` array traversal repeats for every node
 
-**Key properties and events (verified in `@types/vscode@1.90.0`, line 13142):**
+### Why This Matters
 
-```typescript
-// Property naming: note the asymmetry between showQuickPick and createQuickPick
-// showQuickPick options:   canPickMany: boolean   (QuickPickOptions, line 2035)
-// createQuickPick instance: canSelectMany: boolean (QuickPick<T>, line 13199)
+- Adding v0.7.0 features (overlap indicators, lock enforcement) means modifying node constructors
+  to thread even more state -- the coupling gets worse over time
+- Testing node rendering requires constructing full `ScopedConfig` objects with all scopes
+- No way to unit-test "what data does the tree show" without VS Code API mocks
+- `ConfigStore` changes require understanding the full node hierarchy to know what breaks
 
-const qp = vscode.window.createQuickPick<vscode.QuickPickItem>();
-qp.title = 'Show Sections';
-qp.placeholder = 'Select sections to display';
-qp.canSelectMany = true;                  // enables multi-select checkboxes
-qp.items = allSections;                   // QuickPickItem[]
-qp.selectedItems = currentlySelected;     // QuickPickItem[] — pre-select active filters
-qp.onDidAccept(() => {
-  const selected = qp.selectedItems;      // readonly QuickPickItem[]
-  // apply filter from selected
-  qp.dispose();
-});
-qp.onDidHide(() => qp.dispose());
-qp.show();
+---
+
+## Recommended Pattern: View Model Layer
+
+### Pattern: Intermediate Data Transfer Objects
+
+Introduce a **view model layer** between `ConfigStore` and tree nodes. This is not MVVM in the
+WPF/SwiftUI sense -- there is no two-way binding framework. It is a set of plain TypeScript
+interfaces and a builder function that transforms `ConfigStore` state into a flat, pre-computed
+data structure that tree nodes consume without calling back into ConfigStore or overrideResolver.
+
+**Why this pattern:**
+- VS Code's TreeDataProvider API is inherently pull-based (getChildren/getTreeItem), not
+  observable/reactive. A reactive framework adds nothing.
+- The extension already has `NodeContext` as a proto-view-model. The pattern extends this.
+- No new dependencies. Pure TypeScript interfaces and functions.
+- Testable: view model builder can be unit-tested without VS Code mocks.
+
+### The Three Layers After Refactor
+
+```
+ConfigStore (Model)
+  |
+  v
+TreeViewModel builder (pure functions, no VS Code imports)
+  |
+  v
+Tree Nodes (View -- TreeItem subclasses, VS Code-specific rendering)
 ```
 
-**Relevant API surface (all verified in `@types/vscode@1.90.0`):**
-
-| Member | Type | Purpose |
-|--------|------|---------|
-| `window.createQuickPick<T>()` | `() => QuickPick<T>` | Factory; generic over QuickPickItem |
-| `QuickPick.canSelectMany` | `boolean` | Enables multi-select checkboxes; default `false` |
-| `QuickPick.items` | `readonly T[]` (read/write) | The full list of items |
-| `QuickPick.selectedItems` | `readonly T[]` (read/write) | Currently checked items; set this to pre-select |
-| `QuickPick.activeItems` | `readonly T[]` (read/write) | Highlighted (not selected) items |
-| `QuickPick.onDidAccept` | `Event<void>` | User pressed Enter or clicked OK |
-| `QuickPick.onDidChangeSelection` | `Event<readonly T[]>` | Fires on each checkbox toggle |
-| `QuickPick.onDidHide` | `Event<void>` | Fires on Escape/blur; always dispose here |
-| `QuickPick.placeholder` | `string \| undefined` | Text in filter input when empty |
-| `QuickPick.title` | `string \| undefined` | Title bar text |
-| `QuickPick.dispose()` | `void` | Required cleanup |
-
-**QuickPickItem shape:**
+### What the View Model Contains
 
 ```typescript
-interface QuickPickItem {
+/** Pre-computed data for a single tree node. No VS Code types. */
+interface TreeNodeViewModel {
+  // Identity
+  scope: ConfigScope;
+  section?: SectionType;
+  keyPath: string[];
+  workspaceFolderUri?: string;
+
+  // Display data (pre-computed, not derived at render time)
   label: string;
   description?: string;
-  detail?: string;
-  picked?: boolean;      // Ignored by createQuickPick — use selectedItems instead
-  alwaysShow?: boolean;
-  kind?: QuickPickItemKind; // Default | Separator
-  iconPath?: ThemeIcon | Uri | { light: Uri; dark: Uri };
-  buttons?: QuickInputButton[];
+  isReadOnly: boolean;
+  isOverridden: boolean;
+  overriddenByScope?: ConfigScope;
+  filePath?: string;
+
+  // Type discriminator for node factory
+  nodeType: string;
+
+  // Type-specific payload (union or generic)
+  data: NodeData;
+
+  // Pre-computed children view models
+  children: TreeNodeViewModel[];
 }
 ```
 
-**Implementation pattern for this extension:**
+Tree nodes receive a `TreeNodeViewModel` instead of `ScopedConfig` + `allScopes`. They never
+import `overrideResolver` or `ConfigStore`.
+
+### What the View Model Builder Does
+
+A single `buildTreeViewModel(configStore: ConfigStore): TreeNodeViewModel[]` function:
+
+1. Reads all scopes from ConfigStore (one traversal)
+2. Computes ALL override resolutions upfront (batch, not per-node)
+3. Applies section filtering
+4. Applies lock state
+5. Returns a tree of `TreeNodeViewModel` objects
+
+This replaces the scattered logic currently in:
+- `ConfigTreeProvider.getSingleRootChildren()` / `getMultiRootChildren()`
+- `ScopeNode.getChildren()` (section creation, lock application)
+- `SectionNode.getChildren()` (node creation per section type)
+- Override resolution calls in every leaf node constructor
+
+### How Tree Nodes Change
+
+**Before:** `new SettingNode(key, value, scopedConfig, allScopes)`
+**After:** `new SettingNode(viewModel)` where viewModel contains pre-computed override status
+
+The `ConfigTreeNode` base class constructor changes from:
+```typescript
+constructor(label, collapsibleState, nodeContext: NodeContext)
+```
+to:
+```typescript
+constructor(viewModel: TreeNodeViewModel)
+```
+
+`NodeContext` becomes derivable from `TreeNodeViewModel` (or they merge).
+
+### How ConfigTreeProvider Changes
+
+**Before:** `getChildren()` calls `configStore.getAllScopes()`, creates nodes that internally
+create more nodes
+**After:** `getChildren()` walks a pre-built `TreeNodeViewModel[]` tree, calling a node factory
+to create `ConfigTreeNode` instances from view models
 
 ```typescript
-// In a new src/commands/filterCommands.ts
-export function registerFilterCommands(
-  context: vscode.ExtensionContext,
-  treeProvider: ConfigTreeProvider,
-): void {
-  context.subscriptions.push(
-    vscode.commands.registerCommand('claudeConfig.openFilterPicker', () => {
-      const allSectionTypes = Object.values(SectionType);
-      const currentFilter = treeProvider.sectionFilter; // ReadonlySet<SectionType>
+class ConfigTreeProvider {
+  private viewModelTree: TreeNodeViewModel[] = [];
 
-      const items: vscode.QuickPickItem[] = allSectionTypes.map((st) => ({
-        label: SECTION_LABELS[st],  // human-readable label
-        description: st,            // machine ID for round-trip
-      }));
+  refresh(): void {
+    this.viewModelTree = buildTreeViewModel(this.configStore);
+    this._onDidChangeTreeData.fire();
+  }
 
-      const qp = vscode.window.createQuickPick();
-      qp.title = 'Filter Sections';
-      qp.placeholder = 'Select sections to show (empty = show all)';
-      qp.canSelectMany = true;
-      qp.items = items;
-      // Pre-select currently active filters
-      qp.selectedItems = items.filter((i) => currentFilter.has(i.description as SectionType));
-
-      qp.onDidAccept(() => {
-        const selected = new Set(qp.selectedItems.map((i) => i.description as SectionType));
-        treeProvider.setSectionFilter(selected);  // new method replacing toggleSectionFilter
-        qp.dispose();
-      });
-      qp.onDidHide(() => qp.dispose());
-      qp.show();
-    }),
-  );
+  getChildren(element?: ConfigTreeNode): ConfigTreeNode[] {
+    const vms = element
+      ? element.viewModel.children
+      : this.viewModelTree;
+    return vms.map(vm => createTreeNode(vm));
+  }
 }
 ```
-
-**VS Code version requirement:** `window.createQuickPick` has been present since VS Code 1.15
-(introduced with `QuickInput` API proposal, stabilized ~1.22). Well before the 1.90 minimum.
-Confidence: HIGH (verified in `@types/vscode@1.90.0` type definitions locally).
-
-**Gotcha — `canPickMany` vs `canSelectMany` naming:**
-- `QuickPickOptions.canPickMany` — option for `showQuickPick()` (line 2035 in types)
-- `QuickPick<T>.canSelectMany` — property on `createQuickPick()` instance (line 13199 in types)
-These are different names on different APIs. Using the wrong one causes a silent no-op (TypeScript
-catches it only if the type is not `any`).
-
-**Gotcha — `picked` property ignored by `createQuickPick`:**
-The `QuickPickItem.picked` property documentation (line 1960 in types) explicitly states:
-> "This is only honored when using the showQuickPick API. To do the same thing with the createQuickPick
-> API, simply set the selectedItems to the items you want selected initially."
-Setting `picked: true` on items passed to `createQuickPick` will display checkmarks but not actually
-pre-select them. Always set `selectedItems` directly.
 
 ---
 
-## Feature 2: Remove Toolbar Commands/Buttons
+## VS Code API Alignment
 
-### API
+### Why This Works With TreeDataProvider
 
-Toolbar button removal requires changes only in `package.json` (the manifest), not in TypeScript code.
-The VS Code extension manifest is static — there is no runtime API to add or remove toolbar buttons.
-Button visibility is controlled exclusively via `when` clauses evaluated by the VS Code host.
+The VS Code `TreeDataProvider<T>` generic type `T` is the caller's choice. The official samples
+use `T = TreeItem subclass` (nodes that are both data and view), but the API equally supports
+`T = data object` with `getTreeItem()` doing the conversion.
 
-**Removal strategy (two options):**
+The current codebase uses `TreeDataProvider<ConfigTreeNode>` where `ConfigTreeNode extends TreeItem`.
+This is fine -- the refactor keeps this pattern but changes what data feeds into node constructors.
 
-**Option A — Full removal** (preferred for the 8 individual filter buttons):
-Delete the command entries from `contributes.commands` and delete the `view/title` menu entries from
-`contributes.menus`. Also deregister the TypeScript command handlers in `extension.ts` (remove from
-`context.subscriptions`). Command registrations are cheap but unused commands waste startup time and
-pollute the command palette.
+The key VS Code API contract:
+- `getChildren(element?)` returns `T[]` -- still returns `ConfigTreeNode[]`
+- `getTreeItem(element)` returns `TreeItem` -- still returns the node itself (since it extends
+  TreeItem)
+- `onDidChangeTreeData` fires to trigger re-render -- unchanged
+- `getParent(element)` for reveal support -- unchanged (parentMap pattern stays)
 
-**Option B — Conditional hiding via `when: "false"`:**
-Already used for internal commands in `commandPalette`. Set `when: "false"` on the `view/title` menu
-entry to hide the button without removing the command. Do not use this for the filter buttons being
-replaced — it leaves dead code and ghost command registrations.
+No API surface changes. The refactor is entirely internal.
 
-**Mechanics of `view/title` group ordering:**
-The `group` value `"navigation@N"` controls button order in the toolbar. The navigation group is always
-the primary (leftmost) toolbar area. After removing the 8 filter buttons (groups `navigation@0`
-through `navigation@7`), renumber the single replacement filter button and the refresh button.
-Refresh currently uses `navigation@99` — this ensures it stays rightmost regardless of numbering.
+### Alternative: Split T into Data Object + getTreeItem Conversion
 
-**What to keep/remove for this extension:**
+VS Code supports `TreeDataProvider<TreeNodeViewModel>` where `getTreeItem()` converts a
+`TreeNodeViewModel` into a `TreeItem`. This is architecturally purer but would break:
 
-Remove from `contributes.commands`:
-- `claudeConfig.filterAll`, `claudeConfig.filterAll.active`
-- `claudeConfig.filter.permissions`, `claudeConfig.filter.permissions.active`
-- `claudeConfig.filter.sandbox`, `claudeConfig.filter.sandbox.active`
-- `claudeConfig.filter.hooks`, `claudeConfig.filter.hooks.active`
-- `claudeConfig.filter.mcpServers`, `claudeConfig.filter.mcpServers.active`
-- `claudeConfig.filter.env`, `claudeConfig.filter.env.active`
-- `claudeConfig.filter.plugins`, `claudeConfig.filter.plugins.active`
-- `claudeConfig.filter.settings`, `claudeConfig.filter.settings.active`
+- `treeView.reveal(node)` -- requires the same `T` reference
+- `parentMap` -- currently maps `ConfigTreeNode` to `ConfigTreeNode`
+- `findNodeByKeyPath` -- walks the tree comparing `nodeContext` on `ConfigTreeNode`
+- `onDidChangeCheckboxState` -- returns `T` references
+- `expandAll` / `collapseAll` -- needs `collapsibleState` from nodes
 
-Add one new command:
-```json
-{
-  "command": "claudeConfig.openFilterPicker",
-  "title": "Filter Sections...",
-  "category": "Claude Config",
-  "icon": "$(filter)"
-}
-```
-
-Add to `view/title`:
-```json
-{
-  "command": "claudeConfig.openFilterPicker",
-  "when": "view == claudeConfigTree",
-  "group": "navigation@0"
-}
-```
-
-Remove from `commandPalette` the 16 filter commands (or keep hidden if commands are kept).
-
-**Context key cleanup:** Remove the `claudeConfig_filter_*` context keys from `syncFilterContext()`.
-These become unnecessary once the QuickPick manages state internally. The `treeProvider.sectionFilter`
-Set remains as the source of truth; the QuickPick reads it on open and writes it on accept.
+**Recommendation:** Keep `TreeDataProvider<ConfigTreeNode>`. The view model is an internal
+implementation detail, not exposed to the VS Code API. This avoids breaking reveal, checkbox,
+and bidirectional sync.
 
 ---
 
-## Feature 3: Scope-Level Lock Toggle
+## Existing Stack (Unchanged)
 
-### Design Principle
+### Core Framework
+| Technology | Version | Purpose | Status |
+|------------|---------|---------|--------|
+| TypeScript | ^5.3.3 | Language | No change |
+| VS Code Extension API | ^1.90.0 | Extension host | No change |
+| esbuild | ^0.25.0 | Bundler | No change |
 
-The lock is a UI-side write guard managed entirely within the extension. It does not modify file
-system permissions. It is a per-session, per-scope boolean held in `ConfigTreeProvider` (or a
-dedicated `LockStore`). Locked scopes reject write commands with a user-visible error notification.
+### VS Code APIs Already In Use (Relevant to v0.6.0)
+| API | Current Usage | v0.6.0 Impact |
+|-----|--------------|---------------|
+| `TreeDataProvider<ConfigTreeNode>` | Tree rendering | Keep generic type; change internal data flow |
+| `EventEmitter<void>` / `onDidChange` | ConfigStore change notification | Unchanged -- triggers view model rebuild |
+| `TreeItem` subclass (`ConfigTreeNode`) | Node rendering | Constructor signature changes (receives view model) |
+| `NodeContext` interface | Node identity/state | Evolves into or merges with view model |
+| `overrideResolver` functions | Per-node override computation | Moves to view model builder (batch computation) |
 
-### API Components
+---
 
-**3a. Lock state storage:**
-A `Set<ConfigScope>` held in `ConfigTreeProvider` or a separate `ScopeLockStore` singleton. Because
-scope state is already managed in `ConfigTreeProvider` via `_sectionFilter`, follow the same pattern:
+## What to Build
 
-```typescript
-// In ConfigTreeProvider
-private readonly _lockedScopes = new Set<ConfigScope>();
+### New Files
 
-isLocked(scope: ConfigScope): boolean {
-  return this._lockedScopes.has(scope);
-}
+| File | Purpose | Imports VS Code? |
+|------|---------|-----------------|
+| `src/tree/viewModel.ts` | `TreeNodeViewModel` interfaces and `buildTreeViewModel()` | NO -- pure TypeScript |
+| `src/tree/nodeFactory.ts` | `createTreeNode(vm: TreeNodeViewModel): ConfigTreeNode` | YES -- creates TreeItem subclasses |
 
-toggleLock(scope: ConfigScope): void {
-  if (this._lockedScopes.has(scope)) {
-    this._lockedScopes.delete(scope);
-  } else {
-    this._lockedScopes.add(scope);
-  }
-  this.syncLockContext();
-  this.refresh(); // Redraw scope nodes with updated contextValue
-}
+### Modified Files
 
-private syncLockContext(): void {
-  for (const scope of Object.values(ConfigScope)) {
-    vscode.commands.executeCommand(
-      'setContext',
-      `claudeConfig_locked_${scope}`,
-      this._lockedScopes.has(scope as ConfigScope),
-    );
-  }
-}
-```
+| File | Change |
+|------|--------|
+| `src/tree/configTreeProvider.ts` | `getChildren()` walks view model tree instead of calling ConfigStore |
+| `src/tree/nodes/baseNode.ts` | Constructor takes `TreeNodeViewModel` instead of `NodeContext` |
+| `src/tree/nodes/*.ts` (all node files) | Constructors simplified to receive view model, no override resolution calls |
+| `src/types.ts` | `NodeContext` either removed or kept as a derived subset |
 
-**3b. ScopeNode contextValue update:**
-Add `.locked` or `.unlocked` segment to the contextValue in `ScopeNode.computeContextValue()`.
-The lock state must be passed into `ScopeNode` at construction (add `lockedScopes: ReadonlySet<ConfigScope>` parameter):
+### Unchanged Files
 
-```typescript
-// ScopeNode.computeContextValue()
-protected computeContextValue(): string {
-  const base = super.computeContextValue();      // e.g. "scope.editable"
-  const locked = this.lockedScopes.has(this.scopedConfig.scope);
-  const lockSegment = locked ? 'locked' : 'unlocked';
-  // base already handles .missing suffix; insert before it or append
-  return `${base}.${lockSegment}`;              // e.g. "scope.editable.unlocked"
-}
-```
+| File | Why Unchanged |
+|------|--------------|
+| `src/config/configModel.ts` | ConfigStore API stays the same; view model consumes it |
+| `src/config/overrideResolver.ts` | Functions stay the same; called from view model builder instead of nodes |
+| `src/config/configWriter.ts` | Write operations use `filePath` + `keyPath` from node context, not ConfigStore |
+| `src/commands/*.ts` | Commands read `node.nodeContext` which still exists (derived from view model) |
+| `src/extension.ts` | Wiring stays the same; ConfigStore -> TreeProvider -> TreeView |
+| `src/watchers/fileWatcher.ts` | Triggers ConfigStore.reload() which fires onDidChange -> view model rebuild |
 
-**3c. Lock toggle command and inline icon button:**
+---
 
-```json
-// In contributes.commands:
-{
-  "command": "claudeConfig.toggleScopeLock",
-  "title": "Toggle Scope Lock",
-  "category": "Claude Config",
-  "icon": "$(lock)"
-}
+## What NOT to Add
 
-// In contributes.menus view/item/context:
-{
-  "command": "claudeConfig.toggleScopeLock",
-  "when": "view == claudeConfigTree && viewItem =~ /^scope\\./ && viewItem =~ /\\.unlocked/",
-  "group": "inline@0"
-},
-{
-  "command": "claudeConfig.toggleScopeLock",
-  "when": "view == claudeConfigTree && viewItem =~ /^scope\\./ && viewItem =~ /\\.locked/",
-  "group": "inline@0"
-}
-```
-
-Use `$(lock)` icon for locked, `$(unlock)` for unlocked. Since `contextValue` already encodes the
-state, a single command suffices; icon variation requires two command entries with different icons
-(same icon-swap pattern the extension already uses for filter buttons). Alternatively, keep a single
-command and accept a single icon — `$(lock)` always — that conveys "click to toggle lock".
-
-```json
-// Simpler: single entry, single icon
-{
-  "command": "claudeConfig.toggleScopeLock",
-  "when": "view == claudeConfigTree && viewItem =~ /^scope\\./",
-  "group": "inline@0"
-}
-```
-
-**3d. Write guard in command handlers:**
-In every command that calls `configWriter` functions, check the lock before executing:
-
-```typescript
-// Utility function
-function assertNotLocked(scope: ConfigScope, treeProvider: ConfigTreeProvider): boolean {
-  if (treeProvider.isLocked(scope)) {
-    vscode.window.showWarningMessage(
-      `Scope "${SCOPE_LABELS[scope]}" is locked. Unlock it first to make changes.`
-    );
-    return false;
-  }
-  return true;
-}
-
-// Usage in addCommands.ts, editCommands.ts, deleteCommands.ts, moveCommands.ts:
-if (!assertNotLocked(node.nodeContext.scope, treeProvider)) return;
-```
-
-**3e. Lock persistence (optional but recommended):**
-The lock state is session-only by default. For persistence across sessions, use
-`vscode.ExtensionContext.workspaceState` (workspace-scoped key-value store):
-
-```typescript
-// On activate:
-const lockedScopes = new Set<ConfigScope>(
-  context.workspaceState.get<ConfigScope[]>('claudeConfig.lockedScopes', [])
-);
-
-// On toggle:
-await context.workspaceState.update(
-  'claudeConfig.lockedScopes',
-  [...treeProvider.lockedScopes]
-);
-```
-
-`ExtensionContext.workspaceState` is available since VS Code 1.0. No version concern.
-
-**3f. Managed scope is already read-only:**
-`ConfigScope.Managed` already sets `isReadOnly: true` on `ScopedConfig` and renders as
-`scope.readOnly` in `contextValue`. The lock toggle should be restricted to non-managed scopes.
-Use `when` clause: `viewItem =~ /^scope\.editable/` to exclude read-only (managed) scope nodes from
-showing the lock button.
+| Avoid | Why |
+|-------|-----|
+| State management library (MobX, RxJS, Zustand) | No-runtime-deps constraint. Pull-based TreeDataProvider does not benefit from reactivity. |
+| Observable/reactive patterns | VS Code TreeView is pull-based. Observables add complexity without benefit. |
+| Event bus / mediator | ConfigStore.onDidChange is already the single event source. Adding another bus creates dual-source confusion. |
+| Abstract factory pattern for nodes | A simple switch/map in `nodeFactory.ts` is sufficient for 10 node types. |
+| Immutable data structures (Immer, etc.) | View model is rebuilt from scratch on every refresh. Immutability adds overhead without benefit. |
+| Dependency injection container | 5K LOC extension with explicit constructor wiring. DI container is overkill. |
+| Separate "presenter" layer | Two layers (view model + node) are sufficient. Three layers (model + presenter + view) is overengineering for a TreeView. |
 
 ---
 
 ## Alternatives Considered
 
-| Recommended | Alternative | Why Not |
-|-------------|-------------|---------|
-| `window.createQuickPick` | `window.showQuickPick` with `canPickMany: true` | Cannot pre-select items; no control over picker lifecycle; dispose is automatic |
-| Remove 16 filter commands entirely | Keep with `when: "false"` on view/title | Dead code; 16 ghost command registrations on startup; misleading codebase |
-| Set-based `_lockedScopes` in `ConfigTreeProvider` | Separate `ScopeLockStore` class | Scope filter already lives in `ConfigTreeProvider`; same pattern; avoids new class boundary |
-| `workspaceState` for lock persistence | `globalState` | Locks are workspace-local intent; user probably wants different locks per project |
-| Single toggle command for lock | Two commands (lock + unlock with different icons) | Icon-swap approach doubles command count for no UX gain; users expect click-to-toggle |
-
-## What NOT to Use
-
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| `QuickPickItem.picked` with `createQuickPick` | Silently ignored; items show checkmarks but are not selected (VS Code API design decision, will not be fixed) | `quickPick.selectedItems = [...]` |
-| `QuickPickOptions.canPickMany` on `createQuickPick` | `canPickMany` is for `showQuickPick`; `createQuickPick` uses `canSelectMany` | `quickPick.canSelectMany = true` |
-| `window.showQuickPick` for the filter UI | Cannot pre-select, cannot control dispose timing | `window.createQuickPick()` |
-| File system `chmod` for scope locking | Not what users expect; breaks on read-only file systems and managed policies | In-memory lock Set + write guard in commands |
+| Approach | Considered | Why Not |
+|----------|-----------|---------|
+| Keep nodes as-is, just extract override calls | Partial fix -- nodes still receive `allScopes` and construct children | Coupling remains; v0.7.0 threading gets worse |
+| Split `T` to data object (non-TreeItem) | Purer architecture | Breaks reveal, checkbox, parentMap, findNodeByKeyPath |
+| Reactive state with subscriptions | Nodes subscribe to state changes | VS Code TreeView is batch-refresh, not incremental; subscriptions leak |
+| Central state store (Redux-like) | Single source of truth with actions/reducers | Way too heavy; ConfigStore already IS the single source of truth |
+| Pass ConfigStore to view model builder as interface | Enables mocking in tests | Good idea -- view model builder should accept an interface, not ConfigStore directly |
 
 ---
 
-## Stack Patterns by Variant
+## Testing Implications
 
-**If the lock icon needs to visually toggle (lock/unlock icons):**
-- Use two `view/item/context` menu entries with the icon-swap pattern (already used by existing filter
-  buttons): one entry `when: "... viewItem =~ /\.locked/"` with `$(lock)` icon, another `when: "...
-  viewItem =~ /\.unlocked/"` with `$(unlock)` icon. Same command for both.
+The view model layer enables a new category of tests:
 
-**If filters should apply live (while picker is open):**
-- Subscribe to `onDidChangeSelection` instead of only `onDidAccept`. Call `treeProvider.setSectionFilter()`
-  on each checkbox toggle. This gives instant preview in the TreeView without closing the picker.
-  `onDidHide` should restore the original filter if the user presses Escape.
-
-**If lock state should be global (user-scoped, not workspace):**
-- Replace `context.workspaceState` with `context.globalState`. Semantics change: the lock applies
-  to the User scope across all workspaces.
+| Test Type | Before | After |
+|-----------|--------|-------|
+| "Does User scope show 3 settings?" | Need VS Code mocks, full node construction | Call `buildTreeViewModel()` with mock data, assert children count |
+| "Is setting X marked overridden?" | Construct SettingNode with real ScopedConfig arrays | Assert `viewModel.isOverridden === true` |
+| "Does lock state propagate?" | Need ConfigStore instance + lockScope() | Pass locked flag to builder, assert isReadOnly on output |
+| "Does filter hide Hooks section?" | Need ConfigTreeProvider + filter state | Pass filter to builder, assert section absence |
 
 ---
 
-## Version Compatibility
+## Version Constraints
 
-| API | Introduced | Min for this project | Compatible |
-|-----|-----------|---------------------|------------|
-| `window.createQuickPick()` | VS Code ~1.22 (stabilized) | 1.90.0 | YES |
-| `QuickPick.canSelectMany` | VS Code ~1.22 | 1.90.0 | YES |
-| `QuickPick.selectedItems` (writable) | VS Code ~1.22 | 1.90.0 | YES |
-| `commands.executeCommand('setContext', ...)` | VS Code 1.0 | 1.90.0 | YES |
-| `TreeItem.contextValue` regex `=~` | VS Code ~1.38 | 1.90.0 | YES |
-| `ExtensionContext.workspaceState` | VS Code 1.0 | 1.90.0 | YES |
-| `view/item/context` `inline` group | VS Code ~1.25 | 1.90.0 | YES |
-
-All APIs are available in VS Code 1.90.0+. No new minimum version requirement.
+No new VS Code API surfaces. All APIs used are available in VS Code 1.90.0+. No version bump
+required.
 
 ---
 
 ## Installation
 
-No new packages required. All APIs are in `vscode` (external, not bundled).
-
 ```bash
+# No new dependencies to install
 # No changes to package.json dependencies
-# Only changes: package.json contributes section + new/modified TypeScript source files
+# Only changes: TypeScript source files
 ```
+
+---
+
+## Summary
+
+v0.6.0 is a structural refactor introducing a view model layer between ConfigStore and tree nodes:
+
+1. **New `viewModel.ts`** -- Pure TypeScript interfaces and builder function that pre-computes
+   all tree state (override resolution, lock state, filtering) in a single pass
+2. **New `nodeFactory.ts`** -- Simple factory that creates `ConfigTreeNode` subclasses from
+   view model objects
+3. **Simplified tree nodes** -- Constructors receive pre-computed view models instead of raw
+   config data; no imports from `config/` directory
+4. **ConfigTreeProvider rewired** -- `getChildren()` walks view model tree instead of calling
+   ConfigStore directly
+
+The ConfigStore API, overrideResolver functions, configWriter, commands, and file watcher remain
+unchanged. The refactor is internal to the `src/tree/` directory with a new dependency on
+`src/config/overrideResolver.ts` from the view model builder (which already exists from nodes).
 
 ---
 
 ## Sources
 
-- Local `@types/vscode@1.90.0` — QuickPick interface (line 13142), `canSelectMany` (line 13199),
-  `selectedItems` (line 13229), `onDidAccept` (line 13169), `QuickPickItem.picked` documentation
-  (line 1960), `showQuickPick` overloads (line 11398, 11418), `createQuickPick` (line 11479).
-  Confidence: HIGH (authoritative, version-locked to project minimum)
-- VS Code GitHub issue #119834 — `QuickPickItem.picked` not working with `createQuickPick`, official
-  workaround from VS Code team member: use `selectedItems`. Confidence: HIGH
-- VS Code GitHub issue #138070 — Same bug, documented design decision "we didn't want two ways to do
-  the same thing". Confidence: HIGH
-- Official VS Code docs, when-clause-contexts — `setContext`, `=~` regex matching in `viewItem` when
-  clauses. Confidence: HIGH
-- Official VS Code docs, Tree View API — `contextValue`, `view/item/context`, inline group.
-  Confidence: HIGH
-- VS Code GitHub issue #64014 — Type asymmetry between `showQuickPick` (`canPickMany`) and
-  `createQuickPick` (`canSelectMany`). Confirmed the naming discrepancy. Confidence: HIGH
+- Codebase analysis: `configTreeProvider.ts`, `configModel.ts`, `baseNode.ts`, `scopeNode.ts`,
+  `sectionNode.ts`, `settingNode.ts`, `pluginNode.ts`, `overrideResolver.ts`, `extension.ts`,
+  `editCommands.ts`, `types.ts`
+- [VS Code Tree View API documentation](https://code.visualstudio.com/api/extension-guides/tree-view) --
+  TreeDataProvider contract, getChildren/getTreeItem pattern, generic type T
+- [VS Code Tree View Sample](https://github.com/microsoft/vscode-extension-samples/blob/main/tree-view-sample/USAGE.md) --
+  Official sample showing TreeItem subclass pattern
+- [VS Code API reference](https://code.visualstudio.com/api/references/vscode-api) --
+  TreeDataProvider, TreeItem, FileDecorationProvider, EventEmitter
 
 ---
 
-*Stack research for: VS Code extension toolbar UX — QuickPick filter, toolbar cleanup, scope lock*
-*Researched: 2026-02-18*
+*Stack research for: v0.6.0 Decouple State from Tree -- view model layer pattern*
+*Researched: 2026-03-05*

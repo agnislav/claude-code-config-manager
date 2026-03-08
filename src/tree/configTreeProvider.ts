@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import { ConfigStore } from '../config/configModel';
-import { ConfigScope, ScopedConfig, SectionType } from '../types';
+import { ConfigScope, SectionType } from '../types';
+import { BaseVM } from '../viewmodel/types';
+import { TreeViewModelBuilder } from '../viewmodel/builder';
 import { ConfigTreeNode } from './nodes/baseNode';
-import { ScopeNode } from './nodes/scopeNode';
+import { vmToNode } from './vmToNode';
 
 export class ConfigTreeProvider implements vscode.TreeDataProvider<ConfigTreeNode>, vscode.Disposable {
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<
@@ -14,8 +16,13 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<ConfigTreeNod
   private readonly childrenCache = new Map<string, ConfigTreeNode[]>();
 
   private readonly _sectionFilter = new Set<SectionType>();
+  private readonly builder: TreeViewModelBuilder;
+  private cachedRootVMs: BaseVM[] = [];
 
   constructor(private readonly configStore: ConfigStore) {
+    this.builder = new TreeViewModelBuilder(configStore);
+    ConfigTreeNode.mapVM = vmToNode;
+    this.cachedRootVMs = this.builder.build(this._sectionFilter);
     configStore.onDidChange(() => this.refresh());
     this.updateFilterUI();
   }
@@ -41,6 +48,7 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<ConfigTreeNod
   refresh(): void {
     this.parentMap.clear();
     this.childrenCache.clear();
+    this.cachedRootVMs = this.builder.build(this._sectionFilter);
     this._onDidChangeTreeData.fire();
   }
 
@@ -75,21 +83,11 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<ConfigTreeNod
           );
           return [];
         }
-      } else if (this.configStore.isMultiRoot()) {
-        try {
-          children = this.getMultiRootChildren();
-        } catch (error) {
-          console.error('Tree rendering error in getMultiRootChildren:', error);
-          vscode.window.showWarningMessage(
-            'Tree rendering error: ' + (error instanceof Error ? error.message : String(error)),
-          );
-          return [];
-        }
       } else {
         try {
-          children = this.getSingleRootChildren();
+          children = this.cachedRootVMs.map(vmToNode);
         } catch (error) {
-          console.error('Tree rendering error in getSingleRootChildren:', error);
+          console.error('Tree rendering error in root children:', error);
           vscode.window.showWarningMessage(
             'Tree rendering error: ' + (error instanceof Error ? error.message : String(error)),
           );
@@ -195,84 +193,5 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<ConfigTreeNod
       }
     }
     return undefined;
-  }
-
-  private getSingleRootChildren(): ConfigTreeNode[] {
-    const keys = this.configStore.getWorkspaceFolderKeys();
-    if (keys.length === 0) return [];
-
-    const key = keys[0];
-    const allScopes = this.configStore.getAllScopes(key);
-
-    return allScopes
-      .filter((s) => s.scope !== ConfigScope.Managed)
-      .map((scopedConfig) => {
-        const locked = this.configStore.isScopeLocked(scopedConfig.scope);
-        const effective: ScopedConfig = locked && !scopedConfig.isReadOnly
-          ? { ...scopedConfig, isReadOnly: true }
-          : scopedConfig;
-        return new ScopeNode(effective, allScopes, key, this._sectionFilter);
-      });
-  }
-
-  private getMultiRootChildren(): ConfigTreeNode[] {
-    // For multi-root, we show workspace folder grouping nodes
-    // that each contain 4 scope nodes
-    const children: ConfigTreeNode[] = [];
-
-    for (const key of this.configStore.getWorkspaceFolderKeys()) {
-      const allScopes = this.configStore.getAllScopes(key);
-      const discovered = this.configStore.getDiscoveredPaths(key);
-      const folderName = discovered?.workspaceFolder?.name ?? key;
-
-      // Create a virtual folder node
-      const folderNode = new WorkspaceFolderNode(folderName, key, allScopes, this._sectionFilter, this.configStore);
-      children.push(folderNode);
-    }
-
-    return children;
-  }
-}
-
-class WorkspaceFolderNode extends ConfigTreeNode {
-  readonly nodeType = 'workspaceFolder';
-
-  constructor(
-    folderName: string,
-    private readonly workspaceFolderUri: string,
-    private readonly allScopes: ScopedConfig[],
-    private readonly sectionFilter: ReadonlySet<SectionType>,
-    private readonly configStore: ConfigStore,
-  ) {
-    super(folderName, vscode.TreeItemCollapsibleState.Expanded, {
-      scope: ConfigScope.User, // placeholder — not meaningful for folder nodes
-      keyPath: [],
-      isReadOnly: false,
-      isOverridden: false,
-      workspaceFolderUri,
-    });
-
-    this.iconPath = new vscode.ThemeIcon('root-folder');
-    this.finalize();
-  }
-
-  getChildren(): ConfigTreeNode[] {
-    try {
-      return this.allScopes
-        .filter((s) => s.scope !== ConfigScope.Managed)
-        .map((scopedConfig) => {
-          const locked = this.configStore.isScopeLocked(scopedConfig.scope);
-          const effective: ScopedConfig = locked && !scopedConfig.isReadOnly
-            ? { ...scopedConfig, isReadOnly: true }
-            : scopedConfig;
-          return new ScopeNode(effective, this.allScopes, this.workspaceFolderUri, this.sectionFilter);
-        });
-    } catch (error) {
-      console.error(`Tree rendering error in ${this.nodeType} node:`, error);
-      vscode.window.showWarningMessage(
-        `Tree rendering error in ${this.nodeType}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      return [];
-    }
   }
 }

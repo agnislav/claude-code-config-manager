@@ -10,7 +10,16 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 
 ## Current State
 
-Shipped v0.5.0 Hardening (2026-02-21). No active milestone — ready for next milestone planning.
+Shipped v0.6.0 (2026-03-08). Tree nodes fully decoupled from ConfigStore via ViewModel layer. TreeViewModelBuilder pre-computes all display state; 14 node types accept typed VM descriptors. 23-test suite validates builder output.
+
+## Next Milestone: v0.7.0 Visual Fidelity
+
+**Goal:** Make the tree reflect true state — overlaps visible across scopes, lock toggle respected by plugin checkbox, hook leaf navigation correct.
+
+**Target features:**
+- Visual overlap indicators (description text, badge, tooltip) for config entities across multiple scopes
+- Fix plugin checkbox toggling despite locked User scope
+- Fix hook leaf click navigating editor to wrong JSON line
 
 ## Requirements
 
@@ -52,18 +61,23 @@ Shipped v0.5.0 Hardening (2026-02-21). No active milestone — ready for next mi
 - ✓ All timeout values extracted to named constants — v0.5.0
 - ✓ User-facing messages centralized with "Claude Config:" prefix — v0.5.0
 - ✓ keyPath array access guarded with bounds checks — v0.5.0
+- ✓ Decouple tree node construction from direct ConfigStore access — v0.6.0
+- ✓ Establish clear boundaries between state management and tree rendering — v0.6.0
 
 ### Active
 
-- [ ] Add "go to (scope/entity)" to the command palette
-- [ ] Multiselect for batch copy and move operations
-- [ ] Replace sync file I/O with async in diagnostics validation
-- [ ] Add memoization to override resolver functions
-- [ ] Reduce tight coupling between tree nodes and ConfigStore
-- [ ] Add JSDoc documentation for exported functions
+(No active requirements — next milestone not started)
 
 ### Out of Scope
 
+- Add "go to (scope/entity)" to the command palette — deferred to future milestone
+- Multiselect for batch copy and move operations — deferred to future milestone
+- Replace sync file I/O with async in diagnostics validation — deferred, internal quality
+- Add memoization to override resolver functions — deferred, internal quality
+- Visual overlap indicators for config entities across scopes — v0.7.0
+- Fix plugin checkbox toggling despite locked User scope — v0.7.0
+- Fix hook leaf click navigating editor to wrong JSON line — v0.7.0
+- Add JSDoc documentation for exported functions — deferred, internal quality
 - EditValue inline improvements — deferred to separate phase
 - Overridden entities visual management — deferred to separate milestone
 - Sort items — deferred to separate task
@@ -73,7 +87,7 @@ Shipped v0.5.0 Hardening (2026-02-21). No active milestone — ready for next mi
 
 ## Context
 
-5,241 LOC TypeScript. Shipped v0.5.0 with comprehensive error handling, write-path validation, race condition prevention, and resource cleanup. Toolbar has 4 buttons: lock, filter, collapse, expand. All user-facing messages centralized with "Claude Config:" prefix. Write operations protected by in-flight tracking, path whitelisting, and traversal/symlink validation. Plugin and editValue inline buttons remain temporarily disabled. Known deferred items: command palette navigation, batch operations, async diagnostics, override memoization.
+6,247 LOC TypeScript. Shipped v0.6.0 with full ViewModel layer decoupling tree nodes from ConfigStore. TreeViewModelBuilder pre-computes override resolution and display state for all 14 node types. 23-test suite validates builder across all 7 entity types. Toolbar has 4 buttons: lock, filter, collapse, expand. Write operations protected by in-flight tracking, path whitelisting, and traversal/symlink validation. Plugin and editValue inline buttons remain temporarily disabled. v0.7.0 Visual Fidelity (overlap indicators, lock enforcement, hook navigation) planned next with research complete.
 
 ## Constraints
 
@@ -110,6 +124,11 @@ Shipped v0.5.0 Hardening (2026-02-21). No active milestone — ready for next mi
 | MESSAGES object with functions for parameterized messages | Centralized, discoverable; consistent "Claude Config:" prefix | ✓ Good |
 | validateKeyPath returns boolean for guard pattern | Simple early-return; logs + shows error for bad state | ✓ Good |
 | Named constants for all timeout values | Discoverable in constants.ts; JSDoc explains rationale | ✓ Good |
+| Replicate formatting helpers in builder.ts | Avoids viewmodel→tree dependency; keeps layers independent | ✓ Good |
+| Static ConfigTreeNode.mapVM property | Breaks circular imports between vmToNode and node files | ✓ Good |
+| Hook entries as leaf nodes (no key-value children) | Cleaner UX; simplified tree structure for hook display | ✓ Good |
+| Eager VM build in constructor | Ensures initial tree render works without waiting for refresh | ✓ Good |
+| TDD Mocha UI for extension tests | VS Code extension test conventions; suite/test pattern | ✓ Good |
 
 ---
-*Last updated: 2026-02-21 after v0.5.0 milestone*
+*Last updated: 2026-03-08 after v0.6.0 milestone*

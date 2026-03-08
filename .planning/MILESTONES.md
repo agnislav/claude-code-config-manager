@@ -1,5 +1,29 @@
 # Milestones: Claude Code Config Manager
 
+## v0.6.0 — Decouple State from Tree (Complete)
+
+**Completed:** 2026-03-08
+**Phases:** 16–18 (3 phases, 4 plans)
+**Requirements:** 15/15 satisfied
+**Git range:** feat(16-01)..test(phase-17)
+**LOC:** 6,247 TypeScript (+2,053 / -1,057 source changes)
+
+Decoupled tree node construction from direct ConfigStore access by introducing a ViewModel layer. TreeViewModelBuilder pre-computes all display state (labels, descriptions, icons, contextValues, override resolution) and all 14 node types now accept typed ViewModel descriptors instead of raw config data. Comprehensive test suite validates builder output across all entity types.
+
+**Key accomplishments:**
+- Complete ViewModel type system (BaseVM + 15 per-type interfaces) for all tree node types
+- TreeViewModelBuilder pre-computes override resolution and display state from raw ConfigStore data
+- All 14 tree node constructors migrated from ScopedConfig/allScopes to typed ViewModel descriptors
+- WorkspaceFolderNode extracted as standalone file; vmToNode mapper for NodeKind-based dispatch
+- ConfigTreeProvider wired to builder with full bidirectional editor-tree sync preserved
+- 23-test suite covering all 7 entity types, override resolution, and NodeContext preservation
+
+### Tech Debt
+
+- Dead code: HookKeyValueVM/Node/builder method unreachable after hook entry simplification (4 items, cosmetic)
+
+---
+
 ## v0.3.x — Toolbar UX Improvements (Complete)
 
 **Completed:** 2026-02-19

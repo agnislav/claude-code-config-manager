@@ -31,6 +31,7 @@ export function findKeyLine(
   if (keyPath.length === 0 || lines.length === 0) return undefined;
 
   let searchFromLine = 0;
+  let currentIndent = 0;
 
   for (let depth = 0; depth < keyPath.length; depth++) {
     const segment = keyPath[depth];
@@ -41,12 +42,15 @@ export function findKeyLine(
       const loc = findArrayElement(lines, searchFromLine, arrayIndex);
       if (!loc) return undefined;
       searchFromLine = loc.line;
+      // Track the actual indent of the found element
+      currentIndent = lines[loc.line].length - lines[loc.line].trimStart().length;
     } else {
-      // Object key: find the key at the expected indent depth
-      const indent = (depth + 1) * 2;
+      // Object key: find the key at the next indent level from current position
+      const indent = currentIndent + 2;
       const loc = findObjectKey(lines, searchFromLine, segment, indent);
       if (!loc) return undefined;
       searchFromLine = loc.line;
+      currentIndent = indent;
     }
   }
 
