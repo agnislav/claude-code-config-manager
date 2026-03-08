@@ -2,7 +2,7 @@
 
 **Created:** 2026-02-18
 **Updated:** 2026-03-08
-**Status:** v0.3.x-v0.6.0 complete (Phases 1-18)
+**Status:** v0.3.x-v0.6.0 complete (Phases 1-18), v0.7.0 in progress (Phases 19-21)
 
 ---
 
@@ -13,6 +13,7 @@
 - ✅ **v0.4.1 Node Display Polish** — Phase 9 (shipped 2026-02-20)
 - ✅ **v0.5.0 Hardening** — Phases 10-15 (shipped 2026-02-21)
 - ✅ **v0.6.0 Decouple State from Tree** — Phases 16-18 (shipped 2026-03-08)
+- 🚧 **v0.7.0 Visual Fidelity** — Phases 19-21 (in progress)
 
 ---
 
@@ -66,7 +67,54 @@
 
 ---
 
+### 🚧 v0.7.0 Visual Fidelity (In Progress)
+
+**Milestone Goal:** Make the tree reflect true state -- overlaps visible across scopes, lock toggle respected by plugin checkbox, hook leaf navigation correct.
+
+## Phases
+
+- [ ] **Phase 19: Hook Navigation + Cleanup** - Fix hook leaf editor navigation and remove dead HookKeyValue code
+- [ ] **Phase 20: Lock-Aware Plugin Display** - Replace plugin checkboxes with static icons when User scope is locked
+- [ ] **Phase 21: Visual Overlap Indicators** - Show cross-scope overlap via tooltips for config entities
+
+## Phase Details
+
+### Phase 19: Hook Navigation + Cleanup
+**Goal**: Hook entry leaf nodes navigate the editor to the correct JSON line, and dead code from v0.6.0 is removed
+**Depends on**: Nothing (independent bug fix + cleanup)
+**Requirements**: NAV-01, CLEN-01
+**Success Criteria** (what must be TRUE):
+  1. Clicking any hook entry node in the tree opens the editor and selects the correct JSON line for that hook entry
+  2. No HookKeyValueVM, HookKeyValueNode, or buildHookKeyValueVM code exists in the codebase
+  3. All existing tests pass after the keyPath fix and dead code removal
+**Plans**: TBD
+
+### Phase 20: Lock-Aware Plugin Display
+**Goal**: Locked User scope plugins display static icons instead of interactive checkboxes, eliminating click-flicker behavior
+**Depends on**: Nothing (independent of Phase 19)
+**Requirements**: LOCK-01, LOCK-02, LOCK-03
+**Success Criteria** (what must be TRUE):
+  1. When User scope is locked, enabled plugins show a checkmark icon instead of a checkbox
+  2. When User scope is locked, disabled plugins show no icon instead of a checkbox
+  3. Toggling the lock off restores checkboxes on plugin nodes; toggling it on removes them again
+**Plans**: TBD
+
+### Phase 21: Visual Overlap Indicators
+**Goal**: Users can see when config entities exist in multiple scopes via tooltip information showing each scope's value
+**Depends on**: Nothing (independent, but benefits from Phases 19-20 validating ViewModel extensibility)
+**Requirements**: OVLP-01, OVLP-02
+**Success Criteria** (what must be TRUE):
+  1. Hovering over a config entity (setting, env var, plugin, MCP server, sandbox property) that exists in multiple scopes shows a tooltip listing all scopes where it appears, with each scope's value and override status
+  2. Overlap detection uses separate data fields from override detection (not reusing isOverridden)
+  3. Entities that exist in only one scope show no overlap tooltip content
+**Plans**: TBD
+
+---
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 19 → 20 → 21
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -88,8 +136,11 @@
 | 16. ViewModel Layer | v0.6.0 | 1/1 | Complete | 2026-03-06 |
 | 17. Node Migration | v0.6.0 | 1/1 | Complete | 2026-03-07 |
 | 18. Verification & Cleanup | v0.6.0 | 2/2 | Complete | 2026-03-07 |
+| 19. Hook Navigation + Cleanup | v0.7.0 | 0/0 | Not started | - |
+| 20. Lock-Aware Plugin Display | v0.7.0 | 0/0 | Not started | - |
+| 21. Visual Overlap Indicators | v0.7.0 | 0/0 | Not started | - |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-08 — v0.6.0 milestone shipped*
+*Last updated: 2026-03-08 -- v0.7.0 milestone roadmap created*
