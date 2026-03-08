@@ -5,6 +5,18 @@ All notable changes to the Claude Code Config Manager extension will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.6.0] - 2026-03-08
+
+### Added
+- ViewModel type system — BaseVM plus 15 per-type interfaces covering all tree node types, decoupling display state from raw config data
+- TreeViewModelBuilder that pre-computes override resolution, labels, descriptions, icons, and contextValues from raw ConfigStore data
+- WorkspaceFolderNode extracted as standalone file with vmToNode mapper for NodeKind-based dispatch
+- 23-test suite covering all 7 entity types, override resolution, and NodeContext preservation
+
+### Changed
+- All 14 tree node constructors migrated from ScopedConfig/allScopes parameters to typed ViewModel descriptors
+- ConfigTreeProvider wired to TreeViewModelBuilder with full bidirectional editor-tree sync preserved
+
 ## [0.5.0] - 2026-02-20
 
 ### Added
