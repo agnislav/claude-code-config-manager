@@ -134,6 +134,7 @@ export function activate(context: vscode.ExtensionContext): void {
         if (isReadOnly && node.nodeContext.scope === ConfigScope.User) {
           vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
         }
+        treeProvider.refresh();
         continue;
       }
 

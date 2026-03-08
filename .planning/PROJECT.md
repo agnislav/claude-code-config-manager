@@ -8,13 +8,9 @@ A VS Code extension that provides a visual config viewer and editor for Claude C
 
 Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
 
-## Current Milestone: v0.6.0 Decouple State from Tree
+## Current State
 
-**Goal:** Reduce tight coupling between tree nodes and ConfigStore so the data model is cleanly separated from the presentation layer.
-
-**Target features:**
-- Decouple tree node construction from direct ConfigStore access
-- Establish clear boundaries between state management and tree rendering
+Shipped v0.6.0 (2026-03-08). Tree nodes fully decoupled from ConfigStore via ViewModel layer. TreeViewModelBuilder pre-computes all display state; 14 node types accept typed VM descriptors. 23-test suite validates builder output.
 
 ## Next Milestone: v0.7.0 Visual Fidelity
 
@@ -65,11 +61,12 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 - ✓ All timeout values extracted to named constants — v0.5.0
 - ✓ User-facing messages centralized with "Claude Config:" prefix — v0.5.0
 - ✓ keyPath array access guarded with bounds checks — v0.5.0
+- ✓ Decouple tree node construction from direct ConfigStore access — v0.6.0
+- ✓ Establish clear boundaries between state management and tree rendering — v0.6.0
 
 ### Active
 
-- [ ] Decouple tree node construction from direct ConfigStore access
-- [ ] Establish clear boundaries between state management and tree rendering
+(No active requirements — next milestone not started)
 
 ### Out of Scope
 
@@ -90,7 +87,7 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 
 ## Context
 
-5,241 LOC TypeScript. Shipped v0.5.0 with comprehensive error handling, write-path validation, race condition prevention, and resource cleanup. Toolbar has 4 buttons: lock, filter, collapse, expand. All user-facing messages centralized with "Claude Config:" prefix. Write operations protected by in-flight tracking, path whitelisting, and traversal/symlink validation. Plugin and editValue inline buttons remain temporarily disabled. Starting v0.6.0 to decouple state from tree nodes. v0.7.0 Visual Fidelity (overlap indicators, lock enforcement, hook navigation) planned next with research complete.
+6,247 LOC TypeScript. Shipped v0.6.0 with full ViewModel layer decoupling tree nodes from ConfigStore. TreeViewModelBuilder pre-computes override resolution and display state for all 14 node types. 23-test suite validates builder across all 7 entity types. Toolbar has 4 buttons: lock, filter, collapse, expand. Write operations protected by in-flight tracking, path whitelisting, and traversal/symlink validation. Plugin and editValue inline buttons remain temporarily disabled. v0.7.0 Visual Fidelity (overlap indicators, lock enforcement, hook navigation) planned next with research complete.
 
 ## Constraints
 
@@ -127,6 +124,11 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 | MESSAGES object with functions for parameterized messages | Centralized, discoverable; consistent "Claude Config:" prefix | ✓ Good |
 | validateKeyPath returns boolean for guard pattern | Simple early-return; logs + shows error for bad state | ✓ Good |
 | Named constants for all timeout values | Discoverable in constants.ts; JSDoc explains rationale | ✓ Good |
+| Replicate formatting helpers in builder.ts | Avoids viewmodel→tree dependency; keeps layers independent | ✓ Good |
+| Static ConfigTreeNode.mapVM property | Breaks circular imports between vmToNode and node files | ✓ Good |
+| Hook entries as leaf nodes (no key-value children) | Cleaner UX; simplified tree structure for hook display | ✓ Good |
+| Eager VM build in constructor | Ensures initial tree render works without waiting for refresh | ✓ Good |
+| TDD Mocha UI for extension tests | VS Code extension test conventions; suite/test pattern | ✓ Good |
 
 ---
-*Last updated: 2026-03-05 after v0.6.0/v0.7.0 milestone restructure*
+*Last updated: 2026-03-08 after v0.6.0 milestone*

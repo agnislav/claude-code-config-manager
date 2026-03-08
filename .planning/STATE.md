@@ -1,43 +1,39 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.3
-milestone_name: milestone
-status: planning
-stopped_at: Phase 16 context gathered
-last_updated: "2026-03-06T17:05:53.640Z"
-last_activity: 2026-03-06 — Roadmap created for v0.6.0 (Phases 16-18)
+milestone: v0.6.0
+milestone_name: Decouple State from Tree
+status: completed
+stopped_at: Milestone v0.6.0 archived
+last_updated: "2026-03-08"
+last_activity: 2026-03-08 — v0.6.0 milestone archived
 progress:
   total_phases: 3
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 3
+  total_plans: 4
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-05)
+See: .planning/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
-**Current focus:** v0.6.0 Decouple State from Tree — Phase 16 (ViewModel Layer)
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 16 of 18 (ViewModel Layer)
-Plan: — (not yet planned)
-Status: Ready to plan
-Last activity: 2026-03-06 — Roadmap created for v0.6.0 (Phases 16-18)
+Milestone v0.6.0 shipped. No active milestone.
+Last activity: 2026-03-08 — v0.6.0 milestone archived
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 [░░░░░░░░░░] 0%
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓
 
 ## Pending Todos
 
 - Add "go to (scope/entity)" to the command palette (ui)
 - Multiselect for batch copy and move operations (ui)
-- Plugin checkbox state changes despite locked User scope (ui) — v0.7.0
-- Hook leaf click does not navigate editor to correct line (ui) — v0.7.0
 - Add visuals to address config entity overlapping across scopes (ui) — v0.7.0
 
 ## Blockers/Concerns
@@ -50,14 +46,18 @@ None.
 |---|-------------|------|--------|-----------|
 | 1 | Fix User scope lock feedback for plugin toggle | 2026-02-23 | e045596 | [1-fix-user-scope-lock-plugin-toggle-and-au](./quick/1-fix-user-scope-lock-plugin-toggle-and-au/) |
 
+## Decisions
+
+(Cleared — full decision log in PROJECT.md Key Decisions table)
+
 ## Session Continuity
 
-Last session: 2026-03-06T17:05:53.638Z
-Stopped at: Phase 16 context gathered
-Resume file: .planning/phases/16-viewmodel-layer/16-CONTEXT.md
-Next action: Plan Phase 16 (ViewModel Layer)
+Last session: 2026-03-08
+Stopped at: Milestone v0.6.0 archived
+Resume file: None
+Next action: Start next milestone with /gsd:new-milestone
 
 ---
 
 *State initialized: 2026-02-20*
-*Last updated: 2026-03-06 — v0.6.0 roadmap created*
+*Last updated: 2026-03-08 — v0.6.0 milestone complete*
