@@ -40,6 +40,49 @@
 
 ---
 
+## Milestone: v0.7.0 — Visual Fidelity
+
+**Shipped:** 2026-03-09
+**Phases:** 4 | **Plans:** 5 | **Commits:** ~30
+
+### What Was Built
+- Hook entry keyPath fix for correct JSON line navigation
+- Lock-aware plugin display with static icons replacing checkboxes when User scope is locked
+- Overlap resolver with nearest-neighbor algorithm for all 7 entity types
+- 4-directional overlap model (overrides/isOverriddenBy/duplicates/isDuplicatedBy)
+- Color-coded FileDecoration (red/green/yellow/orange) and MarkdownString tooltips for overlap
+- Legacy overrideResolver.ts and ResolvedValue fully removed
+
+### What Worked
+- Milestone audit caught 3 requirements with partial coverage (LOCK-01/02/03 missing tests), leading to Phase 22 gap closure
+- Independent phases (19, 20, 21) allowed parallel development flexibility
+- TDD on overlap resolver (Plan 21-01) caught edge cases early — all 25 tests written before implementation
+- Visual verification during Plan 21-02 caught 4 auto-fixable issues (permission overlap gaps, missing colors, broken codicons)
+
+### What Was Inefficient
+- Phase 20 executed outside GSD workflow — no SUMMARY.md generated, causing audit documentation gaps
+- Phase 22 SUMMARY frontmatter left empty `requirements_completed` despite closing LOCK-01/02/03
+- VERIFICATION.md Truth #2 for Phase 20 stated "no icon" for disabled plugins but code uses circle-slash — documentation didn't match code
+
+### Patterns Established
+- `resolveOverlapGeneric` pattern: shared generic helper with per-entity-type `getValue` callback
+- `buildOverlapTooltip` / `buildOverlapResourceUri`: builder helpers for overlap visualization
+- Git-themed ThemeColors for overlap: red (isOverriddenBy), green (overrides), yellow (duplicates), orange (isDuplicatedBy)
+- Milestone audit → gap closure phase pattern: audit identifies gaps, new phase closes them before shipping
+
+### Key Lessons
+1. Milestone audit before completion is high-value — caught LOCK test gaps that would have shipped without coverage
+2. Visual verification as final task (21-02 Task 3) found 4 issues invisible to unit tests — always verify UI changes visually
+3. When executing outside GSD workflow, manually create SUMMARY.md to maintain audit trail
+4. 4-directional overlap model is richer than boolean but simpler than a full graph — right level of abstraction
+
+### Cost Observations
+- Model mix: ~60% sonnet, ~40% opus (balanced profile)
+- Sessions: ~8 across 4 phases + audit + gap closure
+- Notable: Phase 21 was heaviest (2 plans, 45min for plan 02 including visual verification fixes)
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -47,14 +90,18 @@
 | Milestone | Commits | Phases | Key Change |
 |-----------|---------|--------|------------|
 | v0.6.0 | 10 | 3 | ViewModel layer introduced; first milestone with unit tests |
+| v0.7.0 | ~30 | 4 | Overlap system replacing override; milestone audit → gap closure pattern |
 
 ### Cumulative Quality
 
 | Milestone | Tests | LOC | Key Addition |
 |-----------|-------|-----|--------------|
 | v0.6.0 | 23 | 6,247 | First test infrastructure; ViewModel decoupling |
+| v0.7.0 | 56 | 5,672 | Overlap resolver tests (+25), lock tests (+3); legacy code removed (-575 LOC) |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Additive-first phases (new files before modifying old ones) reduce risk and enable safer migration
 2. Pre-computing display state in a builder yields simpler, more testable node constructors
+3. Milestone audit before completion catches test coverage gaps that would ship undetected
+4. Visual verification as final step catches UI issues invisible to unit tests

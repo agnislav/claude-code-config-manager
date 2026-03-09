@@ -5,6 +5,28 @@ All notable changes to the Claude Code Config Manager extension will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.7.0] - 2026-03-09
+
+### Added
+- Cross-scope overlap indicators — hovering over entities (settings, env vars, plugins, MCP servers, sandbox properties, permissions) that exist in multiple scopes shows a tooltip listing all scopes, their values, and override relationships
+- Color-coded FileDecoration for overlapping entities — red (shadowed), green (winning override), yellow (winning duplicate), orange (duplicated by same value)
+- Overlap resolver with nearest-neighbor algorithm and 4-directional model (overrides, isOverriddenBy, duplicates, isDuplicatedBy)
+- Lock-aware plugin display — when User scope is locked, enabled plugins show checkmark icon and disabled plugins show circle-slash icon instead of interactive checkboxes
+- Lock test coverage — 3 automated test cases for LOCK-01/02/03 requirements
+
+### Changed
+- Replaced legacy override system (overrideResolver.ts, ResolvedValue, isOverridden) with new overlap system using OverlapInfo on NodeContext
+- Lock toggle now refreshes plugin nodes between checkbox and static icon modes
+- Permission overlap detection expanded to include same-category duplicates and downward cross-category overrides
+
+### Removed
+- `overrideResolver.ts` — replaced by `overlapResolver.ts`
+- `ResolvedValue` type — replaced by `OverlapInfo`
+- `HookKeyValueNode`, `HookKeyValueVM`, `buildHookKeyValueVM` — dead code from v0.6.0
+
+### Fixed
+- Hook entry click now navigates to correct JSON line (fixed keyPath to include intermediate `hooks` segment)
+
 ## [0.6.0] - 2026-03-08
 
 ### Added

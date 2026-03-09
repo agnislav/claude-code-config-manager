@@ -10,16 +10,7 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 
 ## Current State
 
-Shipped v0.6.0 (2026-03-08). Tree nodes fully decoupled from ConfigStore via ViewModel layer. TreeViewModelBuilder pre-computes all display state; 14 node types accept typed VM descriptors. 23-test suite validates builder output.
-
-## Current Milestone: v0.7.0 Visual Fidelity
-
-**Goal:** Make the tree reflect true state — overlaps visible across scopes, lock toggle respected by plugin checkbox, hook leaf navigation correct.
-
-**Target features:**
-- Visual overlap indicators (description text, badge, tooltip) for config entities across multiple scopes
-- Fix plugin checkbox toggling despite locked User scope
-- Fix hook leaf click navigating editor to wrong JSON line
+Shipped v0.7.0 (2026-03-09). Tree reflects true state with cross-scope overlap indicators, lock-aware plugin display, and correct hook navigation. Legacy override system replaced with 4-directional overlap model. 56-test suite validates builder and overlap resolver.
 
 ## Requirements
 
@@ -63,26 +54,26 @@ Shipped v0.6.0 (2026-03-08). Tree nodes fully decoupled from ConfigStore via Vie
 - ✓ keyPath array access guarded with bounds checks — v0.5.0
 - ✓ Decouple tree node construction from direct ConfigStore access — v0.6.0
 - ✓ Establish clear boundaries between state management and tree rendering — v0.6.0
+- ✓ Overlap tooltips listing all scopes where an entity appears with values and override status — v0.7.0
+- ✓ Overlap detection independent from override detection (new fields, not reusing isOverridden) — v0.7.0
+- ✓ Lock-aware plugin display — locked User scope shows static icons instead of checkboxes — v0.7.0
+- ✓ Lock toggle refreshes plugin display between checkbox and icon modes — v0.7.0
+- ✓ Hook entry click navigates to correct JSON line — v0.7.0
+- ✓ Dead HookKeyValue code removed — v0.7.0
 
 ### Active
 
-- [ ] Visual overlap indicators (description text, badge, tooltip) for config entities across multiple scopes
-- [ ] Fix plugin checkbox toggling despite locked User scope
-- [ ] Fix hook leaf click navigating editor to wrong JSON line
-- [ ] Clean up dead HookKeyValueVM/Node/builder code from v0.6.0
+(None — start next milestone to define requirements)
 
 ### Out of Scope
 
 - Add "go to (scope/entity)" to the command palette — deferred to future milestone
 - Multiselect for batch copy and move operations — deferred to future milestone
 - Replace sync file I/O with async in diagnostics validation — deferred, internal quality
-- Add memoization to override resolver functions — deferred, internal quality
-- Visual overlap indicators for config entities across scopes — moved to Active (v0.7.0)
-- Fix plugin checkbox toggling despite locked User scope — moved to Active (v0.7.0)
-- Fix hook leaf click navigating editor to wrong JSON line — moved to Active (v0.7.0)
 - Add JSDoc documentation for exported functions — deferred, internal quality
 - EditValue inline improvements — deferred to separate phase
-- Overridden entities visual management — deferred to separate milestone
+- Overlap description text ("also in [Scope]") on tree items — deferred enhancement (OVLP-03)
+- Overlap FileDecoration badge ("2x") for multi-scope entities — deferred enhancement (OVLP-04)
 - Sort items — deferred to separate task
 - Plugin inline buttons (move/copy/delete) — temporarily disabled, re-enable in future
 - Marketplace publishing — personal tool, not targeting public release
@@ -90,7 +81,7 @@ Shipped v0.6.0 (2026-03-08). Tree nodes fully decoupled from ConfigStore via Vie
 
 ## Context
 
-6,247 LOC TypeScript. Shipped v0.6.0 with full ViewModel layer decoupling tree nodes from ConfigStore. TreeViewModelBuilder pre-computes override resolution and display state for all 14 node types. 23-test suite validates builder across all 7 entity types. Toolbar has 4 buttons: lock, filter, collapse, expand. Write operations protected by in-flight tracking, path whitelisting, and traversal/symlink validation. Plugin and editValue inline buttons remain temporarily disabled. v0.7.0 Visual Fidelity (overlap indicators, lock enforcement, hook navigation) planned next with research complete.
+5,672 LOC TypeScript. Shipped v0.7.0 with cross-scope overlap indicators, lock-aware plugin display, and corrected hook navigation. OverlapResolver uses nearest-neighbor algorithm with 4-directional model (overrides, isOverriddenBy, duplicates, isDuplicatedBy) for all entity types. Color-coded FileDecoration (red/green/yellow/orange) and MarkdownString tooltips show overlap relationships. 56-test suite validates builder and overlap resolver. Legacy overrideResolver.ts and ResolvedValue type fully removed. Plugin and editValue inline buttons remain temporarily disabled.
 
 ## Constraints
 
@@ -132,6 +123,12 @@ Shipped v0.6.0 (2026-03-08). Tree nodes fully decoupled from ConfigStore via Vie
 | Hook entries as leaf nodes (no key-value children) | Cleaner UX; simplified tree structure for hook display | ✓ Good |
 | Eager VM build in constructor | Ensures initial tree render works without waiting for refresh | ✓ Good |
 | TDD Mocha UI for extension tests | VS Code extension test conventions; suite/test pattern | ✓ Good |
+| Generic resolveOverlapGeneric helper (6 of 7 resolvers) | Permission resolver special-cased for glob matching; rest share generic pattern | ✓ Good |
+| Deep equality with sorted-key comparison | Array order preserved, object key order normalized; correct semantic equality | ✓ Good |
+| 4-directional overlap model (overrides/isOverriddenBy/duplicates/isDuplicatedBy) | Distinguishes direction and equality; richer than boolean isOverridden | ✓ Good |
+| Orange color for isDuplicatedBy (distinct from red isOverriddenBy) | Clear visual distinction between "shadowed by different value" and "duplicated by same value" | ✓ Good |
+| Plugin overlap color takes precedence over disabled decoration | Overlap is more informative than disabled state; both visible in tooltip | ✓ Good |
+| Lock-aware static icons instead of disabled checkboxes | VS Code has no disabled checkbox state; icons communicate unclickable clearly | ✓ Good |
 
 ---
-*Last updated: 2026-03-08 after v0.7.0 milestone start*
+*Last updated: 2026-03-09 after v0.7.0 milestone*
