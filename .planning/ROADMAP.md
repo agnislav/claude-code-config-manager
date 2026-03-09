@@ -1,7 +1,7 @@
 # Roadmap: Claude Code Config Manager
 
 **Created:** 2026-02-18
-**Updated:** 2026-03-08
+**Updated:** 2026-03-09
 **Status:** v0.3.x-v0.6.0 complete (Phases 1-18), v0.7.0 in progress (Phases 19-21)
 
 ---
@@ -97,7 +97,9 @@
   1. When User scope is locked, enabled plugins show a checkmark icon instead of a checkbox
   2. When User scope is locked, disabled plugins show no icon instead of a checkbox
   3. Toggling the lock off restores checkboxes on plugin nodes; toggling it on removes them again
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 20-01-PLAN.md — Conditional icon/checkbox in buildPlugins based on lock state
 
 ### Phase 21: Visual Overlap Indicators
 **Goal**: Users can see when config entities exist in multiple scopes via tooltip information showing each scope's value
@@ -137,10 +139,10 @@ Phases execute in numeric order: 19 → 20 → 21
 | 17. Node Migration | v0.6.0 | 1/1 | Complete | 2026-03-07 |
 | 18. Verification & Cleanup | v0.6.0 | 2/2 | Complete | 2026-03-07 |
 | 19. Hook Navigation + Cleanup | 1/1 | Complete    | 2026-03-08 | - |
-| 20. Lock-Aware Plugin Display | v0.7.0 | 0/0 | Not started | - |
+| 20. Lock-Aware Plugin Display | v0.7.0 | 0/1 | Not started | - |
 | 21. Visual Overlap Indicators | v0.7.0 | 0/0 | Not started | - |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-08 -- v0.7.0 milestone roadmap created*
+*Last updated: 2026-03-09 -- Phase 20 plan created*
