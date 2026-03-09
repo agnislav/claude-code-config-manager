@@ -75,7 +75,7 @@
 
 - [x] **Phase 19: Hook Navigation + Cleanup** - Fix hook leaf editor navigation and remove dead HookKeyValue code (completed 2026-03-08)
 - [ ] **Phase 20: Lock-Aware Plugin Display** - Replace plugin checkboxes with static icons when User scope is locked
-- [ ] **Phase 21: Visual Overlap Indicators** - Show cross-scope overlap via tooltips for config entities
+- [x] **Phase 21: Visual Overlap Indicators** - Show cross-scope overlap via tooltips for config entities (completed 2026-03-09)
 
 ## Phase Details
 
@@ -109,7 +109,7 @@ Plans:
   1. Hovering over a config entity (setting, env var, plugin, MCP server, sandbox property) that exists in multiple scopes shows a tooltip listing all scopes where it appears, with each scope's value and override status
   2. Overlap detection uses separate data fields from override detection (not reusing isOverridden)
   3. Entities that exist in only one scope show no overlap tooltip content
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 21-01-PLAN.md — Create overlap resolver, types, decoration provider, and tests (completed 2026-03-09)
 - [ ] 21-02-PLAN.md — Migrate builder to overlap system, register decorations, delete old code
@@ -143,7 +143,7 @@ Phases execute in numeric order: 19 → 20 → 21
 | 18. Verification & Cleanup | v0.6.0 | 2/2 | Complete | 2026-03-07 |
 | 19. Hook Navigation + Cleanup | 1/1 | Complete    | 2026-03-08 | - |
 | 20. Lock-Aware Plugin Display | v0.7.0 | 0/1 | Not started | - |
-| 21. Visual Overlap Indicators | v0.7.0 | 1/2 | In progress | - |
+| 21. Visual Overlap Indicators | 2/2 | Complete   | 2026-03-09 | - |
 
 ---
 
