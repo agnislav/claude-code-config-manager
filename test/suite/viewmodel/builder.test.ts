@@ -646,3 +646,76 @@ suite('NodeContext Preservation (TEST-03)', () => {
     );
   });
 });
+
+// ── Lock-Aware Plugin Display Tests (LOCK-01/02/03) ─────────────
+
+suite('Lock-Aware Plugin Display (LOCK-01/02/03)', () => {
+  test('LOCK-01: locked enabled plugin shows check icon, no checkbox', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(
+        ConfigScope.User,
+        { enabledPlugins: { 'my-plugin': true } },
+        { isReadOnly: true },
+      ),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const plugin = findVM(vms, NodeKind.Plugin, 'my-plugin');
+    assert.ok(plugin, 'Plugin should exist');
+    assert.strictEqual(plugin.icon?.id, 'check', 'Locked enabled plugin should show check icon');
+    assert.strictEqual(plugin.checkboxState, undefined, 'Locked plugin should have no checkbox');
+  });
+
+  test('LOCK-02: locked disabled plugin shows disabled icon, no checkbox', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(
+        ConfigScope.User,
+        { enabledPlugins: { 'my-plugin': false } },
+        { isReadOnly: true },
+      ),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const plugin = findVM(vms, NodeKind.Plugin, 'my-plugin');
+    assert.ok(plugin, 'Plugin should exist');
+    assert.strictEqual(
+      plugin.icon?.id,
+      'circle-slash',
+      'Locked disabled plugin should show circle-slash icon',
+    );
+    assert.strictEqual(plugin.checkboxState, undefined, 'Locked plugin should have no checkbox');
+  });
+
+  test('LOCK-03: unlocking restores checkboxes', () => {
+    const pluginConfig = { enabledPlugins: { 'my-plugin': true, 'other': false } };
+
+    // Locked state
+    const lockedConfigs = [
+      makeScopedConfig(ConfigScope.User, pluginConfig, { isReadOnly: true }),
+    ];
+    const lockedVMs = new TreeViewModelBuilder(createMockConfigStore(lockedConfigs)).build();
+    const lockedEnabled = findVM(lockedVMs, NodeKind.Plugin, 'my-plugin');
+    const lockedDisabled = findVM(lockedVMs, NodeKind.Plugin, 'other');
+    assert.strictEqual(lockedEnabled?.checkboxState, undefined, 'Locked: no checkbox on enabled');
+    assert.strictEqual(lockedDisabled?.checkboxState, undefined, 'Locked: no checkbox on disabled');
+
+    // Unlocked state
+    const unlockedConfigs = [makeScopedConfig(ConfigScope.User, pluginConfig)];
+    const unlockedVMs = new TreeViewModelBuilder(createMockConfigStore(unlockedConfigs)).build();
+    const unlockedEnabled = findVM(unlockedVMs, NodeKind.Plugin, 'my-plugin');
+    const unlockedDisabled = findVM(unlockedVMs, NodeKind.Plugin, 'other');
+    assert.strictEqual(
+      unlockedEnabled?.checkboxState,
+      vscode.TreeItemCheckboxState.Checked,
+      'Unlocked: enabled plugin has Checked checkbox',
+    );
+    assert.strictEqual(unlockedEnabled?.icon?.id, 'extensions', 'Unlocked: extensions icon');
+    assert.strictEqual(
+      unlockedDisabled?.checkboxState,
+      vscode.TreeItemCheckboxState.Unchecked,
+      'Unlocked: disabled plugin has Unchecked checkbox',
+    );
+  });
+});
