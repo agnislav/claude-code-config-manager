@@ -409,9 +409,9 @@ suite('Override Resolution (TEST-02)', () => {
 
     const userSetting = findVM(userScope.children, NodeKind.Setting, 'model');
     assert.ok(userSetting, 'User setting "model" should exist');
-    assert.strictEqual(userSetting.nodeContext.isOverridden, true, 'Should be overridden');
+    assert.ok(userSetting.nodeContext.overlap.isOverriddenBy, 'Should be overridden');
     assert.strictEqual(
-      userSetting.nodeContext.overriddenByScope,
+      userSetting.nodeContext.overlap.isOverriddenBy?.scope,
       ConfigScope.ProjectLocal,
       'Should be overridden by ProjectLocal',
     );
@@ -440,7 +440,7 @@ suite('Override Resolution (TEST-02)', () => {
 
     const localSetting = findVM(localScope.children, NodeKind.Setting, 'model');
     assert.ok(localSetting, 'ProjectLocal setting "model" should exist');
-    assert.strictEqual(localSetting.nodeContext.isOverridden, false, 'Should NOT be overridden');
+    assert.strictEqual(localSetting.nodeContext.overlap.isOverriddenBy, undefined, 'Should NOT be overridden');
     assert.ok(
       !localSetting.contextValue.includes('overridden'),
       'contextValue should NOT include "overridden"',
@@ -495,9 +495,9 @@ suite('Override Resolution (TEST-02)', () => {
 
     const userEnvVar = findVM(userScope.children, NodeKind.EnvVar, 'API_KEY');
     assert.ok(userEnvVar, 'User env var "API_KEY" should exist');
-    assert.strictEqual(userEnvVar.nodeContext.isOverridden, true, 'Should be overridden');
+    assert.ok(userEnvVar.nodeContext.overlap.isOverriddenBy, 'Should be overridden');
     assert.strictEqual(
-      userEnvVar.nodeContext.overriddenByScope,
+      userEnvVar.nodeContext.overlap.isOverriddenBy?.scope,
       ConfigScope.ProjectShared,
       'Should be overridden by ProjectShared',
     );
@@ -520,9 +520,8 @@ suite('Override Resolution (TEST-02)', () => {
 
     const userRule = findVM(userScope.children, NodeKind.PermissionRule, 'Bash(*)');
     assert.ok(userRule, 'User permission rule "Bash(*)" should exist');
-    assert.strictEqual(
-      userRule.nodeContext.isOverridden,
-      true,
+    assert.ok(
+      userRule.nodeContext.overlap.isOverriddenBy,
       'Allow rule should be overridden by deny in higher scope',
     );
   });
@@ -613,13 +612,12 @@ suite('NodeContext Preservation (TEST-03)', () => {
 
     const userSetting = findVM(userScope.children, NodeKind.Setting, 'model');
     assert.ok(userSetting, 'User setting should exist');
-    assert.strictEqual(
-      userSetting.nodeContext.isOverridden,
-      true,
+    assert.ok(
+      userSetting.nodeContext.overlap.isOverriddenBy,
       'User setting should be overridden by Managed',
     );
     assert.strictEqual(
-      userSetting.nodeContext.overriddenByScope,
+      userSetting.nodeContext.overlap.isOverriddenBy?.scope,
       ConfigScope.Managed,
       'Should be overridden by Managed scope',
     );

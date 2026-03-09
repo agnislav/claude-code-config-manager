@@ -162,19 +162,6 @@ export interface ScopedConfig {
   isReadOnly: boolean;
 }
 
-// ── Override resolution ─────────────────────────────────────────
-
-/**
- * @deprecated Will be removed in Plan 02 when overrideResolver.ts is deleted.
- * Use OverlapInfo from overlapResolver.ts instead.
- */
-export interface ResolvedValue<T = unknown> {
-  effectiveValue: T;
-  definedInScope: ConfigScope;
-  isOverridden: boolean;
-  overriddenByScope?: ConfigScope;
-}
-
 // ── Overlap types ───────────────────────────────────────────────
 
 export interface OverlapItem {

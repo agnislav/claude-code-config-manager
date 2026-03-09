@@ -36,17 +36,17 @@ function makeScopedConfig(
 
 // ── Tests ─────────────────────────────────────────────────────────
 
-describe('overlapResolver', () => {
-  describe('deepEqual', () => {
-    it('should treat objects with different key order as equal', () => {
+suite('overlapResolver', () => {
+  suite('deepEqual', () => {
+    test('should treat objects with different key order as equal', () => {
       assert.strictEqual(deepEqual({ a: 1, b: 2 }, { b: 2, a: 1 }), true);
     });
 
-    it('should treat arrays with different order as not equal', () => {
+    test('should treat arrays with different order as not equal', () => {
       assert.strictEqual(deepEqual([1, 2], [2, 1]), false);
     });
 
-    it('should compare primitives correctly', () => {
+    test('should compare primitives correctly', () => {
       assert.strictEqual(deepEqual('hello', 'hello'), true);
       assert.strictEqual(deepEqual(42, 42), true);
       assert.strictEqual(deepEqual(true, true), true);
@@ -54,13 +54,13 @@ describe('overlapResolver', () => {
       assert.strictEqual(deepEqual(1, 2), false);
     });
 
-    it('should handle null and undefined', () => {
+    test('should handle null and undefined', () => {
       assert.strictEqual(deepEqual(null, null), true);
       assert.strictEqual(deepEqual(undefined, undefined), true);
       assert.strictEqual(deepEqual(null, undefined), false);
     });
 
-    it('should handle nested objects', () => {
+    test('should handle nested objects', () => {
       assert.strictEqual(
         deepEqual({ a: { b: 1, c: 2 } }, { a: { c: 2, b: 1 } }),
         true,
@@ -68,42 +68,42 @@ describe('overlapResolver', () => {
     });
   });
 
-  describe('getOverlapColor', () => {
-    it('should return red for isOverriddenBy', () => {
+  suite('getOverlapColor', () => {
+    test('should return red for isOverriddenBy', () => {
       const overlap: OverlapInfo = {
         isOverriddenBy: { scope: ConfigScope.ProjectLocal, value: 'x' },
       };
       assert.strictEqual(getOverlapColor(overlap), 'red');
     });
 
-    it('should return red for isDuplicatedBy', () => {
+    test('should return red for isDuplicatedBy', () => {
       const overlap: OverlapInfo = {
         isDuplicatedBy: { scope: ConfigScope.ProjectLocal, value: 'x' },
       };
       assert.strictEqual(getOverlapColor(overlap), 'red');
     });
 
-    it('should return green for overrides', () => {
+    test('should return green for overrides', () => {
       const overlap: OverlapInfo = {
         overrides: { scope: ConfigScope.User, value: 'x' },
       };
       assert.strictEqual(getOverlapColor(overlap), 'green');
     });
 
-    it('should return yellow for duplicates', () => {
+    test('should return yellow for duplicates', () => {
       const overlap: OverlapInfo = {
         duplicates: { scope: ConfigScope.ProjectShared, value: 'x' },
       };
       assert.strictEqual(getOverlapColor(overlap), 'yellow');
     });
 
-    it('should return none for empty overlap', () => {
+    test('should return none for empty overlap', () => {
       assert.strictEqual(getOverlapColor({}), 'none');
     });
   });
 
-  describe('resolveSettingOverlap', () => {
-    it('should detect isOverriddenBy when higher-precedence scope has different value', () => {
+  suite('resolveSettingOverlap', () => {
+    test('should detect isOverriddenBy when higher-precedence scope has different value', () => {
       const scopes = [
         makeScopedConfig(ConfigScope.User, { model: 'opus' }),
         makeScopedConfig(ConfigScope.ProjectLocal, { model: 'sonnet' }),
@@ -115,7 +115,7 @@ describe('overlapResolver', () => {
       });
     });
 
-    it('should detect overrides when current scope overrides lower-precedence scope', () => {
+    test('should detect overrides when current scope overrides lower-precedence scope', () => {
       const scopes = [
         makeScopedConfig(ConfigScope.User, { model: 'opus' }),
         makeScopedConfig(ConfigScope.ProjectLocal, { model: 'sonnet' }),
@@ -127,7 +127,7 @@ describe('overlapResolver', () => {
       });
     });
 
-    it('should return empty overlap when entity exists in only one scope', () => {
+    test('should return empty overlap when entity exists in only one scope', () => {
       const scopes = [makeScopedConfig(ConfigScope.User, { model: 'opus' })];
       const result = resolveSettingOverlap('model', ConfigScope.User, scopes);
       assert.strictEqual(result.overrides, undefined);
@@ -137,8 +137,8 @@ describe('overlapResolver', () => {
     });
   });
 
-  describe('resolveEnvOverlap', () => {
-    it('should detect isDuplicatedBy when same value in higher-precedence scope', () => {
+  suite('resolveEnvOverlap', () => {
+    test('should detect isDuplicatedBy when same value in higher-precedence scope', () => {
       const scopes = [
         makeScopedConfig(ConfigScope.User, { env: { FOO: 'bar' } }),
         makeScopedConfig(ConfigScope.ProjectLocal, { env: { FOO: 'bar' } }),
@@ -150,14 +150,14 @@ describe('overlapResolver', () => {
       });
     });
 
-    it('should return empty overlap when entity exists in only one scope', () => {
+    test('should return empty overlap when entity exists in only one scope', () => {
       const scopes = [makeScopedConfig(ConfigScope.User, { env: { FOO: 'bar' } })];
       const result = resolveEnvOverlap('FOO', ConfigScope.User, scopes);
       assert.strictEqual(result.isOverriddenBy, undefined);
       assert.strictEqual(result.isDuplicatedBy, undefined);
     });
 
-    it('should detect isOverriddenBy when different value in higher-precedence scope', () => {
+    test('should detect isOverriddenBy when different value in higher-precedence scope', () => {
       const scopes = [
         makeScopedConfig(ConfigScope.User, { env: { FOO: 'bar' } }),
         makeScopedConfig(ConfigScope.ProjectLocal, { env: { FOO: 'baz' } }),
@@ -170,8 +170,8 @@ describe('overlapResolver', () => {
     });
   });
 
-  describe('resolvePluginOverlap', () => {
-    it('should detect isOverriddenBy when values differ', () => {
+  suite('resolvePluginOverlap', () => {
+    test('should detect isOverriddenBy when values differ', () => {
       const scopes = [
         makeScopedConfig(ConfigScope.User, { enabledPlugins: { myPlugin: true } }),
         makeScopedConfig(ConfigScope.ProjectLocal, { enabledPlugins: { myPlugin: false } }),
@@ -183,7 +183,7 @@ describe('overlapResolver', () => {
       });
     });
 
-    it('should detect isDuplicatedBy when same value', () => {
+    test('should detect isDuplicatedBy when same value', () => {
       const scopes = [
         makeScopedConfig(ConfigScope.User, { enabledPlugins: { myPlugin: true } }),
         makeScopedConfig(ConfigScope.ProjectLocal, { enabledPlugins: { myPlugin: true } }),
@@ -196,8 +196,8 @@ describe('overlapResolver', () => {
     });
   });
 
-  describe('resolveMcpOverlap', () => {
-    it('should detect duplicates for same MCP server config', () => {
+  suite('resolveMcpOverlap', () => {
+    test('should detect duplicates for same MCP server config', () => {
       const serverConfig = { command: 'npx', args: ['-y', 'server'] };
       const scopes = [
         makeScopedConfig(ConfigScope.User, {}, {
@@ -216,7 +216,7 @@ describe('overlapResolver', () => {
       });
     });
 
-    it('should detect override for different MCP server config', () => {
+    test('should detect override for different MCP server config', () => {
       const scopes = [
         makeScopedConfig(ConfigScope.User, {}, {
           mcpConfig: { mcpServers: { myserver: { command: 'npx', args: ['old'] } } },
@@ -233,8 +233,8 @@ describe('overlapResolver', () => {
     });
   });
 
-  describe('resolveSandboxOverlap', () => {
-    it('should detect override for sandbox enabled with different values', () => {
+  suite('resolveSandboxOverlap', () => {
+    test('should detect override for sandbox enabled with different values', () => {
       const scopes = [
         makeScopedConfig(ConfigScope.User, { sandbox: { enabled: true } }),
         makeScopedConfig(ConfigScope.ProjectLocal, { sandbox: { enabled: false } }),
@@ -246,7 +246,7 @@ describe('overlapResolver', () => {
       });
     });
 
-    it('should handle nested sandbox keys', () => {
+    test('should handle nested sandbox keys', () => {
       const scopes = [
         makeScopedConfig(ConfigScope.User, {
           sandbox: { network: { allowedDomains: ['a.com'] } },
@@ -263,8 +263,8 @@ describe('overlapResolver', () => {
     });
   });
 
-  describe('resolvePermissionOverlap', () => {
-    it('should detect override when same rule in different category across scopes', () => {
+  suite('resolvePermissionOverlap', () => {
+    test('should detect override when same rule in different category across scopes', () => {
       const scopes = [
         makeScopedConfig(ConfigScope.User, {
           permissions: { allow: ['Bash(curl *)'] },
@@ -283,7 +283,7 @@ describe('overlapResolver', () => {
       assert.strictEqual(result.overriddenByCategory, PermissionCategory.Deny);
     });
 
-    it('should not set overrides/duplicates for permissions (only isOverriddenBy direction)', () => {
+    test('should not set overrides/duplicates for permissions (only isOverriddenBy direction)', () => {
       const scopes = [
         makeScopedConfig(ConfigScope.Managed, {
           permissions: { deny: ['Bash(curl *)'] },
@@ -303,8 +303,8 @@ describe('overlapResolver', () => {
     });
   });
 
-  describe('nearest-neighbor', () => {
-    it('should skip intermediate scopes to find closest neighbor', () => {
+  suite('nearest-neighbor', () => {
+    test('should skip intermediate scopes to find closest neighbor', () => {
       // Managed > ProjectLocal > ProjectShared > User
       // Setting "model" defined in Managed and User but NOT in ProjectLocal/ProjectShared
       const scopes = [
