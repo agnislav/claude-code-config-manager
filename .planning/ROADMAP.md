@@ -76,7 +76,7 @@
 - [x] **Phase 19: Hook Navigation + Cleanup** - Fix hook leaf editor navigation and remove dead HookKeyValue code (completed 2026-03-08)
 - [x] **Phase 20: Lock-Aware Plugin Display** - Replace plugin checkboxes with static icons when User scope is locked (completed 2026-03-09)
 - [x] **Phase 21: Visual Overlap Indicators** - Show cross-scope overlap via tooltips for config entities (completed 2026-03-09)
-- [ ] **Phase 22: Lock Test Coverage & Doc Cleanup** - Add missing LOCK test cases and fix documentation gaps from audit
+- [x] **Phase 22: Lock Test Coverage & Doc Cleanup** - Add missing LOCK test cases and fix documentation gaps from audit (completed 2026-03-09)
 
 ## Phase Details
 
@@ -124,9 +124,9 @@ Plans:
   1. builder.test.ts contains test cases for LOCK-01 (locked enabled plugin shows checkmark icon), LOCK-02 (locked disabled plugin shows no icon), LOCK-03 (unlock restores checkboxes)
   2. REQUIREMENTS.md checkboxes for LOCK-01, LOCK-02, LOCK-03 are checked
   3. All tests pass (`npm run test`)
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 22-01-PLAN.md — Add LOCK-01/02/03 test cases and update REQUIREMENTS.md
+- [x] 22-01-PLAN.md — Add LOCK-01/02/03 test cases and update REQUIREMENTS.md (completed 2026-03-09)
 
 ---
 
@@ -158,9 +158,9 @@ Phases execute in numeric order: 19 → 20 → 21 → 22
 | 19. Hook Navigation + Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-08 |
 | 20. Lock-Aware Plugin Display | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 | 21. Visual Overlap Indicators | v0.7.0 | 2/2 | Complete | 2026-03-09 |
-| 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 0/1 | Not started | - |
+| 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-09 -- Phase 22 gap closure added from milestone audit*
+*Last updated: 2026-03-09 -- Phase 22 complete, all v0.7.0 phases done*
