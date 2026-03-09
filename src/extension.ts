@@ -16,6 +16,7 @@ import { findKeyPathAtLine } from './utils/jsonLocation';
 import { SectionType, ConfigScope } from './types';
 import { SECTION_LABELS, SECTION_ICONS, EDITOR_SYNC_SUPPRESS_MS, TREE_SYNC_SUPPRESS_MS, EDITOR_TREE_SYNC_DEBOUNCE_MS, DEACTIVATION_POLL_INTERVAL_MS, DEACTIVATION_MAX_WAIT_MS, MESSAGES } from './constants';
 import { LockDecorationProvider } from './tree/lockDecorations';
+import { OverlapDecorationProvider } from './tree/overlapDecorations';
 
 // Module-scope map for tracking editor-tree sync timeouts
 const syncTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
@@ -253,6 +254,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // 9. Register file decoration providers
   const pluginDecorations = new PluginDecorationProvider();
   const lockDecorations = new LockDecorationProvider();
+  const overlapDecorations = new OverlapDecorationProvider();
 
   // 10. Push disposables
   context.subscriptions.push(
@@ -261,6 +263,7 @@ export function activate(context: vscode.ExtensionContext): void {
     togglePluginCmd, outputChannel,
     vscode.window.registerFileDecorationProvider(pluginDecorations),
     vscode.window.registerFileDecorationProvider(lockDecorations),
+    vscode.window.registerFileDecorationProvider(overlapDecorations),
     onSelectionChange, onEditorChange,
   );
 

@@ -1,8 +1,8 @@
 # Roadmap: Claude Code Config Manager
 
 **Created:** 2026-02-18
-**Updated:** 2026-03-08
-**Status:** v0.3.x-v0.6.0 complete (Phases 1-18)
+**Updated:** 2026-03-09
+**Status:** v0.3.x-v0.7.0 complete (Phases 1-22)
 
 ---
 
@@ -13,6 +13,7 @@
 - ✅ **v0.4.1 Node Display Polish** — Phase 9 (shipped 2026-02-20)
 - ✅ **v0.5.0 Hardening** — Phases 10-15 (shipped 2026-02-21)
 - ✅ **v0.6.0 Decouple State from Tree** — Phases 16-18 (shipped 2026-03-08)
+- ✅ **v0.7.0 Visual Fidelity** — Phases 19-22 (shipped 2026-03-09)
 
 ---
 
@@ -64,6 +65,16 @@
 
 </details>
 
+<details>
+<summary>✅ v0.7.0 Visual Fidelity (Phases 19-22) — SHIPPED 2026-03-09</summary>
+
+- [x] Phase 19: Hook Navigation + Cleanup (1/1 plan) — completed 2026-03-08
+- [x] Phase 20: Lock-Aware Plugin Display (1/1 plan) — completed 2026-03-09
+- [x] Phase 21: Visual Overlap Indicators (2/2 plans) — completed 2026-03-09
+- [x] Phase 22: Lock Test Coverage & Doc Cleanup (1/1 plan) — completed 2026-03-09
+
+</details>
+
 ---
 
 ## Progress
@@ -88,8 +99,12 @@
 | 16. ViewModel Layer | v0.6.0 | 1/1 | Complete | 2026-03-06 |
 | 17. Node Migration | v0.6.0 | 1/1 | Complete | 2026-03-07 |
 | 18. Verification & Cleanup | v0.6.0 | 2/2 | Complete | 2026-03-07 |
+| 19. Hook Navigation + Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-08 |
+| 20. Lock-Aware Plugin Display | v0.7.0 | 1/1 | Complete | 2026-03-09 |
+| 21. Visual Overlap Indicators | v0.7.0 | 2/2 | Complete | 2026-03-09 |
+| 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-08 — v0.6.0 milestone shipped*
+*Last updated: 2026-03-09 — v0.7.0 Visual Fidelity shipped*

@@ -1,5 +1,30 @@
 # Milestones: Claude Code Config Manager
 
+## v0.7.0 — Visual Fidelity (Complete)
+
+**Completed:** 2026-03-09
+**Phases:** 19–22 (4 phases, 5 plans)
+**Requirements:** 7/7 satisfied
+**Git range:** v0.6.0..HEAD (~30 commits)
+**LOC:** 5,672 TypeScript (+1,002 / -423 source changes)
+
+Made the tree reflect true state — overlaps visible across scopes, lock toggle respected by plugin display, hook leaf navigation correct. Replaced the legacy override system with a new 4-directional overlap model.
+
+**Key accomplishments:**
+- Fixed hook entry keyPath navigation — clicking hook entries now opens correct JSON line
+- Lock-aware plugin display — locked User scope shows static icons instead of interactive checkboxes
+- Overlap resolver with nearest-neighbor algorithm for all 7 entity types
+- Color-coded overlap indicators (red/green/yellow/orange) with git-themed FileDecoration
+- Overlap tooltips showing scope/value/relationship details on overlapping entities
+- Replaced legacy override system with new overlap system — clean break from old code
+
+### Tech Debt
+
+- Phase 20 missing SUMMARY.md (executed outside GSD workflow, verified via VERIFICATION.md)
+- Phase 22 SUMMARY frontmatter has empty requirements_completed (documentation-only)
+
+---
+
 ## v0.6.0 — Decouple State from Tree (Complete)
 
 **Completed:** 2026-03-08

@@ -304,6 +304,7 @@ suite('Entity Types (TEST-01)', () => {
       vscode.TreeItemCheckboxState.Unchecked,
       'Disabled plugin should be unchecked',
     );
+    assert.ok(disabledPlugin.icon, 'Disabled plugin should have extensions icon');
   });
 
   test('builds sandbox property VMs', () => {
@@ -356,6 +357,13 @@ suite('Entity Types (TEST-01)', () => {
       vscode.TreeItemCollapsibleState.None,
       'HookEntry should be a leaf node',
     );
+
+    // Verify keyPath includes intermediate 'hooks' segment for correct JSON navigation
+    assert.deepStrictEqual(
+      entries[0].nodeContext.keyPath,
+      ['hooks', 'PreToolUse', '0', 'hooks', '0'],
+      'HookEntry keyPath should include intermediate "hooks" segment between matcher and hook index',
+    );
   });
 
   test('builds MCP server VMs', () => {
@@ -402,9 +410,9 @@ suite('Override Resolution (TEST-02)', () => {
 
     const userSetting = findVM(userScope.children, NodeKind.Setting, 'model');
     assert.ok(userSetting, 'User setting "model" should exist');
-    assert.strictEqual(userSetting.nodeContext.isOverridden, true, 'Should be overridden');
+    assert.ok(userSetting.nodeContext.overlap.isOverriddenBy, 'Should be overridden');
     assert.strictEqual(
-      userSetting.nodeContext.overriddenByScope,
+      userSetting.nodeContext.overlap.isOverriddenBy?.scope,
       ConfigScope.ProjectLocal,
       'Should be overridden by ProjectLocal',
     );
@@ -433,7 +441,7 @@ suite('Override Resolution (TEST-02)', () => {
 
     const localSetting = findVM(localScope.children, NodeKind.Setting, 'model');
     assert.ok(localSetting, 'ProjectLocal setting "model" should exist');
-    assert.strictEqual(localSetting.nodeContext.isOverridden, false, 'Should NOT be overridden');
+    assert.strictEqual(localSetting.nodeContext.overlap.isOverriddenBy, undefined, 'Should NOT be overridden');
     assert.ok(
       !localSetting.contextValue.includes('overridden'),
       'contextValue should NOT include "overridden"',
@@ -453,9 +461,9 @@ suite('Override Resolution (TEST-02)', () => {
     assert.ok(userScope, 'User scope should exist');
     const userSetting = findVM(userScope.children, NodeKind.Setting, 'model');
     assert.ok(userSetting, 'User setting should exist');
-    assert.ok(userSetting.icon.color, 'Overridden icon should have a color');
+    assert.ok(userSetting.icon?.color, 'Overridden icon should have a color');
     assert.strictEqual(
-      (userSetting.icon.color as vscode.ThemeColor).id,
+      (userSetting.icon!.color as vscode.ThemeColor).id,
       'disabledForeground',
       'Overridden icon should use disabledForeground color',
     );
@@ -468,7 +476,7 @@ suite('Override Resolution (TEST-02)', () => {
     const localSetting = findVM(localScope.children, NodeKind.Setting, 'model');
     assert.ok(localSetting, 'ProjectLocal setting should exist');
     // Non-overridden icon should not have the dimmed color
-    const localColor = localSetting.icon.color as vscode.ThemeColor | undefined;
+    const localColor = localSetting.icon?.color as vscode.ThemeColor | undefined;
     assert.ok(
       !localColor || localColor.id !== 'disabledForeground',
       'Non-overridden icon should not use disabledForeground color',
@@ -488,9 +496,9 @@ suite('Override Resolution (TEST-02)', () => {
 
     const userEnvVar = findVM(userScope.children, NodeKind.EnvVar, 'API_KEY');
     assert.ok(userEnvVar, 'User env var "API_KEY" should exist');
-    assert.strictEqual(userEnvVar.nodeContext.isOverridden, true, 'Should be overridden');
+    assert.ok(userEnvVar.nodeContext.overlap.isOverriddenBy, 'Should be overridden');
     assert.strictEqual(
-      userEnvVar.nodeContext.overriddenByScope,
+      userEnvVar.nodeContext.overlap.isOverriddenBy?.scope,
       ConfigScope.ProjectShared,
       'Should be overridden by ProjectShared',
     );
@@ -513,9 +521,8 @@ suite('Override Resolution (TEST-02)', () => {
 
     const userRule = findVM(userScope.children, NodeKind.PermissionRule, 'Bash(*)');
     assert.ok(userRule, 'User permission rule "Bash(*)" should exist');
-    assert.strictEqual(
-      userRule.nodeContext.isOverridden,
-      true,
+    assert.ok(
+      userRule.nodeContext.overlap.isOverriddenBy,
       'Allow rule should be overridden by deny in higher scope',
     );
   });
@@ -606,13 +613,12 @@ suite('NodeContext Preservation (TEST-03)', () => {
 
     const userSetting = findVM(userScope.children, NodeKind.Setting, 'model');
     assert.ok(userSetting, 'User setting should exist');
-    assert.strictEqual(
-      userSetting.nodeContext.isOverridden,
-      true,
+    assert.ok(
+      userSetting.nodeContext.overlap.isOverriddenBy,
       'User setting should be overridden by Managed',
     );
     assert.strictEqual(
-      userSetting.nodeContext.overriddenByScope,
+      userSetting.nodeContext.overlap.isOverriddenBy?.scope,
       ConfigScope.Managed,
       'Should be overridden by Managed scope',
     );
@@ -637,6 +643,79 @@ suite('NodeContext Preservation (TEST-03)', () => {
       setting.nodeContext.filePath,
       customPath,
       'filePath should propagate from ScopedConfig',
+    );
+  });
+});
+
+// ── Lock-Aware Plugin Display Tests (LOCK-01/02/03) ─────────────
+
+suite('Lock-Aware Plugin Display (LOCK-01/02/03)', () => {
+  test('LOCK-01: locked enabled plugin shows check icon, no checkbox', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(
+        ConfigScope.User,
+        { enabledPlugins: { 'my-plugin': true } },
+        { isReadOnly: true },
+      ),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const plugin = findVM(vms, NodeKind.Plugin, 'my-plugin');
+    assert.ok(plugin, 'Plugin should exist');
+    assert.strictEqual(plugin.icon?.id, 'check', 'Locked enabled plugin should show check icon');
+    assert.strictEqual(plugin.checkboxState, undefined, 'Locked plugin should have no checkbox');
+  });
+
+  test('LOCK-02: locked disabled plugin shows disabled icon, no checkbox', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(
+        ConfigScope.User,
+        { enabledPlugins: { 'my-plugin': false } },
+        { isReadOnly: true },
+      ),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const plugin = findVM(vms, NodeKind.Plugin, 'my-plugin');
+    assert.ok(plugin, 'Plugin should exist');
+    assert.strictEqual(
+      plugin.icon?.id,
+      'circle-slash',
+      'Locked disabled plugin should show circle-slash icon',
+    );
+    assert.strictEqual(plugin.checkboxState, undefined, 'Locked plugin should have no checkbox');
+  });
+
+  test('LOCK-03: unlocking restores checkboxes', () => {
+    const pluginConfig = { enabledPlugins: { 'my-plugin': true, 'other': false } };
+
+    // Locked state
+    const lockedConfigs = [
+      makeScopedConfig(ConfigScope.User, pluginConfig, { isReadOnly: true }),
+    ];
+    const lockedVMs = new TreeViewModelBuilder(createMockConfigStore(lockedConfigs)).build();
+    const lockedEnabled = findVM(lockedVMs, NodeKind.Plugin, 'my-plugin');
+    const lockedDisabled = findVM(lockedVMs, NodeKind.Plugin, 'other');
+    assert.strictEqual(lockedEnabled?.checkboxState, undefined, 'Locked: no checkbox on enabled');
+    assert.strictEqual(lockedDisabled?.checkboxState, undefined, 'Locked: no checkbox on disabled');
+
+    // Unlocked state
+    const unlockedConfigs = [makeScopedConfig(ConfigScope.User, pluginConfig)];
+    const unlockedVMs = new TreeViewModelBuilder(createMockConfigStore(unlockedConfigs)).build();
+    const unlockedEnabled = findVM(unlockedVMs, NodeKind.Plugin, 'my-plugin');
+    const unlockedDisabled = findVM(unlockedVMs, NodeKind.Plugin, 'other');
+    assert.strictEqual(
+      unlockedEnabled?.checkboxState,
+      vscode.TreeItemCheckboxState.Checked,
+      'Unlocked: enabled plugin has Checked checkbox',
+    );
+    assert.strictEqual(unlockedEnabled?.icon?.id, 'extensions', 'Unlocked: extensions icon');
+    assert.strictEqual(
+      unlockedDisabled?.checkboxState,
+      vscode.TreeItemCheckboxState.Unchecked,
+      'Unlocked: disabled plugin has Unchecked checkbox',
     );
   });
 });

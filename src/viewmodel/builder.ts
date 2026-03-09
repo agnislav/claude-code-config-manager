@@ -1,12 +1,15 @@
 import * as vscode from 'vscode';
 import { ConfigStore } from '../config/configModel';
 import {
-  resolveEnvOverride,
-  resolvePermissionOverride,
-  resolvePluginOverride,
-  resolveSandboxOverride,
-  resolveScalarOverride,
-} from '../config/overrideResolver';
+  resolveSettingOverlap,
+  resolveEnvOverlap,
+  resolvePluginOverlap,
+  resolveMcpOverlap,
+  resolveSandboxOverlap,
+  resolvePermissionOverlap,
+  getOverlapColor,
+} from '../config/overlapResolver';
+import { OVERLAP_URI_SCHEME } from '../tree/overlapDecorations';
 import {
   DEDICATED_SECTION_KEYS,
   PERMISSION_CATEGORY_ICONS,
@@ -27,6 +30,7 @@ import {
   McpServerConfig,
   McpServerSse,
   NodeContext,
+  OverlapInfo,
   PermissionCategory,
   ScopedConfig,
   SectionType,
@@ -37,7 +41,6 @@ import {
   EnvVarVM,
   HookEntryVM,
   HookEventVM,
-  HookKeyValueVM,
   McpServerVM,
   NodeKind,
   PermissionGroupVM,
@@ -61,10 +64,10 @@ function computeId(ctx: NodeContext): string {
 function computeStandardContextValue(
   nodeType: string,
   isReadOnly: boolean,
-  isOverridden: boolean,
+  overlap: OverlapInfo,
 ): string {
   const parts = [nodeType, isReadOnly ? 'readOnly' : 'editable'];
-  if (isOverridden) parts.push('overridden');
+  if (overlap.isOverriddenBy) parts.push('overridden');
   return parts.join('.');
 }
 
@@ -87,25 +90,69 @@ function computeCommand(
   };
 }
 
-function computeOverrideTooltip(
-  isOverridden: boolean,
-  overriddenByScope?: ConfigScope,
-): vscode.MarkdownString | undefined {
-  if (isOverridden && overriddenByScope) {
-    return new vscode.MarkdownString(`$(warning) Overridden by **${SCOPE_LABELS[overriddenByScope]}**`);
+function buildOverlapTooltip(
+  existingTooltip: string | vscode.MarkdownString | undefined,
+  overlap: OverlapInfo,
+): string | vscode.MarkdownString | undefined {
+  const lines: string[] = [];
+  if (overlap.isOverriddenBy) {
+    lines.push(
+      `$(arrow-down) **Overridden by** ${SCOPE_LABELS[overlap.isOverriddenBy.scope]}: \`${formatValue(overlap.isOverriddenBy.value)}\` (effective)`,
+    );
   }
-  return undefined;
+  if (overlap.isDuplicatedBy) {
+    lines.push(
+      `$(arrow-down) **Duplicated by** ${SCOPE_LABELS[overlap.isDuplicatedBy.scope]}: \`${formatValue(overlap.isDuplicatedBy.value)}\` (effective)`,
+    );
+  }
+  if (overlap.overrides) {
+    lines.push(
+      `$(arrow-up) **Overrides** ${SCOPE_LABELS[overlap.overrides.scope]}: \`${formatValue(overlap.overrides.value)}\``,
+    );
+  }
+  if (overlap.duplicates) {
+    lines.push(
+      `$(arrow-up) **Duplicates** ${SCOPE_LABELS[overlap.duplicates.scope]}: \`${formatValue(overlap.duplicates.value)}\``,
+    );
+  }
+  if (lines.length === 0) return existingTooltip;
+  const overlapSection = lines.join('\n\n');
+  const createMd = (text: string): vscode.MarkdownString => {
+    const md = new vscode.MarkdownString(text);
+    md.supportThemeIcons = true;
+    return md;
+  };
+  if (existingTooltip instanceof vscode.MarkdownString) {
+    const md = createMd(existingTooltip.value + '\n\n---\n\n' + overlapSection);
+    md.supportHtml = existingTooltip.supportHtml;
+    return md;
+  }
+  if (typeof existingTooltip === 'string') {
+    return createMd(existingTooltip + '\n\n---\n\n' + overlapSection);
+  }
+  return createMd(overlapSection);
 }
 
-function applyOverrideSuffix(
-  description: string,
-  isOverridden: boolean,
-  overriddenByScope?: ConfigScope,
-): string {
-  if (isOverridden && overriddenByScope) {
-    return `${description} (overridden by ${SCOPE_LABELS[overriddenByScope]})`.trim();
+function applyOverrideSuffix(description: string, overlap: OverlapInfo): string {
+  if (overlap.isOverriddenBy) {
+    return `${description} (overridden by ${SCOPE_LABELS[overlap.isOverriddenBy.scope]})`.trim();
   }
   return description;
+}
+
+function buildOverlapResourceUri(
+  scope: ConfigScope,
+  entityType: string,
+  entityKey: string,
+  overlap: OverlapInfo,
+): vscode.Uri | undefined {
+  const color = getOverlapColor(overlap);
+  if (color === 'none') return undefined;
+  return vscode.Uri.from({
+    scheme: OVERLAP_URI_SCHEME,
+    path: `/${scope}/${entityType}/${entityKey}`,
+    query: color,
+  });
 }
 
 function formatValue(value: unknown): string {
@@ -124,14 +171,6 @@ function formatSandboxValue(value: unknown): string {
   if (typeof value === 'string') return value;
   if (Array.isArray(value)) return `[${value.length} items]`;
   return JSON.stringify(value);
-}
-
-function formatHookValue(value: unknown): string {
-  if (value === null || value === undefined) return 'null';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number') return `${value}`;
-  if (typeof value === 'boolean') return String(value);
-  return String(value);
 }
 
 function getShortPath(filePath: string | undefined): string {
@@ -190,7 +229,7 @@ export class TreeViewModelBuilder {
         scope: ConfigScope.User, // placeholder
         keyPath: [],
         isReadOnly: false,
-        isOverridden: false,
+        overlap: {},
         workspaceFolderUri: key,
       };
 
@@ -234,7 +273,7 @@ export class TreeViewModelBuilder {
       scope,
       keyPath: [],
       isReadOnly,
-      isOverridden: false,
+      overlap: {},
       workspaceFolderUri,
       filePath,
     };
@@ -347,7 +386,7 @@ export class TreeViewModelBuilder {
       section: sectionType,
       keyPath: [jsonKey],
       isReadOnly: scopedConfig.isReadOnly,
-      isOverridden: false,
+      overlap: {},
       filePath: scopedConfig.filePath,
     };
 
@@ -361,7 +400,7 @@ export class TreeViewModelBuilder {
       description,
       icon: new vscode.ThemeIcon(SECTION_ICONS[sectionType]),
       collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
-      contextValue: computeStandardContextValue(`section.${sectionType}`, scopedConfig.isReadOnly, false),
+      contextValue: computeStandardContextValue(`section.${sectionType}`, scopedConfig.isReadOnly, {}),
       tooltip: undefined,
       nodeContext: ctx,
       children,
@@ -382,7 +421,7 @@ export class TreeViewModelBuilder {
       case SectionType.Hooks:
         return this.buildHookEvents(scopedConfig);
       case SectionType.McpServers:
-        return this.buildMcpServers(scopedConfig);
+        return this.buildMcpServers(scopedConfig, allScopes);
       case SectionType.Environment:
         return this.buildEnvVars(scopedConfig, allScopes);
       case SectionType.Plugins:
@@ -410,7 +449,7 @@ export class TreeViewModelBuilder {
         section: undefined,
         keyPath: ['permissions', category],
         isReadOnly: scopedConfig.isReadOnly,
-        isOverridden: false,
+        overlap: {},
         filePath: scopedConfig.filePath,
       };
 
@@ -437,7 +476,7 @@ export class TreeViewModelBuilder {
         description: `${rules.length} rule${rules.length !== 1 ? 's' : ''}`,
         icon: new vscode.ThemeIcon(PERMISSION_CATEGORY_ICONS[category] ?? 'circle'),
         collapsibleState,
-        contextValue: computeStandardContextValue('permissionGroup', scopedConfig.isReadOnly, false),
+        contextValue: computeStandardContextValue('permissionGroup', scopedConfig.isReadOnly, {}),
         tooltip: undefined,
         nodeContext: ctx,
         children: ruleChildren,
@@ -452,44 +491,46 @@ export class TreeViewModelBuilder {
     scopedConfig: ScopedConfig,
     allScopes: ScopedConfig[],
   ): PermissionRuleVM {
-    const override = resolvePermissionOverride(category, rule, scopedConfig.scope, allScopes);
+    const overlap = resolvePermissionOverlap(category, rule, scopedConfig.scope, allScopes);
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
       keyPath: ['permissions', category, rule],
       isReadOnly: scopedConfig.isReadOnly,
-      isOverridden: override.isOverridden,
-      overriddenByScope: override.overriddenByScope,
+      overlap,
       filePath: scopedConfig.filePath,
     };
 
-    let tooltip: vscode.MarkdownString | undefined;
-    if (override.isOverridden && override.overriddenByScope && override.overriddenByCategory) {
-      const scopeLabel = SCOPE_LABELS[override.overriddenByScope];
+    let tooltip: string | vscode.MarkdownString | undefined;
+    if (overlap.isOverriddenBy && overlap.overriddenByCategory) {
+      const scopeLabel = SCOPE_LABELS[overlap.isOverriddenBy.scope];
       tooltip = new vscode.MarkdownString(
-        `$(warning) This **${category}** rule is overridden by a **${override.overriddenByCategory}** rule in **${scopeLabel}**`,
+        `$(warning) This **${category}** rule is overridden by a **${overlap.overriddenByCategory}** rule in **${scopeLabel}**`,
       );
     }
+    tooltip = buildOverlapTooltip(tooltip, overlap);
 
-    const description = applyOverrideSuffix('', override.isOverridden, override.overriddenByScope);
+    const description = applyOverrideSuffix('', overlap);
     const collapsibleState = vscode.TreeItemCollapsibleState.None;
+    const hasOverlap = overlap.isOverriddenBy || overlap.isDuplicatedBy;
 
     return {
       kind: NodeKind.PermissionRule,
       rule,
-      overriddenByCategory: override.overriddenByCategory,
+      overriddenByCategory: overlap.overriddenByCategory,
       label: rule,
       description,
       icon: new vscode.ThemeIcon(
         'symbol-event',
-        new vscode.ThemeColor(override.isOverridden ? 'disabledForeground' : 'icon.foreground'),
+        new vscode.ThemeColor(hasOverlap ? 'disabledForeground' : 'icon.foreground'),
       ),
       collapsibleState,
-      contextValue: computeStandardContextValue('permissionRule', scopedConfig.isReadOnly, override.isOverridden),
+      contextValue: computeStandardContextValue('permissionRule', scopedConfig.isReadOnly, overlap),
       tooltip,
       nodeContext: ctx,
       children: [],
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'permission', `${category}/${rule}`, overlap),
     };
   }
 
@@ -512,7 +553,7 @@ export class TreeViewModelBuilder {
     scopedConfig: ScopedConfig,
     allScopes: ScopedConfig[],
   ): SettingVM {
-    const override = resolveScalarOverride(key, scopedConfig.scope, allScopes);
+    const overlap = resolveSettingOverlap(key, scopedConfig.scope, allScopes);
     const isExpandableObject =
       typeof value === 'object' && value !== null && !Array.isArray(value);
     const collapsibleState = isExpandableObject
@@ -523,24 +564,18 @@ export class TreeViewModelBuilder {
       scope: scopedConfig.scope,
       keyPath: [key],
       isReadOnly: scopedConfig.isReadOnly,
-      isOverridden: override.isOverridden,
-      overriddenByScope: override.overriddenByScope,
+      overlap,
       filePath: scopedConfig.filePath,
     };
 
     const rawDescription = isExpandableObject ? '' : formatValue(value);
-    const description = applyOverrideSuffix(
-      rawDescription,
-      override.isOverridden,
-      override.overriddenByScope,
-    );
+    const description = applyOverrideSuffix(rawDescription, overlap);
 
     let tooltip: string | vscode.MarkdownString | undefined;
     if (typeof value === 'object' && value !== null) {
       tooltip = new vscode.MarkdownString('```json\n' + JSON.stringify(value, null, 2) + '\n```');
-    } else {
-      tooltip = computeOverrideTooltip(override.isOverridden, override.overriddenByScope);
     }
+    tooltip = buildOverlapTooltip(tooltip, overlap);
 
     const children = isExpandableObject
       ? Object.entries(value as Record<string, unknown>).map(([childKey, childValue]) =>
@@ -554,16 +589,17 @@ export class TreeViewModelBuilder {
       value,
       label: key,
       description,
-      icon: override.isOverridden
+      icon: overlap.isOverriddenBy
         ? new vscode.ThemeIcon('tools', new vscode.ThemeColor('disabledForeground'))
         : new vscode.ThemeIcon('tools'),
       collapsibleState,
-      contextValue: computeStandardContextValue('setting', scopedConfig.isReadOnly, override.isOverridden),
+      contextValue: computeStandardContextValue('setting', scopedConfig.isReadOnly, overlap),
       tooltip,
       nodeContext: ctx,
       children,
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'setting', key, overlap),
     };
   }
 
@@ -574,29 +610,23 @@ export class TreeViewModelBuilder {
     scopedConfig: ScopedConfig,
     allScopes: ScopedConfig[],
   ): SettingKeyValueVM {
-    const override = resolveScalarOverride(parentKey, scopedConfig.scope, allScopes);
+    const overlap = resolveSettingOverlap(parentKey, scopedConfig.scope, allScopes);
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
       keyPath: [parentKey, childKey],
       isReadOnly: scopedConfig.isReadOnly,
-      isOverridden: override.isOverridden,
-      overriddenByScope: override.overriddenByScope,
+      overlap,
       filePath: scopedConfig.filePath,
     };
 
     const rawDescription = formatValue(value);
-    const description = applyOverrideSuffix(
-      rawDescription,
-      override.isOverridden,
-      override.overriddenByScope,
-    );
+    const description = applyOverrideSuffix(rawDescription, overlap);
 
     let tooltip: string | vscode.MarkdownString | undefined;
     if (typeof value === 'object' && value !== null) {
       tooltip = new vscode.MarkdownString('```json\n' + JSON.stringify(value, null, 2) + '\n```');
-    } else {
-      tooltip = computeOverrideTooltip(override.isOverridden, override.overriddenByScope);
     }
+    tooltip = buildOverlapTooltip(tooltip, overlap);
 
     const collapsibleState = vscode.TreeItemCollapsibleState.None;
 
@@ -609,15 +639,16 @@ export class TreeViewModelBuilder {
       description,
       icon: new vscode.ThemeIcon(
         'symbol-field',
-        new vscode.ThemeColor(override.isOverridden ? 'disabledForeground' : 'icon.foreground'),
+        new vscode.ThemeColor(overlap.isOverriddenBy ? 'disabledForeground' : 'icon.foreground'),
       ),
       collapsibleState,
-      contextValue: computeStandardContextValue('settingKeyValue', scopedConfig.isReadOnly, override.isOverridden),
+      contextValue: computeStandardContextValue('settingKeyValue', scopedConfig.isReadOnly, overlap),
       tooltip,
       nodeContext: ctx,
       children: [],
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'settingKeyValue', `${parentKey}.${childKey}`, overlap),
     };
   }
 
@@ -628,21 +659,16 @@ export class TreeViewModelBuilder {
     if (!env) return [];
 
     return Object.entries(env).map(([key, value]) => {
-      const override = resolveEnvOverride(key, scopedConfig.scope, allScopes);
+      const overlap = resolveEnvOverlap(key, scopedConfig.scope, allScopes);
       const ctx: NodeContext = {
         scope: scopedConfig.scope,
         keyPath: ['env', key],
         isReadOnly: scopedConfig.isReadOnly,
-        isOverridden: override.isOverridden,
-        overriddenByScope: override.overriddenByScope,
+        overlap,
         filePath: scopedConfig.filePath,
       };
 
-      const description = applyOverrideSuffix(
-        value,
-        override.isOverridden,
-        override.overriddenByScope,
-      );
+      const description = applyOverrideSuffix(value, overlap);
       const collapsibleState = vscode.TreeItemCollapsibleState.None;
 
       return {
@@ -651,16 +677,17 @@ export class TreeViewModelBuilder {
         envValue: value,
         label: key,
         description,
-        icon: override.isOverridden
+        icon: overlap.isOverriddenBy
           ? new vscode.ThemeIcon('terminal', new vscode.ThemeColor('disabledForeground'))
           : new vscode.ThemeIcon('terminal'),
         collapsibleState,
-        contextValue: computeStandardContextValue('envVar', scopedConfig.isReadOnly, override.isOverridden),
-        tooltip: computeOverrideTooltip(override.isOverridden, override.overriddenByScope),
+        contextValue: computeStandardContextValue('envVar', scopedConfig.isReadOnly, overlap),
+        tooltip: buildOverlapTooltip(undefined, overlap),
         nodeContext: ctx,
         children: [],
         id: computeId(ctx),
         command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+        resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'env', key, overlap),
       };
     });
   }
@@ -672,13 +699,12 @@ export class TreeViewModelBuilder {
     if (!plugins) return [];
 
     return Object.entries(plugins).map(([pluginId, enabled]) => {
-      const override = resolvePluginOverride(pluginId, scopedConfig.scope, allScopes);
+      const overlap = resolvePluginOverlap(pluginId, scopedConfig.scope, allScopes);
       const ctx: NodeContext = {
         scope: scopedConfig.scope,
         keyPath: ['enabledPlugins', pluginId],
         isReadOnly: scopedConfig.isReadOnly,
-        isOverridden: override.isOverridden,
-        overriddenByScope: override.overriddenByScope,
+        overlap,
         filePath: scopedConfig.filePath,
       };
 
@@ -691,23 +717,27 @@ export class TreeViewModelBuilder {
       const versionSuffix = hasVersion ? pluginId.substring(splitIndex) : '';
 
       const rawDescription = versionSuffix || '';
-      const description = applyOverrideSuffix(
-        rawDescription,
-        override.isOverridden,
-        override.overriddenByScope,
-      );
+      const description = applyOverrideSuffix(rawDescription, overlap);
 
-      // Plugin tooltip: description from metadata + override warning
-      const lines: string[] = [];
+      // Plugin tooltip: description from metadata + overlap info
       const pluginDescription = PluginMetadataService.getInstance().getDescription(pluginId);
-      if (pluginDescription) lines.push(pluginDescription);
-      if (override.isOverridden && override.overriddenByScope) {
-        if (lines.length > 0) lines.push('');
-        lines.push(`$(warning) Overridden by **${SCOPE_LABELS[override.overriddenByScope]}**`);
-      }
-      const tooltip = lines.length > 0 ? new vscode.MarkdownString(lines.join('\n')) : undefined;
+      const baseTooltip = pluginDescription
+        ? new vscode.MarkdownString(pluginDescription)
+        : undefined;
+      const tooltip = buildOverlapTooltip(baseTooltip, overlap);
 
       const collapsibleState = vscode.TreeItemCollapsibleState.None;
+
+      // Overlap resourceUri takes precedence over plugin disabled decoration
+      const overlapColor = getOverlapColor(overlap);
+      const resourceUri =
+        overlapColor !== 'none'
+          ? buildOverlapResourceUri(scopedConfig.scope, 'plugin', pluginId, overlap)
+          : vscode.Uri.from({
+              scheme: PLUGIN_URI_SCHEME,
+              path: `/${scopedConfig.scope}/${pluginId}`,
+              query: enabled ? 'enabled' : 'disabled',
+            });
 
       return {
         kind: NodeKind.Plugin as const,
@@ -715,21 +745,23 @@ export class TreeViewModelBuilder {
         enabled,
         label: displayName,
         description,
-        icon: new vscode.ThemeIcon('extensions'),
+        icon: scopedConfig.isReadOnly
+          ? (enabled
+              ? new vscode.ThemeIcon('check')
+              : new vscode.ThemeIcon('circle-slash', new vscode.ThemeColor('disabledForeground')))
+          : new vscode.ThemeIcon('extensions'),
         collapsibleState,
-        contextValue: computeStandardContextValue('plugin', scopedConfig.isReadOnly, override.isOverridden),
+        contextValue: computeStandardContextValue('plugin', scopedConfig.isReadOnly, overlap),
         tooltip,
         nodeContext: ctx,
         children: [],
         id: computeId(ctx),
-        checkboxState: enabled
-          ? vscode.TreeItemCheckboxState.Checked
-          : vscode.TreeItemCheckboxState.Unchecked,
-        resourceUri: vscode.Uri.from({
-          scheme: PLUGIN_URI_SCHEME,
-          path: `/${scopedConfig.scope}/${pluginId}`,
-          query: enabled ? 'enabled' : 'disabled',
-        }),
+        ...(!scopedConfig.isReadOnly
+          ? { checkboxState: enabled
+              ? vscode.TreeItemCheckboxState.Checked
+              : vscode.TreeItemCheckboxState.Unchecked }
+          : {}),
+        resourceUri,
         command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
       };
     });
@@ -765,29 +797,23 @@ export class TreeViewModelBuilder {
     scopedConfig: ScopedConfig,
     allScopes: ScopedConfig[],
   ): SandboxPropertyVM {
-    const override = resolveSandboxOverride(key, scopedConfig.scope, allScopes);
+    const overlap = resolveSandboxOverlap(key, scopedConfig.scope, allScopes);
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
       keyPath: ['sandbox', ...key.split('.')],
       isReadOnly: scopedConfig.isReadOnly,
-      isOverridden: override.isOverridden,
-      overriddenByScope: override.overriddenByScope,
+      overlap,
       filePath: scopedConfig.filePath,
     };
 
     const rawDescription = formatSandboxValue(value);
-    const description = applyOverrideSuffix(
-      rawDescription,
-      override.isOverridden,
-      override.overriddenByScope,
-    );
+    const description = applyOverrideSuffix(rawDescription, overlap);
 
     let tooltip: string | vscode.MarkdownString | undefined;
     if (Array.isArray(value)) {
       tooltip = new vscode.MarkdownString(value.map((v) => `- \`${v}\``).join('\n'));
-    } else {
-      tooltip = computeOverrideTooltip(override.isOverridden, override.overriddenByScope);
     }
+    tooltip = buildOverlapTooltip(tooltip, overlap);
 
     const collapsibleState = vscode.TreeItemCollapsibleState.None;
 
@@ -797,44 +823,52 @@ export class TreeViewModelBuilder {
       propertyValue: value,
       label: key,
       description,
-      icon: override.isOverridden
+      icon: overlap.isOverriddenBy
         ? new vscode.ThemeIcon('vm', new vscode.ThemeColor('disabledForeground'))
         : new vscode.ThemeIcon('vm'),
       collapsibleState,
-      contextValue: computeStandardContextValue('sandboxProperty', scopedConfig.isReadOnly, override.isOverridden),
+      contextValue: computeStandardContextValue('sandboxProperty', scopedConfig.isReadOnly, overlap),
       tooltip,
       nodeContext: ctx,
       children: [],
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'sandbox', key, overlap),
     };
   }
 
   // ── MCP Servers ──────────────────────────────────────────────
 
-  private buildMcpServers(scopedConfig: ScopedConfig): McpServerVM[] {
+  private buildMcpServers(
+    scopedConfig: ScopedConfig,
+    allScopes: ScopedConfig[],
+  ): McpServerVM[] {
     const servers = scopedConfig.mcpConfig?.mcpServers;
     if (!servers) return [];
 
     return Object.entries(servers).map(([name, config]) => {
+      const overlap = resolveMcpOverlap(name, scopedConfig.scope, allScopes);
       const ctx: NodeContext = {
         scope: scopedConfig.scope,
         keyPath: ['mcpServers', name],
         isReadOnly: scopedConfig.isReadOnly,
-        isOverridden: false,
+        overlap,
         filePath: scopedConfig.mcpFilePath ?? scopedConfig.filePath,
       };
 
       let description: string;
-      let tooltip: vscode.MarkdownString;
+      let baseTooltip: vscode.MarkdownString;
       if (isSseConfig(config)) {
         description = `sse: ${config.url}`;
-        tooltip = new vscode.MarkdownString(`**SSE Server**\n\nURL: \`${config.url}\``);
+        baseTooltip = new vscode.MarkdownString(`**SSE Server**\n\nURL: \`${config.url}\``);
       } else {
         const cmd = [config.command, ...(config.args ?? [])].join(' ');
         description = `stdio: ${config.command}`;
-        tooltip = new vscode.MarkdownString(`**Stdio Server**\n\nCommand: \`${cmd}\``);
+        baseTooltip = new vscode.MarkdownString(`**Stdio Server**\n\nCommand: \`${cmd}\``);
       }
+
+      description = applyOverrideSuffix(description, overlap);
+      const tooltip = buildOverlapTooltip(baseTooltip, overlap);
 
       const collapsibleState = vscode.TreeItemCollapsibleState.None;
 
@@ -843,14 +877,17 @@ export class TreeViewModelBuilder {
         serverName: name,
         label: name,
         description,
-        icon: new vscode.ThemeIcon('plug'),
+        icon: overlap.isOverriddenBy
+          ? new vscode.ThemeIcon('plug', new vscode.ThemeColor('disabledForeground'))
+          : new vscode.ThemeIcon('plug'),
         collapsibleState,
-        contextValue: computeStandardContextValue('mcpServer', scopedConfig.isReadOnly, false),
+        contextValue: computeStandardContextValue('mcpServer', scopedConfig.isReadOnly, overlap),
         tooltip,
         nodeContext: ctx,
         children: [],
         id: computeId(ctx),
         command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+        resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'mcpServer', name, overlap),
       };
     });
   }
@@ -880,7 +917,7 @@ export class TreeViewModelBuilder {
       scope: scopedConfig.scope,
       keyPath: ['hooks', eventType],
       isReadOnly: scopedConfig.isReadOnly,
-      isOverridden: false,
+      overlap: {},
       filePath: scopedConfig.filePath,
     };
 
@@ -905,7 +942,7 @@ export class TreeViewModelBuilder {
       description: `${hookCount} hook${hookCount !== 1 ? 's' : ''}`,
       icon: new vscode.ThemeIcon('zap'),
       collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
-      contextValue: computeStandardContextValue('hookEvent', scopedConfig.isReadOnly, false),
+      contextValue: computeStandardContextValue('hookEvent', scopedConfig.isReadOnly, {}),
       tooltip: undefined,
       nodeContext: ctx,
       children: entryChildren,
@@ -923,9 +960,9 @@ export class TreeViewModelBuilder {
   ): HookEntryVM {
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
-      keyPath: ['hooks', eventType, String(matcherIndex), String(hookIndex)],
+      keyPath: ['hooks', eventType, String(matcherIndex), 'hooks', String(hookIndex)],
       isReadOnly: scopedConfig.isReadOnly,
-      isOverridden: false,
+      overlap: {},
       filePath: scopedConfig.filePath,
     };
 
@@ -950,45 +987,8 @@ export class TreeViewModelBuilder {
       description: '',
       icon: new vscode.ThemeIcon(iconMap[hook.type] ?? 'terminal'),
       collapsibleState,
-      contextValue: computeStandardContextValue('hookEntry', scopedConfig.isReadOnly, false),
+      contextValue: computeStandardContextValue('hookEntry', scopedConfig.isReadOnly, {}),
       tooltip,
-      nodeContext: ctx,
-      children: [],
-      id: computeId(ctx),
-      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
-    };
-  }
-
-  private buildHookKeyValueVM(
-    eventType: HookEventType,
-    matcherIndex: number,
-    hookIndex: number,
-    propertyKey: string,
-    value: unknown,
-    scopedConfig: ScopedConfig,
-  ): HookKeyValueVM {
-    const ctx: NodeContext = {
-      scope: scopedConfig.scope,
-      keyPath: ['hooks', eventType, String(matcherIndex), String(hookIndex), propertyKey],
-      isReadOnly: scopedConfig.isReadOnly,
-      isOverridden: false,
-      filePath: scopedConfig.filePath,
-    };
-
-    const collapsibleState = vscode.TreeItemCollapsibleState.None;
-
-    return {
-      kind: NodeKind.HookKeyValue,
-      propertyKey,
-      eventType,
-      matcherIndex,
-      hookIndex,
-      label: propertyKey,
-      description: formatHookValue(value),
-      icon: new vscode.ThemeIcon('symbol-field', new vscode.ThemeColor('icon.foreground')),
-      collapsibleState,
-      contextValue: computeStandardContextValue('hookKeyValue', scopedConfig.isReadOnly, false),
-      tooltip: undefined,
       nodeContext: ctx,
       children: [],
       id: computeId(ctx),

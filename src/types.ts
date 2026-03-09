@@ -162,13 +162,18 @@ export interface ScopedConfig {
   isReadOnly: boolean;
 }
 
-// ── Override resolution ─────────────────────────────────────────
+// ── Overlap types ───────────────────────────────────────────────
 
-export interface ResolvedValue<T = unknown> {
-  effectiveValue: T;
-  definedInScope: ConfigScope;
-  isOverridden: boolean;
-  overriddenByScope?: ConfigScope;
+export interface OverlapItem {
+  scope: ConfigScope;
+  value: unknown;
+}
+
+export interface OverlapInfo {
+  overrides?: OverlapItem;
+  isOverriddenBy?: OverlapItem;
+  duplicates?: OverlapItem;
+  isDuplicatedBy?: OverlapItem;
 }
 
 // ── Tree node context ───────────────────────────────────────────
@@ -178,8 +183,7 @@ export interface NodeContext {
   section?: SectionType;
   keyPath: string[];
   isReadOnly: boolean;
-  isOverridden: boolean;
-  overriddenByScope?: ConfigScope;
+  overlap: OverlapInfo;
   workspaceFolderUri?: string;
   filePath?: string;
 }

@@ -19,7 +19,6 @@ export enum NodeKind {
   SandboxProperty = 'sandboxProperty',
   HookEvent = 'hookEvent',
   HookEntry = 'hookEntry',
-  HookKeyValue = 'hookKeyValue',
 }
 
 /**
@@ -35,7 +34,7 @@ export interface BaseVM {
   /** Description text shown after label. */
   description: string;
   /** Pre-computed icon, includes ThemeColor for override dimming. */
-  icon: vscode.ThemeIcon;
+  icon?: vscode.ThemeIcon;
   /** Collapsed, Expanded, or None. */
   collapsibleState: vscode.TreeItemCollapsibleState;
   /** Must match package.json `when` clause patterns exactly. */
@@ -152,14 +151,3 @@ export interface HookEntryVM extends BaseVM {
   hookIndex: number;
 }
 
-export interface HookKeyValueVM extends BaseVM {
-  kind: NodeKind.HookKeyValue;
-  /** Property key within the hook command (e.g., "command", "timeout"). */
-  propertyKey: string;
-  /** Hook event type for keyPath construction. */
-  eventType: HookEventType;
-  /** Matcher index for keyPath construction. */
-  matcherIndex: number;
-  /** Hook index for keyPath construction. */
-  hookIndex: number;
-}
