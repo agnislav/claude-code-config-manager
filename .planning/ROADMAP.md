@@ -143,7 +143,7 @@ Phases execute in numeric order: 19 → 20 → 21
 | 18. Verification & Cleanup | v0.6.0 | 2/2 | Complete | 2026-03-07 |
 | 19. Hook Navigation + Cleanup | 1/1 | Complete    | 2026-03-08 | - |
 | 20. Lock-Aware Plugin Display | v0.7.0 | 0/1 | Not started | - |
-| 21. Visual Overlap Indicators | 2/2 | Complete   | 2026-03-09 | - |
+| 21. Visual Overlap Indicators | 2/2 | Complete    | 2026-03-09 | - |
 
 ---
 
