@@ -34,7 +34,7 @@ export interface BaseVM {
   /** Description text shown after label. */
   description: string;
   /** Pre-computed icon, includes ThemeColor for override dimming. */
-  icon: vscode.ThemeIcon;
+  icon?: vscode.ThemeIcon;
   /** Collapsed, Expanded, or None. */
   collapsibleState: vscode.TreeItemCollapsibleState;
   /** Must match package.json `when` clause patterns exactly. */

@@ -105,8 +105,7 @@
       "mcp__mcp-sequentialthinking-tools__sequentialthinking_tools",
       "mcp__repomix__attach_packed_output",
       "mcp__repomix__grep_repomix_output",
-      "mcp__repomix__pack_remote_repository",
-      "mcp__repomix__read_repomix_output"
+      "mcp__repomix__pack_remote_repository"
     ],
     "deny": [],
     "ask": [

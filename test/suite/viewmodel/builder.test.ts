@@ -304,6 +304,7 @@ suite('Entity Types (TEST-01)', () => {
       vscode.TreeItemCheckboxState.Unchecked,
       'Disabled plugin should be unchecked',
     );
+    assert.ok(disabledPlugin.icon, 'Disabled plugin should have extensions icon');
   });
 
   test('builds sandbox property VMs', () => {
@@ -460,9 +461,9 @@ suite('Override Resolution (TEST-02)', () => {
     assert.ok(userScope, 'User scope should exist');
     const userSetting = findVM(userScope.children, NodeKind.Setting, 'model');
     assert.ok(userSetting, 'User setting should exist');
-    assert.ok(userSetting.icon.color, 'Overridden icon should have a color');
+    assert.ok(userSetting.icon?.color, 'Overridden icon should have a color');
     assert.strictEqual(
-      (userSetting.icon.color as vscode.ThemeColor).id,
+      (userSetting.icon!.color as vscode.ThemeColor).id,
       'disabledForeground',
       'Overridden icon should use disabledForeground color',
     );
@@ -475,7 +476,7 @@ suite('Override Resolution (TEST-02)', () => {
     const localSetting = findVM(localScope.children, NodeKind.Setting, 'model');
     assert.ok(localSetting, 'ProjectLocal setting should exist');
     // Non-overridden icon should not have the dimmed color
-    const localColor = localSetting.icon.color as vscode.ThemeColor | undefined;
+    const localColor = localSetting.icon?.color as vscode.ThemeColor | undefined;
     assert.ok(
       !localColor || localColor.id !== 'disabledForeground',
       'Non-overridden icon should not use disabledForeground color',

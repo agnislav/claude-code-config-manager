@@ -745,16 +745,22 @@ export class TreeViewModelBuilder {
         enabled,
         label: displayName,
         description,
-        icon: new vscode.ThemeIcon('extensions'),
+        icon: scopedConfig.isReadOnly
+          ? (enabled
+              ? new vscode.ThemeIcon('check')
+              : new vscode.ThemeIcon('circle-slash', new vscode.ThemeColor('disabledForeground')))
+          : new vscode.ThemeIcon('extensions'),
         collapsibleState,
         contextValue: computeStandardContextValue('plugin', scopedConfig.isReadOnly, overlap),
         tooltip,
         nodeContext: ctx,
         children: [],
         id: computeId(ctx),
-        checkboxState: enabled
-          ? vscode.TreeItemCheckboxState.Checked
-          : vscode.TreeItemCheckboxState.Unchecked,
+        ...(!scopedConfig.isReadOnly
+          ? { checkboxState: enabled
+              ? vscode.TreeItemCheckboxState.Checked
+              : vscode.TreeItemCheckboxState.Unchecked }
+          : {}),
         resourceUri,
         command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
       };
