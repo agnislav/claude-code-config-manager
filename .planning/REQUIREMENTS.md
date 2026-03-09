@@ -14,9 +14,9 @@ Requirements for Visual Fidelity milestone. Each maps to roadmap phases.
 
 ### Lock
 
-- [ ] **LOCK-01**: When User scope is locked, plugin nodes show checkmark icon for enabled plugins instead of checkbox
-- [ ] **LOCK-02**: When User scope is locked, disabled plugins show no icon instead of checkbox
-- [ ] **LOCK-03**: Lock state change refreshes plugin node display between checkbox and icon modes
+- [x] **LOCK-01**: When User scope is locked, plugin nodes show checkmark icon for enabled plugins instead of checkbox
+- [x] **LOCK-02**: When User scope is locked, disabled plugins show disabled indicator icon (circle-slash) instead of checkbox
+- [x] **LOCK-03**: Lock state change refreshes plugin node display between checkbox and icon modes
 
 ### Navigation
 
@@ -54,9 +54,9 @@ Requirements for Visual Fidelity milestone. Each maps to roadmap phases.
 |-------------|-------|--------|
 | OVLP-01 | Phase 21 | Complete |
 | OVLP-02 | Phase 21 | Complete |
-| LOCK-01 | Phase 20 (impl), Phase 22 (tests/docs) | Pending |
-| LOCK-02 | Phase 20 (impl), Phase 22 (tests/docs) | Pending |
-| LOCK-03 | Phase 20 (impl), Phase 22 (tests/docs) | Pending |
+| LOCK-01 | Phase 20 (impl), Phase 22 (tests/docs) | Complete |
+| LOCK-02 | Phase 20 (impl), Phase 22 (tests/docs) | Complete |
+| LOCK-03 | Phase 20 (impl), Phase 22 (tests/docs) | Complete |
 | NAV-01 | Phase 19 | Complete |
 | CLEN-01 | Phase 19 | Complete |
 
@@ -67,4 +67,4 @@ Requirements for Visual Fidelity milestone. Each maps to roadmap phases.
 
 ---
 *Requirements defined: 2026-03-08*
-*Last updated: 2026-03-09 — LOCK requirements mapped to Phase 22 gap closure*
+*Last updated: 2026-03-09 — LOCK-01/02/03 complete via Phase 22 gap closure*
