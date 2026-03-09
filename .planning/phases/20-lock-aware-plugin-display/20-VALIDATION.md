@@ -1,10 +1,11 @@
 ---
 phase: 20
 slug: lock-aware-plugin-display
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-09
+audited: 2026-03-09
 ---
 
 # Phase 20 — Validation Strategy
@@ -38,9 +39,9 @@ created: 2026-03-09
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 20-01-01 | 01 | 1 | LOCK-01 | unit | `npm test` | ❌ W0 | ⬜ pending |
-| 20-01-02 | 01 | 1 | LOCK-02 | unit | `npm test` | ❌ W0 | ⬜ pending |
-| 20-01-03 | 01 | 1 | LOCK-03 | unit | `npm test` | ❌ W0 | ⬜ pending |
+| 20-01-01 | 01 | 1 | LOCK-01 | unit | `npm test` | `builder.test.ts:653-668` — locked enabled plugin check icon + no checkbox | ✅ green |
+| 20-01-02 | 01 | 1 | LOCK-02 | unit | `npm test` | `builder.test.ts:670-689` — locked disabled plugin no icon + no checkbox | ✅ green |
+| 20-01-03 | 01 | 1 | LOCK-03 | unit | `npm test` | `builder.test.ts:691-720` — unlock restores checkboxes | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -48,8 +49,10 @@ created: 2026-03-09
 
 ## Wave 0 Requirements
 
-- [ ] New test cases in `test/suite/viewmodel/builder.test.ts` — locked plugin VM tests for enabled/disabled states
-- Existing `createMockConfigStore` with `lockedScopes` option covers lock test setup — no new fixtures needed
+- [x] New test cases in `test/suite/viewmodel/builder.test.ts` — locked plugin VM tests for enabled/disabled states (lines 652-720)
+- [x] Existing `createMockConfigStore` with `lockedScopes` option covers lock test setup — no new fixtures needed
+
+*All wave 0 requirements satisfied.*
 
 ---
 
@@ -63,11 +66,23 @@ created: 2026-03-09
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete
+
+---
+
+## Validation Audit 2026-03-09
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+**Notes:** All three LOCK requirements (LOCK-01, LOCK-02, LOCK-03) fully covered by dedicated unit tests at `builder.test.ts:652-720`. Regression check confirmed by VERIFICATION.md — Phase 21 changes did not affect LOCK test logic. 56/56 tests passing.
