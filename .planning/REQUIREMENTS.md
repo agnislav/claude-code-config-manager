@@ -54,9 +54,9 @@ Requirements for Visual Fidelity milestone. Each maps to roadmap phases.
 |-------------|-------|--------|
 | OVLP-01 | Phase 21 | Complete |
 | OVLP-02 | Phase 21 | Complete |
-| LOCK-01 | Phase 20 | Pending |
-| LOCK-02 | Phase 20 | Pending |
-| LOCK-03 | Phase 20 | Pending |
+| LOCK-01 | Phase 20 (impl), Phase 22 (tests/docs) | Pending |
+| LOCK-02 | Phase 20 (impl), Phase 22 (tests/docs) | Pending |
+| LOCK-03 | Phase 20 (impl), Phase 22 (tests/docs) | Pending |
 | NAV-01 | Phase 19 | Complete |
 | CLEN-01 | Phase 19 | Complete |
 
@@ -67,4 +67,4 @@ Requirements for Visual Fidelity milestone. Each maps to roadmap phases.
 
 ---
 *Requirements defined: 2026-03-08*
-*Last updated: 2026-03-08 — traceability updated with phase mappings*
+*Last updated: 2026-03-09 — LOCK requirements mapped to Phase 22 gap closure*

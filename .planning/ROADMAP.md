@@ -2,7 +2,7 @@
 
 **Created:** 2026-02-18
 **Updated:** 2026-03-09
-**Status:** v0.3.x-v0.6.0 complete (Phases 1-18), v0.7.0 in progress (Phases 19-21)
+**Status:** v0.3.x-v0.6.0 complete (Phases 1-18), v0.7.0 in progress (Phases 19-22)
 
 ---
 
@@ -13,7 +13,7 @@
 - ✅ **v0.4.1 Node Display Polish** — Phase 9 (shipped 2026-02-20)
 - ✅ **v0.5.0 Hardening** — Phases 10-15 (shipped 2026-02-21)
 - ✅ **v0.6.0 Decouple State from Tree** — Phases 16-18 (shipped 2026-03-08)
-- 🚧 **v0.7.0 Visual Fidelity** — Phases 19-21 (in progress)
+- 🚧 **v0.7.0 Visual Fidelity** — Phases 19-22 (in progress)
 
 ---
 
@@ -74,8 +74,9 @@
 ## Phases
 
 - [x] **Phase 19: Hook Navigation + Cleanup** - Fix hook leaf editor navigation and remove dead HookKeyValue code (completed 2026-03-08)
-- [ ] **Phase 20: Lock-Aware Plugin Display** - Replace plugin checkboxes with static icons when User scope is locked
+- [x] **Phase 20: Lock-Aware Plugin Display** - Replace plugin checkboxes with static icons when User scope is locked (completed 2026-03-09)
 - [x] **Phase 21: Visual Overlap Indicators** - Show cross-scope overlap via tooltips for config entities (completed 2026-03-09)
+- [ ] **Phase 22: Lock Test Coverage & Doc Cleanup** - Add missing LOCK test cases and fix documentation gaps from audit
 
 ## Phase Details
 
@@ -112,14 +113,25 @@ Plans:
 **Plans:** 2/2 plans complete
 Plans:
 - [x] 21-01-PLAN.md — Create overlap resolver, types, decoration provider, and tests (completed 2026-03-09)
-- [ ] 21-02-PLAN.md — Migrate builder to overlap system, register decorations, delete old code
+- [x] 21-02-PLAN.md — Migrate builder to overlap system, register decorations, delete old code (completed 2026-03-09)
+
+### Phase 22: Lock Test Coverage & Doc Cleanup
+**Goal**: Close audit gaps — add missing LOCK-01/02/03 automated tests and fix documentation inconsistencies
+**Depends on**: Phase 20 (tests target Phase 20's lock-aware plugin logic)
+**Requirements**: LOCK-01, LOCK-02, LOCK-03
+**Gap Closure**: Closes partial requirements from v0.7.0 audit
+**Success Criteria** (what must be TRUE):
+  1. builder.test.ts contains test cases for LOCK-01 (locked enabled plugin shows checkmark icon), LOCK-02 (locked disabled plugin shows no icon), LOCK-03 (unlock restores checkboxes)
+  2. REQUIREMENTS.md checkboxes for LOCK-01, LOCK-02, LOCK-03 are checked
+  3. All tests pass (`npm run test`)
+**Plans:** TBD
 
 ---
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 19 → 20 → 21
+Phases execute in numeric order: 19 → 20 → 21 → 22
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -141,11 +153,12 @@ Phases execute in numeric order: 19 → 20 → 21
 | 16. ViewModel Layer | v0.6.0 | 1/1 | Complete | 2026-03-06 |
 | 17. Node Migration | v0.6.0 | 1/1 | Complete | 2026-03-07 |
 | 18. Verification & Cleanup | v0.6.0 | 2/2 | Complete | 2026-03-07 |
-| 19. Hook Navigation + Cleanup | 1/1 | Complete    | 2026-03-08 | - |
-| 20. Lock-Aware Plugin Display | v0.7.0 | 0/1 | Not started | - |
-| 21. Visual Overlap Indicators | 2/2 | Complete    | 2026-03-09 | - |
+| 19. Hook Navigation + Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-08 |
+| 20. Lock-Aware Plugin Display | v0.7.0 | 1/1 | Complete | 2026-03-09 |
+| 21. Visual Overlap Indicators | v0.7.0 | 2/2 | Complete | 2026-03-09 |
+| 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 0/1 | Not started | - |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-09 -- Phase 21 plan created*
+*Last updated: 2026-03-09 -- Phase 22 gap closure added from milestone audit*
