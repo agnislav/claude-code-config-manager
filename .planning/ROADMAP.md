@@ -124,7 +124,9 @@ Plans:
   1. builder.test.ts contains test cases for LOCK-01 (locked enabled plugin shows checkmark icon), LOCK-02 (locked disabled plugin shows no icon), LOCK-03 (unlock restores checkboxes)
   2. REQUIREMENTS.md checkboxes for LOCK-01, LOCK-02, LOCK-03 are checked
   3. All tests pass (`npm run test`)
-**Plans:** TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 22-01-PLAN.md — Add LOCK-01/02/03 test cases and update REQUIREMENTS.md
 
 ---
 
