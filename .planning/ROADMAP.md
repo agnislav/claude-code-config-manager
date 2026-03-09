@@ -102,14 +102,17 @@ Plans:
 - [ ] 20-01-PLAN.md — Conditional icon/checkbox in buildPlugins based on lock state
 
 ### Phase 21: Visual Overlap Indicators
-**Goal**: Users can see when config entities exist in multiple scopes via tooltip information showing each scope's value
+**Goal**: Users can see when config entities exist in multiple scopes via tooltip information and color tinting showing each scope's value and overlap relationships
 **Depends on**: Nothing (independent, but benefits from Phases 19-20 validating ViewModel extensibility)
 **Requirements**: OVLP-01, OVLP-02
 **Success Criteria** (what must be TRUE):
   1. Hovering over a config entity (setting, env var, plugin, MCP server, sandbox property) that exists in multiple scopes shows a tooltip listing all scopes where it appears, with each scope's value and override status
   2. Overlap detection uses separate data fields from override detection (not reusing isOverridden)
   3. Entities that exist in only one scope show no overlap tooltip content
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 21-01-PLAN.md — Create overlap resolver, types, decoration provider, and tests
+- [ ] 21-02-PLAN.md — Migrate builder to overlap system, register decorations, delete old code
 
 ---
 
@@ -140,9 +143,9 @@ Phases execute in numeric order: 19 → 20 → 21
 | 18. Verification & Cleanup | v0.6.0 | 2/2 | Complete | 2026-03-07 |
 | 19. Hook Navigation + Cleanup | 1/1 | Complete    | 2026-03-08 | - |
 | 20. Lock-Aware Plugin Display | v0.7.0 | 0/1 | Not started | - |
-| 21. Visual Overlap Indicators | v0.7.0 | 0/0 | Not started | - |
+| 21. Visual Overlap Indicators | v0.7.0 | 0/2 | Not started | - |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-09 -- Phase 20 plan created*
+*Last updated: 2026-03-09 -- Phase 21 plan created*
