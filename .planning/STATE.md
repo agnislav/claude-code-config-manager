@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
-**Current focus:** Phase 19 — Hook Navigation + Cleanup
+**Current focus:** Phase 21 — Visual Overlap Indicators
 
 ## Current Position
 
-Phase: 19 of 21 (Hook Navigation + Cleanup)
-Plan: 1 of 1 in current phase (complete)
-Status: Phase 19 Plan 01 complete
-Last activity: 2026-03-08 — Phase 19 Plan 01 complete
+Phase: 21 of 21 (Visual Overlap Indicators)
+Plan: 1 of 2 in current phase (complete)
+Status: Phase 21 Plan 01 complete
+Last activity: 2026-03-09 — Phase 21 Plan 01 complete
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 [█░░] 33%
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 [██░] 67%
 
 ## Pending Todos
 
@@ -51,14 +51,16 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 
 ## Decisions
 
-(Cleared — full decision log in PROJECT.md Key Decisions table)
+- Phase 21-01: Generic resolveOverlapGeneric helper shared by 6 of 7 resolvers; permission resolver special-cased for glob matching
+- Phase 21-01: Deep equality uses sorted-key comparison; array order matters, object key order does not
+- Phase 21-01: Permission overlap only checks isOverriddenBy direction
 
 ## Session Continuity
 
-Last session: 2026-03-09T12:08:19.977Z
-Stopped at: Phase 21 context gathered
-Resume file: .planning/phases/21-visual-overlap-indicators/21-CONTEXT.md
-Next action: Continue to next phase plan or `/gsd:execute-phase 20`
+Last session: 2026-03-09T13:07:02Z
+Stopped at: Completed 21-01-PLAN.md
+Resume file: .planning/phases/21-visual-overlap-indicators/21-01-SUMMARY.md
+Next action: Execute 21-02-PLAN.md (builder migration, decoration registration, old code deletion)
 
 ---
 

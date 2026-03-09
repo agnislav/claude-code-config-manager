@@ -10,7 +10,7 @@ Requirements for Visual Fidelity milestone. Each maps to roadmap phases.
 ### Overlap
 
 - [ ] **OVLP-01**: User sees tooltip listing all scopes where a config entity (setting, env var, plugin, MCP server, sandbox property) also appears, showing each scope's value and override status
-- [ ] **OVLP-02**: Overlap detection works independently from override detection (new fields, not reusing isOverridden)
+- [x] **OVLP-02**: Overlap detection works independently from override detection (new fields, not reusing isOverridden)
 
 ### Lock
 
@@ -53,7 +53,7 @@ Requirements for Visual Fidelity milestone. Each maps to roadmap phases.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | OVLP-01 | Phase 21 | Pending |
-| OVLP-02 | Phase 21 | Pending |
+| OVLP-02 | Phase 21 | Complete |
 | LOCK-01 | Phase 20 | Pending |
 | LOCK-02 | Phase 20 | Pending |
 | LOCK-03 | Phase 20 | Pending |
