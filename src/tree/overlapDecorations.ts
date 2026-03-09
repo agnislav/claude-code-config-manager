@@ -13,6 +13,8 @@ export class OverlapDecorationProvider implements vscode.FileDecorationProvider 
     switch (uri.query) {
       case 'red':
         return { color: new vscode.ThemeColor('gitDecoration.deletedResourceForeground') };
+      case 'orange':
+        return { color: new vscode.ThemeColor('debugTokenExpression.string') };
       case 'green':
         return { color: new vscode.ThemeColor('gitDecoration.addedResourceForeground') };
       case 'yellow':

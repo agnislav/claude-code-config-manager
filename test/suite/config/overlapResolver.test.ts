@@ -76,11 +76,11 @@ suite('overlapResolver', () => {
       assert.strictEqual(getOverlapColor(overlap), 'red');
     });
 
-    test('should return red for isDuplicatedBy', () => {
+    test('should return orange for isDuplicatedBy', () => {
       const overlap: OverlapInfo = {
         isDuplicatedBy: { scope: ConfigScope.ProjectLocal, value: 'x' },
       };
-      assert.strictEqual(getOverlapColor(overlap), 'red');
+      assert.strictEqual(getOverlapColor(overlap), 'orange');
     });
 
     test('should return green for overrides', () => {
@@ -283,7 +283,7 @@ suite('overlapResolver', () => {
       assert.strictEqual(result.overriddenByCategory, PermissionCategory.Deny);
     });
 
-    test('should not set overrides/duplicates for permissions (only isOverriddenBy direction)', () => {
+    test('should detect cross-category override in lower-precedence scope', () => {
       const scopes = [
         makeScopedConfig(ConfigScope.Managed, {
           permissions: { deny: ['Bash(curl *)'] },
@@ -298,8 +298,54 @@ suite('overlapResolver', () => {
         ConfigScope.Managed,
         scopes,
       );
-      assert.strictEqual(result.overrides, undefined);
-      assert.strictEqual(result.duplicates, undefined);
+      assert.strictEqual(result.overrides?.scope, ConfigScope.User);
+      assert.strictEqual(result.overrides?.value, PermissionCategory.Allow);
+    });
+
+    test('should detect same-category duplicate across scopes', () => {
+      const scopes = [
+        makeScopedConfig(ConfigScope.ProjectLocal, {
+          permissions: { allow: ['Bash(find:*)'] },
+        }),
+        makeScopedConfig(ConfigScope.ProjectShared, {
+          permissions: { allow: ['Bash(find:*)'] },
+        }),
+      ];
+      // Lower-precedence scope sees isDuplicatedBy
+      const sharedResult = resolvePermissionOverlap(
+        PermissionCategory.Allow,
+        'Bash(find:*)',
+        ConfigScope.ProjectShared,
+        scopes,
+      );
+      assert.strictEqual(sharedResult.isDuplicatedBy?.scope, ConfigScope.ProjectLocal);
+
+      // Higher-precedence scope sees duplicates
+      const localResult = resolvePermissionOverlap(
+        PermissionCategory.Allow,
+        'Bash(find:*)',
+        ConfigScope.ProjectLocal,
+        scopes,
+      );
+      assert.strictEqual(localResult.duplicates?.scope, ConfigScope.ProjectShared);
+    });
+
+    test('should not detect same-category duplicate for non-exact matches', () => {
+      const scopes = [
+        makeScopedConfig(ConfigScope.ProjectLocal, {
+          permissions: { allow: ['Bash(find:*)'] },
+        }),
+        makeScopedConfig(ConfigScope.ProjectShared, {
+          permissions: { allow: ['Bash(find /tmp:*)'] },
+        }),
+      ];
+      const result = resolvePermissionOverlap(
+        PermissionCategory.Allow,
+        'Bash(find /tmp:*)',
+        ConfigScope.ProjectShared,
+        scopes,
+      );
+      assert.strictEqual(result.isDuplicatedBy, undefined);
     });
   });
 

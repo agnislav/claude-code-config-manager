@@ -117,13 +117,20 @@ function buildOverlapTooltip(
   }
   if (lines.length === 0) return existingTooltip;
   const overlapSection = lines.join('\n\n');
+  const createMd = (text: string): vscode.MarkdownString => {
+    const md = new vscode.MarkdownString(text);
+    md.supportThemeIcons = true;
+    return md;
+  };
   if (existingTooltip instanceof vscode.MarkdownString) {
-    return new vscode.MarkdownString(existingTooltip.value + '\n\n---\n\n' + overlapSection);
+    const md = createMd(existingTooltip.value + '\n\n---\n\n' + overlapSection);
+    md.supportHtml = existingTooltip.supportHtml;
+    return md;
   }
   if (typeof existingTooltip === 'string') {
-    return new vscode.MarkdownString(existingTooltip + '\n\n---\n\n' + overlapSection);
+    return createMd(existingTooltip + '\n\n---\n\n' + overlapSection);
   }
-  return new vscode.MarkdownString(overlapSection);
+  return createMd(overlapSection);
 }
 
 function applyOverrideSuffix(description: string, overlap: OverlapInfo): string {
@@ -493,16 +500,18 @@ export class TreeViewModelBuilder {
       filePath: scopedConfig.filePath,
     };
 
-    let tooltip: vscode.MarkdownString | undefined;
+    let tooltip: string | vscode.MarkdownString | undefined;
     if (overlap.isOverriddenBy && overlap.overriddenByCategory) {
       const scopeLabel = SCOPE_LABELS[overlap.isOverriddenBy.scope];
       tooltip = new vscode.MarkdownString(
         `$(warning) This **${category}** rule is overridden by a **${overlap.overriddenByCategory}** rule in **${scopeLabel}**`,
       );
     }
+    tooltip = buildOverlapTooltip(tooltip, overlap);
 
     const description = applyOverrideSuffix('', overlap);
     const collapsibleState = vscode.TreeItemCollapsibleState.None;
+    const hasOverlap = overlap.isOverriddenBy || overlap.isDuplicatedBy;
 
     return {
       kind: NodeKind.PermissionRule,
@@ -512,7 +521,7 @@ export class TreeViewModelBuilder {
       description,
       icon: new vscode.ThemeIcon(
         'symbol-event',
-        new vscode.ThemeColor(overlap.isOverriddenBy ? 'disabledForeground' : 'icon.foreground'),
+        new vscode.ThemeColor(hasOverlap ? 'disabledForeground' : 'icon.foreground'),
       ),
       collapsibleState,
       contextValue: computeStandardContextValue('permissionRule', scopedConfig.isReadOnly, overlap),
@@ -521,6 +530,7 @@ export class TreeViewModelBuilder {
       children: [],
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'permission', `${category}/${rule}`, overlap),
     };
   }
 

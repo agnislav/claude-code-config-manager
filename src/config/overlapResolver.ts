@@ -43,12 +43,17 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 // ── Color mapping ───────────────────────────────────────────────
 
 /**
- * Maps overlap state to git-themed color.
- * Priority: isOverriddenBy/isDuplicatedBy = red (losers),
- * overrides = green (winner), duplicates = yellow (redundant).
+ * Maps overlap state to color.
+ * red = overridden (loses, different value wins above),
+ * orange = duplicated (loses, same value exists above — redundant),
+ * green = overrides (wins, different value below),
+ * yellow = duplicates (wins, same value below).
  */
-export function getOverlapColor(overlap: OverlapInfo): 'red' | 'green' | 'yellow' | 'none' {
-  if (overlap.isOverriddenBy || overlap.isDuplicatedBy) return 'red';
+export function getOverlapColor(
+  overlap: OverlapInfo,
+): 'red' | 'orange' | 'green' | 'yellow' | 'none' {
+  if (overlap.isOverriddenBy) return 'red';
+  if (overlap.isDuplicatedBy) return 'orange';
   if (overlap.overrides) return 'green';
   if (overlap.duplicates) return 'yellow';
   return 'none';
@@ -204,35 +209,87 @@ export function resolvePermissionOverlap(
   allScopes: ScopedConfig[],
 ): OverlapInfo & { overriddenByCategory?: string } {
   const currentPrecedence = precedenceOf(currentScope);
-
-  // Sort by precedence, check higher-precedence scopes for conflicting rules
   const sorted = [...allScopes].sort((a, b) => precedenceOf(a.scope) - precedenceOf(b.scope));
 
-  for (const sc of sorted) {
+  const result: OverlapInfo & { overriddenByCategory?: string } = {};
+
+  const categories: PermissionCategory[] = [
+    PermissionCategory.Deny,
+    PermissionCategory.Ask,
+    PermissionCategory.Allow,
+  ];
+
+  // Check higher-precedence scopes (nearest first, scanning from just above current)
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const sc = sorted[i];
     if (precedenceOf(sc.scope) >= currentPrecedence) continue;
     if (!sc.config.permissions) continue;
 
-    const categories: PermissionCategory[] = [
-      PermissionCategory.Deny,
-      PermissionCategory.Ask,
-      PermissionCategory.Allow,
-    ];
-
+    // Cross-category conflict (override) takes priority
+    let foundCrossCategory = false;
     for (const cat of categories) {
-      if (cat === category) continue; // Same category is not a conflict
-      const rules = sc.config.permissions[cat];
-      if (!rules) continue;
-
-      for (const higherRule of rules) {
+      if (cat === category) continue;
+      const catRules = sc.config.permissions[cat];
+      if (!catRules) continue;
+      for (const higherRule of catRules) {
         if (rulesOverlap(higherRule, rule)) {
-          return {
-            isOverriddenBy: { scope: sc.scope, value: cat },
-            overriddenByCategory: cat,
-          };
+          result.isOverriddenBy = { scope: sc.scope, value: cat };
+          result.overriddenByCategory = cat;
+          foundCrossCategory = true;
+          break;
         }
       }
+      if (foundCrossCategory) break;
+    }
+    if (foundCrossCategory) break;
+
+    // Same-category duplicate
+    const sameCatRules = sc.config.permissions[category];
+    if (sameCatRules) {
+      for (const higherRule of sameCatRules) {
+        if (higherRule === rule) {
+          result.isDuplicatedBy = { scope: sc.scope, value: category };
+          break;
+        }
+      }
+      if (result.isDuplicatedBy) break;
     }
   }
 
-  return {};
+  // Check lower-precedence scopes (nearest first, scanning from just below current)
+  for (const sc of sorted) {
+    if (precedenceOf(sc.scope) <= currentPrecedence) continue;
+    if (!sc.config.permissions) continue;
+
+    // Cross-category: this rule overrides a different-category rule below
+    let foundCrossCategory = false;
+    for (const cat of categories) {
+      if (cat === category) continue;
+      const catRules = sc.config.permissions[cat];
+      if (!catRules) continue;
+      for (const lowerRule of catRules) {
+        if (rulesOverlap(rule, lowerRule)) {
+          result.overrides = { scope: sc.scope, value: cat };
+          foundCrossCategory = true;
+          break;
+        }
+      }
+      if (foundCrossCategory) break;
+    }
+    if (foundCrossCategory) break;
+
+    // Same-category duplicate
+    const sameCatRules = sc.config.permissions[category];
+    if (sameCatRules) {
+      for (const lowerRule of sameCatRules) {
+        if (lowerRule === rule) {
+          result.duplicates = { scope: sc.scope, value: category };
+          break;
+        }
+      }
+      if (result.duplicates) break;
+    }
+  }
+
+  return result;
 }
