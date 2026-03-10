@@ -728,16 +728,21 @@ export class TreeViewModelBuilder {
 
       const collapsibleState = vscode.TreeItemCollapsibleState.None;
 
-      // Overlap resourceUri takes precedence over plugin disabled decoration
+      // Overlap resourceUri takes precedence over plugin disabled decoration.
+      // When unlocked (checkbox mode), skip the plugin-disabled resourceUri —
+      // a resourceUri without a ThemeIcon causes VS Code to render a fallback
+      // file icon, and checkboxes already communicate enabled/disabled state.
       const overlapColor = getOverlapColor(overlap);
       const resourceUri =
         overlapColor !== 'none'
           ? buildOverlapResourceUri(scopedConfig.scope, 'plugin', pluginId, overlap)
-          : vscode.Uri.from({
-              scheme: PLUGIN_URI_SCHEME,
-              path: `/${scopedConfig.scope}/${pluginId}`,
-              query: enabled ? 'enabled' : 'disabled',
-            });
+          : scopedConfig.isReadOnly
+            ? vscode.Uri.from({
+                scheme: PLUGIN_URI_SCHEME,
+                path: `/${scopedConfig.scope}/${pluginId}`,
+                query: enabled ? 'enabled' : 'disabled',
+              })
+            : undefined;
 
       return {
         kind: NodeKind.Plugin as const,
