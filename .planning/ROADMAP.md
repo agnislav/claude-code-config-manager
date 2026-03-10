@@ -148,7 +148,7 @@ Phases execute in numeric order: 23 → 24
 | 20. Lock-Aware Plugin Display | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 | 21. Visual Overlap Indicators | v0.7.0 | 2/2 | Complete | 2026-03-09 |
 | 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-09 |
-| 23. Plugin Checkbox-Only Display | v0.8.0 | 1/1 | Complete | 2026-03-10 |
+| 23. Plugin Checkbox-Only Display | v0.8.0 | Complete    | 2026-03-10 | 2026-03-10 |
 | 24. Flatten Permissions | v0.8.0 | 0/? | Not started | - |
 
 ---

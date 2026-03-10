@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.8.0
-milestone_name: Tree Display Polish
-status: active
-last_updated: "2026-03-10T00:00:00.000Z"
+milestone: v0.3
+milestone_name: milestone
+status: planning
+last_updated: "2026-03-10T14:47:28.851Z"
 last_activity: 2026-03-10 — Phase 23 Plan 01 completed
 progress:
   total_phases: 2
