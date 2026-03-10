@@ -63,7 +63,14 @@ Shipped v0.7.0 (2026-03-09). Tree reflects true state with cross-scope overlap i
 
 ### Active
 
-(None — start next milestone to define requirements)
+## Current Milestone: v0.8.0 Tree Display Polish
+
+**Goal:** Refine tree node display — checkbox-only plugins when unlocked, flattened permissions with type-aware icons.
+
+**Target features:**
+- Plugin nodes show only checkbox (no plugin icon) when User scope is unlocked
+- Permissions flatten to a single list under Permissions section (no Allow/Ask/Deny grouping)
+- Permission icons reflect their type using section icons as status indicators
 
 ### Out of Scope
 
@@ -131,4 +138,4 @@ Shipped v0.7.0 (2026-03-09). Tree reflects true state with cross-scope overlap i
 | Lock-aware static icons instead of disabled checkboxes | VS Code has no disabled checkbox state; icons communicate unclickable clearly | ✓ Good |
 
 ---
-*Last updated: 2026-03-09 after v0.7.0 milestone*
+*Last updated: 2026-03-10 after v0.8.0 milestone started*
