@@ -3,15 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.8.0
 milestone_name: Tree Display Polish
 status: active
-stopped_at: null
 last_updated: "2026-03-10T00:00:00.000Z"
-last_activity: 2026-03-10 — Roadmap created for v0.8.0 (Phases 23-24)
+last_activity: 2026-03-10 — Phase 23 Plan 01 completed
 progress:
   total_phases: 2
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
+  percent: 50
 ---
 
 # Project State
@@ -21,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
-**Current focus:** Phase 23 - Plugin Checkbox-Only Display
+**Current focus:** Phase 24 - Flatten Permissions with Type Icons
 
 ## Current Position
 
-Phase: 23 (Plugin Checkbox-Only Display) — 1 of 2 in v0.8.0
+Phase: 24 (Flatten Permissions with Type Icons) — 2 of 2 in v0.8.0
 Plan: Not yet planned
 Status: Ready to plan
-Last activity: 2026-03-10 — Roadmap created for v0.8.0
+Last activity: 2026-03-10 — Phase 23 Plan 01 completed
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 [░░░░░░░░░░] 0%
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 [█████░░░░░] 50%
 
 ## Pending Todos
 
@@ -46,4 +45,4 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 ---
 
 *State initialized: 2026-02-20*
-*Last updated: 2026-03-10 — v0.8.0 roadmap created*
+*Last updated: 2026-03-10 — Phase 23 Plan 01 completed*

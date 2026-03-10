@@ -9,7 +9,7 @@ Requirements for Tree Display Polish milestone. Each maps to roadmap phases.
 
 ### Plugins
 
-- [ ] **PLUG-01**: Plugin nodes show only checkbox without plugin icon when User scope is unlocked
+- [x] **PLUG-01**: Plugin nodes show only checkbox without plugin icon when User scope is unlocked
 
 ### Permissions
 
@@ -41,7 +41,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLUG-01 | Phase 23 | Pending |
+| PLUG-01 | Phase 23 | Complete |
 | PERM-01 | Phase 24 | Pending |
 | PERM-02 | Phase 24 | Pending |
 | PERM-03 | Phase 24 | Pending |

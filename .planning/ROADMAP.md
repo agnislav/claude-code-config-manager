@@ -84,7 +84,7 @@
 
 ## Phases
 
-- [ ] **Phase 23: Plugin Checkbox-Only Display** - Plugin nodes show only checkbox (no plugin icon) when User scope is unlocked
+- [x] **Phase 23: Plugin Checkbox-Only Display** - Plugin nodes show only checkbox (no plugin icon) when User scope is unlocked
 - [ ] **Phase 24: Flatten Permissions with Type Icons** - Permission rules display as flat list with type-aware icons and inline type switching
 
 ## Phase Details
@@ -100,7 +100,7 @@
 **Plans**: 1 plan
 
 Plans:
-- [ ] 23-01-PLAN.md — Remove extensions icon when unlocked, verify checkbox-only display
+- [x] 23-01-PLAN.md — Remove extensions icon when unlocked, verify checkbox-only display
 
 ### Phase 24: Flatten Permissions with Type Icons
 **Goal**: Users see all permission rules in a single flat list under Permissions, with icons that immediately communicate each rule's type and an inline button to change type
@@ -148,10 +148,10 @@ Phases execute in numeric order: 23 → 24
 | 20. Lock-Aware Plugin Display | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 | 21. Visual Overlap Indicators | v0.7.0 | 2/2 | Complete | 2026-03-09 |
 | 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-09 |
-| 23. Plugin Checkbox-Only Display | v0.8.0 | 0/1 | Not started | - |
+| 23. Plugin Checkbox-Only Display | v0.8.0 | 1/1 | Complete | 2026-03-10 |
 | 24. Flatten Permissions | v0.8.0 | 0/? | Not started | - |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-10 — v0.8.0 Tree Display Polish roadmap created*
+*Last updated: 2026-03-10 — Phase 23 completed*
