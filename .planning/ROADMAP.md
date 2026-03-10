@@ -97,10 +97,10 @@
   1. When User scope is unlocked, plugin nodes show a checkbox with no additional plugin icon next to it
   2. When User scope is locked, plugin nodes continue to show static icons (existing lock-aware behavior preserved)
   3. Toggling the lock changes plugin nodes between checkbox-only and static-icon modes without tree collapse or flicker
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 23-01: TBD
+- [ ] 23-01-PLAN.md — Remove extensions icon when unlocked, verify checkbox-only display
 
 ### Phase 24: Flatten Permissions with Type Icons
 **Goal**: Users see all permission rules in a single flat list under Permissions, with icons that immediately communicate each rule's type and an inline button to change type
@@ -148,7 +148,7 @@ Phases execute in numeric order: 23 → 24
 | 20. Lock-Aware Plugin Display | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 | 21. Visual Overlap Indicators | v0.7.0 | 2/2 | Complete | 2026-03-09 |
 | 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-09 |
-| 23. Plugin Checkbox-Only Display | v0.8.0 | 0/? | Not started | - |
+| 23. Plugin Checkbox-Only Display | v0.8.0 | 0/1 | Not started | - |
 | 24. Flatten Permissions | v0.8.0 | 0/? | Not started | - |
 
 ---
