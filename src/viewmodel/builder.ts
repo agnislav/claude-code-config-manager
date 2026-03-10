@@ -749,7 +749,7 @@ export class TreeViewModelBuilder {
           ? (enabled
               ? new vscode.ThemeIcon('check')
               : new vscode.ThemeIcon('circle-slash', new vscode.ThemeColor('disabledForeground')))
-          : new vscode.ThemeIcon('extensions'),
+          : undefined,
         collapsibleState,
         contextValue: computeStandardContextValue('plugin', scopedConfig.isReadOnly, overlap),
         tooltip,
