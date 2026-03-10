@@ -41,17 +41,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLUG-01 | — | Pending |
-| PERM-01 | — | Pending |
-| PERM-02 | — | Pending |
-| PERM-03 | — | Pending |
-| PERM-04 | — | Pending |
+| PLUG-01 | Phase 23 | Pending |
+| PERM-01 | Phase 24 | Pending |
+| PERM-02 | Phase 24 | Pending |
+| PERM-03 | Phase 24 | Pending |
+| PERM-04 | Phase 24 | Pending |
 
 **Coverage:**
 - v0.8.0 requirements: 5 total
-- Mapped to phases: 0
-- Unmapped: 5 ⚠️
+- Mapped to phases: 5
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-10*
-*Last updated: 2026-03-10 after initial definition*
+*Last updated: 2026-03-10 after roadmap creation*

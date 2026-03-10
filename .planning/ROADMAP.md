@@ -1,8 +1,8 @@
 # Roadmap: Claude Code Config Manager
 
 **Created:** 2026-02-18
-**Updated:** 2026-03-09
-**Status:** v0.3.x-v0.7.0 complete (Phases 1-22)
+**Updated:** 2026-03-10
+**Status:** v0.3.x-v0.7.0 complete (Phases 1-22), v0.8.0 in progress (Phases 23-24)
 
 ---
 
@@ -14,6 +14,7 @@
 - ✅ **v0.5.0 Hardening** — Phases 10-15 (shipped 2026-02-21)
 - ✅ **v0.6.0 Decouple State from Tree** — Phases 16-18 (shipped 2026-03-08)
 - ✅ **v0.7.0 Visual Fidelity** — Phases 19-22 (shipped 2026-03-09)
+- 🚧 **v0.8.0 Tree Display Polish** — Phases 23-24 (in progress)
 
 ---
 
@@ -77,7 +78,51 @@
 
 ---
 
+### 🚧 v0.8.0 Tree Display Polish (In Progress)
+
+**Milestone Goal:** Refine tree node display — checkbox-only plugins when unlocked, flattened permissions with type-aware icons and inline type switching.
+
+## Phases
+
+- [ ] **Phase 23: Plugin Checkbox-Only Display** - Plugin nodes show only checkbox (no plugin icon) when User scope is unlocked
+- [ ] **Phase 24: Flatten Permissions with Type Icons** - Permission rules display as flat list with type-aware icons and inline type switching
+
+## Phase Details
+
+### Phase 23: Plugin Checkbox-Only Display
+**Goal**: Plugin nodes present a clean checkbox-only appearance when User scope is unlocked, removing visual noise from redundant plugin icons
+**Depends on**: Nothing (first phase in v0.8.0)
+**Requirements**: PLUG-01
+**Success Criteria** (what must be TRUE):
+  1. When User scope is unlocked, plugin nodes show a checkbox with no additional plugin icon next to it
+  2. When User scope is locked, plugin nodes continue to show static icons (existing lock-aware behavior preserved)
+  3. Toggling the lock changes plugin nodes between checkbox-only and static-icon modes without tree collapse or flicker
+**Plans**: TBD
+
+Plans:
+- [ ] 23-01: TBD
+
+### Phase 24: Flatten Permissions with Type Icons
+**Goal**: Users see all permission rules in a single flat list under Permissions, with icons that immediately communicate each rule's type and an inline button to change type
+**Depends on**: Phase 23
+**Requirements**: PERM-01, PERM-02, PERM-03, PERM-04
+**Success Criteria** (what must be TRUE):
+  1. Permission rules appear directly under the Permissions section node without Allow/Ask/Deny group nodes in between
+  2. Each permission rule displays a distinct icon that visually indicates whether it is an allow, deny, or ask rule
+  3. Right-clicking a permission rule still shows edit, delete, and move options (contextValue preserved)
+  4. An inline button on each permission rule opens a QuickPick to switch the rule between Allow, Ask, and Deny types
+  5. Switching a rule's type via the inline button persists the change to the correct config file and refreshes the tree
+**Plans**: TBD
+
+Plans:
+- [ ] 24-01: TBD
+
+---
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 23 → 24
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -103,8 +148,10 @@
 | 20. Lock-Aware Plugin Display | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 | 21. Visual Overlap Indicators | v0.7.0 | 2/2 | Complete | 2026-03-09 |
 | 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-09 |
+| 23. Plugin Checkbox-Only Display | v0.8.0 | 0/? | Not started | - |
+| 24. Flatten Permissions | v0.8.0 | 0/? | Not started | - |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-09 — v0.7.0 Visual Fidelity shipped*
+*Last updated: 2026-03-10 — v0.8.0 Tree Display Polish roadmap created*
