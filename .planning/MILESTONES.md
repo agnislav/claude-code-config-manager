@@ -1,5 +1,25 @@
 # Milestones: Claude Code Config Manager
 
+## v0.8.0 — Tree Display Polish (Complete)
+
+**Completed:** 2026-03-11
+**Phases:** 23–24 (2 phases, 3 plans, 6 tasks)
+**Requirements:** 5/5 satisfied
+**Git range:** docs(23)..docs(24-02) (14 commits)
+**LOC:** 5,672 TypeScript (+105 / -85 source changes)
+
+Refined tree node display for cleaner UX — plugin nodes show checkbox-only appearance when unlocked, permission rules flatten to a single list with type-aware icons and inline type switching.
+
+**Key accomplishments:**
+- Plugin checkbox-only display — no icon noise when User scope is unlocked
+- Flattened 3-level permission hierarchy to 2-level (Section → PermissionRule)
+- Category-specific icons on permission rules (check/question/close for allow/ask/deny)
+- Inline pencil button for switching permission type via QuickPick
+- Inline + button on Permissions section header for direct rule creation
+- Full dead code cleanup — removed PermissionGroupVM and all related artifacts
+
+---
+
 ## v0.7.0 — Visual Fidelity (Complete)
 
 **Completed:** 2026-03-09

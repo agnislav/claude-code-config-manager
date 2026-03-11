@@ -1,6 +1,8 @@
 .vscode/**
 .github/**
 .claude/**
+.planning/**
+.serena/**
 docs/**
 src/**
 test/**

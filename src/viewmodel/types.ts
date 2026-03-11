@@ -9,7 +9,6 @@ export enum NodeKind {
   WorkspaceFolder = 'workspaceFolder',
   Scope = 'scope',
   Section = 'section',
-  PermissionGroup = 'permissionGroup',
   PermissionRule = 'permissionRule',
   Setting = 'setting',
   SettingKeyValue = 'settingKeyValue',
@@ -73,16 +72,12 @@ export interface SectionVM extends BaseVM {
   sectionType: SectionType;
 }
 
-export interface PermissionGroupVM extends BaseVM {
-  kind: NodeKind.PermissionGroup;
-  /** Permission category: allow, deny, or ask. */
-  category: string;
-}
-
 export interface PermissionRuleVM extends BaseVM {
   kind: NodeKind.PermissionRule;
   /** The permission rule string (e.g., "Bash(curl *)"). */
   rule: string;
+  /** Permission category: allow, deny, or ask. */
+  category: string;
   /** Category of the overriding rule, if overridden by a different category. */
   overriddenByCategory?: string;
 }

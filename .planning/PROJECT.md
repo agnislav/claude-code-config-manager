@@ -10,7 +10,7 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 
 ## Current State
 
-Shipped v0.7.0 (2026-03-09). Tree reflects true state with cross-scope overlap indicators, lock-aware plugin display, and correct hook navigation. Legacy override system replaced with 4-directional overlap model. 56-test suite validates builder and overlap resolver.
+Shipped v0.8.0 (2026-03-11). Plugin nodes show clean checkbox-only appearance when unlocked. Permission rules flattened to single list with type-aware icons and inline type switching. All 8 milestones shipped across 24 phases.
 
 ## Requirements
 
@@ -60,10 +60,15 @@ Shipped v0.7.0 (2026-03-09). Tree reflects true state with cross-scope overlap i
 - ✓ Lock toggle refreshes plugin display between checkbox and icon modes — v0.7.0
 - ✓ Hook entry click navigates to correct JSON line — v0.7.0
 - ✓ Dead HookKeyValue code removed — v0.7.0
+- ✓ Plugin checkbox-only display when User scope is unlocked — v0.8.0
+- ✓ Flat permission list under Permissions section (no Allow/Ask/Deny grouping) — v0.8.0
+- ✓ Permission type-aware icons (check/question/close) — v0.8.0
+- ✓ Flat permission list preserves contextValue for edit/delete/move — v0.8.0
+- ✓ Inline type-switch button on permission rules via QuickPick — v0.8.0
 
 ### Active
 
-(None — start next milestone to define requirements)
+(Planning next milestone)
 
 ### Out of Scope
 
@@ -75,13 +80,12 @@ Shipped v0.7.0 (2026-03-09). Tree reflects true state with cross-scope overlap i
 - Overlap description text ("also in [Scope]") on tree items — deferred enhancement (OVLP-03)
 - Overlap FileDecoration badge ("2x") for multi-scope entities — deferred enhancement (OVLP-04)
 - Sort items — deferred to separate task
-- Plugin inline buttons (move/copy/delete) — temporarily disabled, re-enable in future
 - Marketplace publishing — personal tool, not targeting public release
 - Windows support — macOS/Linux only, matches Claude Code platform support
 
 ## Context
 
-5,672 LOC TypeScript. Shipped v0.7.0 with cross-scope overlap indicators, lock-aware plugin display, and corrected hook navigation. OverlapResolver uses nearest-neighbor algorithm with 4-directional model (overrides, isOverriddenBy, duplicates, isDuplicatedBy) for all entity types. Color-coded FileDecoration (red/green/yellow/orange) and MarkdownString tooltips show overlap relationships. 56-test suite validates builder and overlap resolver. Legacy overrideResolver.ts and ResolvedValue type fully removed. Plugin and editValue inline buttons remain temporarily disabled.
+5,672 LOC TypeScript. Shipped v0.8.0 with clean checkbox-only plugin display and flat permission list with type-aware icons. OverlapResolver uses nearest-neighbor algorithm with 4-directional model for all entity types. Color-coded FileDecoration and MarkdownString tooltips for overlap relationships. 56-test suite validates builder and overlap resolver. Inline buttons restored on permission rules (edit/move/copy/delete). EditValue inline buttons remain temporarily disabled.
 
 ## Constraints
 
@@ -129,6 +133,11 @@ Shipped v0.7.0 (2026-03-09). Tree reflects true state with cross-scope overlap i
 | Orange color for isDuplicatedBy (distinct from red isOverriddenBy) | Clear visual distinction between "shadowed by different value" and "duplicated by same value" | ✓ Good |
 | Plugin overlap color takes precedence over disabled decoration | Overlap is more informative than disabled state; both visible in tooltip | ✓ Good |
 | Lock-aware static icons instead of disabled checkboxes | VS Code has no disabled checkbox state; icons communicate unclickable clearly | ✓ Good |
+| Checkbox-only: set icon + resourceUri to undefined | Clean appearance; prevents VS Code fallback file icon | ✓ Good |
+| Permission sort order Allow → Ask → Deny | Most permissive first; consistent mental model | ✓ Good |
+| Non-overlapped icons use undefined ThemeColor | VS Code default; no explicit icon.foreground needed | ✓ Good |
+| Inline button order: edit@0, move@1, copy@2, delete@3 | Edit most frequent action, destructive action last | ✓ Good |
+| changePermissionType uses synchronous remove+add | Single tree refresh; no double-render flicker | ✓ Good |
 
 ---
-*Last updated: 2026-03-09 after v0.7.0 milestone*
+*Last updated: 2026-03-11 after v0.8.0 milestone*

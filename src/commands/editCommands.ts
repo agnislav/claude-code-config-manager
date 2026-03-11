@@ -3,12 +3,14 @@ import {
   setEnvVar,
   setScalarSetting,
   setSandboxProperty,
+  addPermissionRule,
+  removePermissionRule,
   showWriteError,
 } from '../config/configWriter';
-import { ConfigScope } from '../types';
+import { ConfigScope, PermissionCategory } from '../types';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { validateKeyPath } from '../utils/validation';
-import { MESSAGES } from '../constants';
+import { MESSAGES, PERMISSION_CATEGORY_LABELS } from '../constants';
 
 export function registerEditCommands(
   context: vscode.ExtensionContext,
@@ -66,6 +68,50 @@ export function registerEditCommands(
               const parsed = parseInputValue(newValue);
               setScalarSetting(filePath, rootKey, parsed);
             }
+          });
+        }
+      },
+    ),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'claudeConfig.changePermissionType',
+      async (node?: ConfigTreeNode) => {
+        if (!node?.nodeContext) return;
+        const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
+        if (!filePath) return;
+        if (isReadOnly) {
+          if (scope === ConfigScope.User) {
+            vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
+          } else {
+            vscode.window.showWarningMessage(MESSAGES.readOnlySetting);
+          }
+          return;
+        }
+        if (keyPath[0] !== 'permissions' || keyPath.length !== 3) return;
+
+        const currentCategory = keyPath[1] as PermissionCategory;
+        const rule = keyPath[2];
+
+        const items = Object.values(PermissionCategory).map((cat) => ({
+          label: PERMISSION_CATEGORY_LABELS[cat] ?? cat,
+          value: cat,
+          description: cat === currentCategory ? '(current)' : '',
+        }));
+
+        const pick = await vscode.window.showQuickPick(items, {
+          placeHolder: 'Change permission type',
+        });
+        if (!pick || pick.value === currentCategory) return;
+
+        try {
+          removePermissionRule(filePath, currentCategory, rule);
+          addPermissionRule(filePath, pick.value, rule);
+        } catch (error) {
+          await showWriteError(filePath, error, () => {
+            removePermissionRule(filePath, currentCategory, rule);
+            addPermissionRule(filePath, pick.value, rule);
           });
         }
       },

@@ -5,6 +5,26 @@ All notable changes to the Claude Code Config Manager extension will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.8.0] - 2026-03-11
+
+### Added
+- Inline pencil button on permission rules to switch between Allow, Ask, and Deny types via QuickPick
+- Inline + button on Permissions section header for direct rule creation
+- Context menu "Change Permission Type" entry on editable permission rules
+- Category-specific icons on permission rules — check (allow), question (ask), close (deny)
+
+### Changed
+- Permission rules now display as flat list directly under Permissions section (removed Allow/Ask/Deny group nodes)
+- Plugin nodes show clean checkbox-only appearance when User scope is unlocked (no icon, no fallback file icon)
+- Inline button ordering standardized: edit@0, move@1, copy@2, delete@3
+
+### Removed
+- `PermissionGroupVM` type and `permissionGroupNode.ts` — replaced by flat permission list with category field
+- Permission group context menu entries from package.json
+
+### Fixed
+- `.vscodeignore` now excludes `.planning/` and `.serena/` directories — reduced VSIX package from 683 KB (227 files) to 56 KB (41 files)
+
 ## [0.7.0] - 2026-03-09
 
 ### Added
