@@ -82,6 +82,12 @@
         "icon": "$(add)"
       },
       {
+        "command": "claudeConfig.changePermissionType",
+        "title": "Change Permission Type",
+        "category": "Claude Config",
+        "icon": "$(edit)"
+      },
+      {
         "command": "claudeConfig.editValue",
         "title": "Edit Value",
         "category": "Claude Config",
@@ -232,6 +238,11 @@
           "group": "1_edit"
         },
         {
+          "command": "claudeConfig.changePermissionType",
+          "when": "view == claudeConfigTree && viewItem =~ /^permissionRule\\.editable/",
+          "group": "1_edit"
+        },
+        {
           "command": "claudeConfig.deleteItem",
           "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /permissionRule|envVar|hookEntry|mcpServer|plugin|setting|sandboxProperty/",
           "group": "1_edit"
@@ -297,14 +308,24 @@
           "group": "inline@0"
         },
         {
-          "command": "claudeConfig.moveToScope",
+          "command": "claudeConfig.changePermissionType",
           "when": "view == claudeConfigTree && viewItem =~ /^permissionRule\\.editable/",
           "group": "inline@0"
         },
         {
-          "command": "claudeConfig.copyPermissionToScope",
+          "command": "claudeConfig.addPermissionRule",
+          "when": "view == claudeConfigTree && viewItem =~ /^section\\.permissions\\.editable/",
+          "group": "inline@0"
+        },
+        {
+          "command": "claudeConfig.moveToScope",
           "when": "view == claudeConfigTree && viewItem =~ /^permissionRule\\.editable/",
           "group": "inline@1"
+        },
+        {
+          "command": "claudeConfig.copyPermissionToScope",
+          "when": "view == claudeConfigTree && viewItem =~ /^permissionRule\\.editable/",
+          "group": "inline@2"
         },
         {
           "command": "claudeConfig.moveToScope",
@@ -319,10 +340,14 @@
         {
           "command": "claudeConfig.deleteItem",
           "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /permissionRule|envVar|hookEntry|mcpServer|setting|sandboxProperty/",
-          "group": "inline@2"
+          "group": "inline@3"
         }
       ],
       "commandPalette": [
+        {
+          "command": "claudeConfig.changePermissionType",
+          "when": "false"
+        },
         {
           "command": "claudeConfig.editValue",
           "when": "false"
