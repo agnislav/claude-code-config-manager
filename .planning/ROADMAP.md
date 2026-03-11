@@ -1,7 +1,7 @@
 # Roadmap: Claude Code Config Manager
 
 **Created:** 2026-02-18
-**Updated:** 2026-03-10
+**Updated:** 2026-03-11
 **Status:** v0.3.x-v0.7.0 complete (Phases 1-22), v0.8.0 in progress (Phases 23-24)
 
 ---
@@ -78,7 +78,7 @@
 
 ---
 
-### 🚧 v0.8.0 Tree Display Polish (In Progress)
+### v0.8.0 Tree Display Polish (In Progress)
 
 **Milestone Goal:** Refine tree node display — checkbox-only plugins when unlocked, flattened permissions with type-aware icons and inline type switching.
 
@@ -112,10 +112,11 @@ Plans:
   3. Right-clicking a permission rule still shows edit, delete, and move options (contextValue preserved)
   4. An inline button on each permission rule opens a QuickPick to switch the rule between Allow, Ask, and Deny types
   5. Switching a rule's type via the inline button persists the change to the correct config file and refreshes the tree
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 24-01: TBD
+- [ ] 24-01-PLAN.md — Flatten permission hierarchy and add type-aware icons
+- [ ] 24-02-PLAN.md — Add inline type-switch button and section add button
 
 ---
 
@@ -149,9 +150,9 @@ Phases execute in numeric order: 23 → 24
 | 21. Visual Overlap Indicators | v0.7.0 | 2/2 | Complete | 2026-03-09 |
 | 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 | 23. Plugin Checkbox-Only Display | v0.8.0 | Complete    | 2026-03-10 | 2026-03-10 |
-| 24. Flatten Permissions | v0.8.0 | 0/? | Not started | - |
+| 24. Flatten Permissions | v0.8.0 | 0/2 | Not started | - |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-10 — Phase 23 completed*
+*Last updated: 2026-03-11 — Phase 24 planned*
