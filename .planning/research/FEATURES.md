@@ -1,193 +1,166 @@
 # Feature Landscape
 
-**Domain:** Visual fidelity improvements for VS Code TreeView config editor
-**Researched:** 2026-03-08
-**Confidence:** HIGH (direct codebase analysis + VS Code API documentation)
-
----
-
-## Context: What Already Exists
-
-The v0.6.0 ViewModel layer (TreeViewModelBuilder) pre-computes all display state. Override resolution already works for settings, env vars, permissions, plugins, and sandbox properties -- producing `isOverridden`, `overriddenByScope`, dimmed icons, and description suffixes like `(overridden by Project Local)`. The lock toggle already sets `isReadOnly: true` on User scope and blocks edits. Plugin checkbox toggle already checks `isReadOnly` and shows an info message when locked. Hook entry nodes already have a `command` property that calls `revealInFile` with a keyPath.
-
-The three v0.7.0 features address gaps in this existing system, not new systems.
-
----
+**Domain:** VS Code TreeView UX Audit for Config Manager Extension
+**Researched:** 2026-03-11
 
 ## Table Stakes
 
-Features that make the existing tree reflect truthful state. Without these, users see incomplete or wrong information.
+Features users expect from every tree node type. Missing on any entity = inconsistency that erodes trust.
 
-| Feature | Why Expected | Complexity | Dependencies |
-|---------|--------------|------------|--------------|
-| Visual overlap indicators for same-name entities across scopes | When the same env var, plugin, setting, or MCP server appears in multiple scopes, nothing currently shows this. Users cannot tell that `API_KEY` in User scope is shadowed by `API_KEY` in Project Local without manually expanding both scopes. The override system already detects this but only shows it on the lower-precedence (losing) side. | Med | TreeViewModelBuilder (description, badge, tooltip computation), overrideResolver (already has all needed data) |
-| Lock-aware plugin checkbox suppression | When User scope is locked, clicking a plugin checkbox fires `onDidChangeCheckboxState`, the handler detects `isReadOnly`, shows an info message, and calls `treeProvider.refresh()` to reset the checkbox. But: (1) VS Code does not support disabling individual checkboxes, so the checkbox always appears interactive; (2) the visual reset causes a brief flicker as the tree refreshes. The fix is to prevent the write and immediately revert without full refresh. | Low | extension.ts checkbox handler, PluginVM contextValue |
-| Hook leaf click navigates to correct JSON line | Hook entries have keyPath `['hooks', eventType, matcherIndex, hookIndex]` where matcherIndex and hookIndex are stringified numbers. `findKeyLine()` handles numeric segments as array indices. But the hook JSON structure nests matchers as array-of-objects with a `hooks` sub-array, meaning the keyPath `['hooks', 'PreToolUse', '0', '0']` must navigate through two levels of array indexing. The current implementation may land on the wrong line when matchers have multiple hooks or when the `hooks` key inside a matcher object is encountered. | Low-Med | jsonLocation.ts `findKeyLine()`, builder.ts hook entry keyPath construction |
+### Universal Node Behaviors (All 7 Entity Types)
 
----
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Click navigates to JSON location | Every leaf node should reveal its source in the config file | Low | Currently implemented via `computeCommand()` for leaf nodes. Verify all entity types wire this up. |
+| Tooltip shows useful context | Hovering any item should explain what it is, not just repeat the label | Low | Currently inconsistent: EnvVar has no base tooltip (only overlap), MCP Server has rich tooltip, Sandbox shows array items. |
+| Description shows current value | The description field (gray text after label) should show the effective value or relevant metadata | Low | Currently inconsistent: HookEntry has empty string `''`, Sandbox shows value, EnvVar shows value. |
+| Overlap detection and decoration | Every entity that can exist in multiple scopes must show overlap color and tooltip | Low | Implemented for 6 of 7 entity types. Hooks have NO overlap detection. |
+| Context menu with all applicable actions | Right-click should offer every action the node supports (edit, delete, move, copy) | Low | Currently varies wildly per entity type. See Inconsistency Matrix below. |
+| Delete action for editable items | Every user-created item should be deletable | Low | Missing inline delete for some entity types where context menu supports it. |
+| Consistent icon dimming for overridden items | Overridden items should use `disabledForeground` ThemeColor uniformly | Low | Already consistent across entities that support overlap. |
+| Item count on section headers | Section nodes should show "N items" in description | Low | Currently inconsistent: Sandbox shows empty string `''` while all others show counts. |
+
+### Interaction Consistency
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Inline button set follows a predictable pattern | Users learn button positions; inconsistent button sets between entity types cause misclicks | Med | Currently the biggest inconsistency. See detailed matrix below. |
+| Read-only nodes suppress all edit affordances | Managed scope and locked User scope should show zero inline buttons and no edit context menus | Low | Already handled via `.editable` / `.readOnly` contextValue pattern. Verify no leaks. |
+| Destructive actions require confirmation | Delete should not silently remove items | Low | Needs audit: does `deleteItem` show confirmation for all entity types? |
+| Add button on section headers | Every section that supports adding items should have an inline `$(add)` button | Low | Currently only Permissions, Environment, MCP Servers, Hooks sections have add buttons. Settings and Sandbox sections do not. |
+
+## Inconsistency Matrix (Current State)
+
+This is the core audit finding. Each cell shows what actions are available per entity type.
+
+### Inline Buttons (visible on hover)
+
+| Entity Type | Edit | Move | Copy | Delete | Type-Switch | Other |
+|-------------|------|------|------|--------|-------------|-------|
+| PermissionRule | - | inline@1 | inline@2 (copyPermission) | inline@3 | inline@0 (changeType) | - |
+| EnvVar | disabled (`&& false`) | inline@0 | - | inline@3 | - | - |
+| Setting | - | inline@0 | inline@1 (copySetting) | inline@3 | - | - |
+| SettingKeyValue | - | - | - | - | - | No inline buttons at all |
+| McpServer | - | - | - | inline@3 | - | - |
+| Plugin | disabled (`&& false`) | disabled (`&& false`) | disabled (`&& false`) | disabled (`&& false`) | - | inline@0 (openReadme) |
+| HookEntry | - | - | - | inline@3 | - | - |
+| SandboxProperty | disabled (`&& false`) | - | - | inline@3 | - | - |
+
+### Context Menu Actions
+
+| Entity Type | Edit | Delete | Move | Copy | Type-Switch | Toggle |
+|-------------|------|--------|------|------|-------------|--------|
+| PermissionRule | - | Yes | Yes | - | Yes (changeType) | - |
+| EnvVar | Yes | Yes | Yes | - | - | - |
+| Setting | Yes (scalar only) | Yes | Yes | - | - | - |
+| SettingKeyValue | - | - | - | - | - | - |
+| McpServer | - | Yes | - | - | - | - |
+| Plugin | - | Yes | Yes | - | - | Yes (toggle) |
+| HookEntry | - | Yes | - | - | - | - |
+| SandboxProperty | Yes | Yes | - | - | - | - |
+
+### Key Inconsistencies Found
+
+1. **EnvVar edit inline button is disabled** (`&& false` in when clause) but edit is available in context menu -- mismatch between inline and context affordances.
+2. **SandboxProperty edit inline button is disabled** (`&& false`) but edit is available in context menu -- same mismatch.
+3. **Plugin inline buttons are ALL disabled** with `&& false`. Only openReadme works inline. Context menu has toggle, delete, move.
+4. **McpServer has no move/copy** in either inline or context menu. Cannot relocate MCP servers between scopes.
+5. **HookEntry has no move/copy**. Cannot relocate hooks between scopes.
+6. **SandboxProperty has no move/copy**. Cannot relocate sandbox config between scopes.
+7. **SettingKeyValue has zero actions** -- no inline buttons, no context menu entries. Dead-end leaf node.
+8. **Sandbox section header has no item count** (empty string) unlike all other sections.
+9. **EnvVar has no base tooltip** -- only overlap tooltip when overlapping. Non-overlapping env vars show nothing on hover.
+10. **HookEntry description is always empty string** -- wastes the description field that all other leaf entities use.
+11. **Hooks have NO overlap detection** -- the only entity type without it. A hook defined in both User and Project scopes shows no visual indication.
+12. **EnvVar has no copy-to-scope** but has move-to-scope. PermissionRule and Setting have both. Asymmetric.
+13. **McpServer has no inline action buttons other than delete** -- the sparsest entity despite being complex config that users would want to relocate between scopes.
 
 ## Differentiators
 
-Features that go beyond correctness into polish. Not required for v0.7.0 but add significant UX value.
+Features that would make the UX audit milestone go beyond fixing inconsistencies into real polish.
 
-| Feature | Value Proposition | Complexity | Dependencies |
-|---------|-------------------|------------|--------------|
-| Overlap badge via FileDecorationProvider | Show a short badge (e.g., "2x" or scope-initial letter) on entities that exist in multiple scopes. FileDecoration.badge supports up to 2 characters, can use ThemeColor, and appears right-aligned on the tree item. Already have the pattern from PluginDecorationProvider and LockDecorationProvider. | Low | New URI scheme for overlap, new FileDecorationProvider, builder computes overlap count |
-| Overlap tooltip with scope list | MarkdownString tooltip listing all scopes where an entity appears: "Also defined in: **Project Local**, **User**". More informative than badge alone. Already producing MarkdownString tooltips for overrides. | Low | Builder overlap detection across allScopes |
-| Checkbox tooltip on locked plugins | VS Code TreeItem checkboxState accepts an object form: `{ state: TreeItemCheckboxState, tooltip: string }`. When User scope is locked, set tooltip to "Scope is locked" so hovering the checkbox explains why toggling has no effect. | Low | Builder produces checkbox object instead of enum when locked |
-| Clean up dead HookKeyValueVM/Node/builder code | v0.6.0 left HookKeyValueVM, HookKeyValueNode, and buildHookKeyValueVM as dead code after deciding hook entries should be leaf nodes. Removing ~80 lines of unused code. | Low | None -- pure deletion |
-
----
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Uniform inline button template per entity | Every leaf entity gets a predictable set: [primary-action@0, move@1, copy@2, delete@3] where applicable | Med | Requires deciding which actions each entity truly supports, then making it consistent. Core deliverable of the audit. |
+| Hook overlap detection | Hooks are the only entity without overlap. Adding it completes the overlap model across all 7 types. | Med | Requires a new `resolveHookOverlap` function following the `resolveOverlapGeneric` pattern. |
+| Section header "Add" button for Settings | Currently Settings section has no add button. Users could add arbitrary config keys. | Low | Requires new `addSetting` command with key name input + value type picker. |
+| Tooltip on every entity (not just overlapping ones) | EnvVar with no overlap has no tooltip. Should show `KEY=VALUE` or similar contextual info. | Low | Small polish with outsized impact on discoverability. |
+| SettingKeyValue actions (edit, delete) | Currently a dead-end node. Should at least support editing the child value and deleting the child key. | Med | Requires new contextValue pattern and extending editValue/deleteItem commands. |
+| MCP Server move/copy between scopes | Extends scope operations to the most complex entity type. Users reorganizing their config need this. | Med | Requires extending moveToScope + new copyMcpToScope commands. MCP config lives in separate file -- adds complexity. |
+| HookEntry description shows hook type | Description field currently empty. Should show "command", "prompt", or "agent" -- data already in VM. | Low | Trivial change in builder. |
+| Sandbox section item count | Only section without a count. Should show "N properties". | Low | Trivial fix in `getSectionItemCount`. |
+| EnvVar copy-to-scope | EnvVar supports move but not copy. Adding copy makes it consistent with permissions and settings. | Low | Mostly wiring -- follow the copyPermissionToScope/copySettingToScope pattern. |
 
 ## Anti-Features
 
-Features to explicitly NOT build in v0.7.0.
+Features to explicitly NOT build during this UX audit milestone.
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| Cross-scope entity merging (single node showing all scopes) | Fundamentally changes the tree model from "scope-first" to "entity-first". Would require a different tree structure, break the mental model of "each scope shows its own file contents", and conflict with edit/delete commands that target a specific scope. | Keep scope-first tree. Overlap indicators show cross-scope presence without merging. |
-| Disabling checkbox rendering on locked items | VS Code TreeItem API has no way to conditionally remove a checkbox once set. Setting checkboxState to undefined would hide the checkbox entirely, losing the visual indication of enabled/disabled state. | Keep checkbox visible; use tooltip + immediate revert to communicate lock state. |
-| Full tree diff on refresh (virtual DOM approach) | VS Code TreeView has no partial-update API. `_onDidChangeTreeData.fire()` always triggers full tree rebuild. Building a diffing layer adds complexity with zero rendering benefit since VS Code will request all visible nodes anyway. | Continue with fire() full rebuild. Tree is small enough (~100 nodes typical) that rebuild is instant. |
-| Badge/decoration for override direction (winning vs losing) | The current override system already dims losing items and adds description text. Adding separate badges for "this item wins" vs "this item loses" doubles visual noise without adding actionable information. | Keep existing dimming + description suffix for overridden (losing) items. Add overlap indicator only for cross-scope presence. |
-| Animated or transitional checkbox revert | VS Code TreeView provides no animation API. Attempting smooth transitions via rapid state changes would cause flicker and race conditions with the file watcher. | Instant revert via `treeProvider.refresh()` or targeted checkbox state reset. |
-
----
+| Deep-edit inline for complex values (objects, arrays) | JSON editing in a QuickPick is error-prone. Webview would be overengineering for a config tool. | Click to reveal in editor, edit JSON directly. Already works via revealInFile. |
+| Drag-and-drop between scopes | VS Code TreeView DnD API is limited and finicky. Not worth the complexity. | Keep move/copy inline buttons and context menu. |
+| Multiselect batch operations | Significant state management complexity. Deferred per PROJECT.md. | Single-item operations sufficient for a config manager. |
+| Inline text editing (rename in place) | VS Code TreeView does not support inline text editing natively. Faking it is fragile. | Use QuickPick input boxes (already the pattern for editValue). |
+| Sort controls in toolbar | Sorting adds toolbar clutter for minimal value with few items per section. Deferred per PROJECT.md. | Maintain deterministic insertion order (current approach). |
+| "Add" button on Plugins section header | Plugins are discovered from registry, not manually typed. Adding arbitrary plugin IDs is error-prone. | Keep current model: plugins appear when installed, toggle via checkbox. |
+| "Add" button on Sandbox section header | Sandbox properties are schema-defined, not arbitrary. Users should not add unknown sandbox keys. | Edit existing properties only. |
+| Hook move/copy between scopes | Hooks have complex nested structure (matchers with sub-arrays). Moving individual hook entries between scopes requires reconstructing the matcher/hooks hierarchy in the target. | Defer to a future milestone. Users can copy JSON manually via revealInFile. |
 
 ## Feature Dependencies
 
 ```
-Overlap detection in builder (compute which entities appear in multiple scopes)
-  |
-  +-> Description text: "also in Project Local" (table stakes)
-  +-> MarkdownString tooltip with scope list (differentiator)
-  +-> FileDecoration badge "2x" (differentiator)
-       |
-       +-> New OverlapDecorationProvider + URI scheme
+Sandbox section item count (independent, trivial)
+HookEntry description (independent, trivial)
+EnvVar base tooltip (independent, trivial)
 
-Lock-aware checkbox (independent of overlap)
-  |
-  +-> Checkbox object form with tooltip (differentiator)
-  +-> Immediate revert without full refresh (table stakes)
+Enable disabled inline buttons:
+  EnvVar edit inline --> remove `&& false` from when clause
+  SandboxProperty edit inline --> remove `&& false` from when clause
 
-Hook leaf navigation fix (independent of both above)
-  |
-  +-> findKeyLine() fix for nested array-of-objects with sub-arrays
-  +-> Verify keyPath construction in buildHookEntryVM
+Remove dead inline button registrations:
+  Plugin move/copy/delete inline --> remove `&& false` entries entirely (keep openReadme only)
 
-Dead code cleanup (independent)
-  |
-  +-> Remove HookKeyValueVM, HookKeyValueNode, buildHookKeyValueVM
+Hook overlap detection:
+  --> new resolveHookOverlap function
+  --> builder wires overlap into HookEntry/HookEvent VMs
+  --> overlap tooltip + color decoration on hook entries
+
+SettingKeyValue actions:
+  --> new contextValue pattern for settingKeyValue.editable
+  --> extend editValue command to handle settingKeyValue nodes
+  --> extend deleteItem command to handle settingKeyValue nodes
+  --> add inline button registrations for settingKeyValue
+
+MCP Server move/copy:
+  --> extend moveToScope to handle mcpServer nodes
+  --> new copyMcpToScope command
+  --> handle separate MCP config file (mcpFilePath vs filePath)
+
+EnvVar copy-to-scope:
+  --> new copyEnvToScope command
+  --> inline button registration
 ```
-
-All three main features are independent of each other and can be built in any order or in parallel.
-
----
 
 ## MVP Recommendation
 
-**Prioritize:**
+Priority order for the UX audit milestone:
 
-1. **Hook leaf navigation fix** -- Smallest scope, highest annoyance factor. Every click on a hook entry currently may land on the wrong line. Fix is localized to `jsonLocation.ts` and possibly builder keyPath construction. Verify with a test fixture that has multiple matchers with multiple hooks.
+1. **Fix trivial inconsistencies first** (Sandbox count, HookEntry description, EnvVar tooltip) -- Three small changes that remove obvious gaps. Low risk, immediate payoff.
+2. **Resolve disabled inline buttons** -- Either enable the `&& false` buttons that work (envVar edit, sandboxProperty edit) or remove dead registrations (plugin inline buttons). Cleans up package.json noise.
+3. **Uniform inline button audit** -- Document the intentional pattern: which entities get which buttons and why. Create a consistency rule, then apply it. This is the core intellectual work of the milestone.
+4. **Hook overlap detection** -- Completes the overlap model for all 7 entity types. Important for the "every entity type behaves the same" goal.
+5. **SettingKeyValue basic actions** -- Make child key-value pairs editable and deletable. Currently a dead-end node which is unexpected.
+6. **EnvVar copy-to-scope** -- Small addition that makes env vars consistent with permissions and settings.
+7. **MCP Server move/copy** -- Extends scope operations to the remaining complex entity type. Defers hook move/copy (too complex).
 
-2. **Lock-aware plugin checkbox** -- Small scope, clear user confusion when checkbox "toggles then reverts". Two changes: (a) in the `onDidChangeCheckboxState` handler, revert the specific item's checkbox state without full tree refresh; (b) in the builder, use the object form of checkboxState with a tooltip when scope is locked.
-
-3. **Visual overlap indicators** -- Largest scope but most impactful for the "visual fidelity" milestone goal. Implement in the builder by cross-referencing allScopes for each entity. Start with description text (lowest risk, no new providers needed), then add tooltip, then optionally badge decoration.
-
-**Defer:**
-- Dead code cleanup: Do as final commit or alongside any feature that touches the same files.
-- FileDecoration badge for overlap: Optional polish on top of description text. Can ship v0.7.0 without it.
-
----
-
-## Implementation Details
-
-### Overlap Detection
-
-The builder already receives `allScopes: ScopedConfig[]` for override resolution. Overlap detection is a simpler query: "does this entity key exist in any other scope?" (vs override resolution which asks "does a higher-precedence scope win?").
-
-For each entity type:
-- **Settings:** Check if key exists in any other scope's config (excluding DEDICATED_SECTION_KEYS)
-- **Env vars:** Check if env key exists in any other scope's config.env
-- **Plugins:** Check if pluginId exists in any other scope's config.enabledPlugins
-- **MCP servers:** Check if serverName exists in any other scope's mcpConfig.mcpServers
-- **Sandbox:** Check if property key exists in any other scope's config.sandbox
-- **Permissions:** Already handled by resolvePermissionOverride (cross-category conflicts)
-
-The overlap check is distinct from override: an entity can exist in a lower-precedence scope without being overridden (same value) or in a higher-precedence scope (where it is the winner). Overlap says "this entity appears in N scopes" regardless of who wins.
-
-### Checkbox Revert Strategy
-
-VS Code's `onDidChangeCheckboxState` fires after the UI has already toggled. Two options:
-1. **Full refresh** (current approach): `treeProvider.refresh()` rebuilds entire tree, resets checkbox. Causes brief flicker.
-2. **Targeted revert**: Fire `_onDidChangeTreeData.fire(node)` for just the affected node. This is what VS Code's API supports -- passing a specific element to `fire()` triggers a single-node refresh. Cleaner but requires the node reference to be stable.
-
-Recommendation: Use approach 2 (targeted node refresh) since we already have the node reference in the event handler.
-
-### Hook keyPath Structure
-
-Current hook entry keyPath: `['hooks', eventType, matcherIndex, hookIndex]`
-
-The JSON structure is:
-```json
-{
-  "hooks": {
-    "PreToolUse": [          // eventType key
-      {                       // matcher at index 0
-        "matcher": "Bash",
-        "hooks": [            // hooks sub-array
-          {                    // hook at index 0
-            "type": "command",
-            "command": "echo hello"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-The keyPath `['hooks', 'PreToolUse', '0', '0']` needs `findKeyLine()` to:
-1. Find `"hooks"` key at indent 2
-2. Find `"PreToolUse"` key at indent 4
-3. Find array element 0 (the matcher object) -- opens `{` at indent 6
-4. Find array element 0 inside the matcher's `hooks` sub-array
-
-But step 4 is wrong: the fourth segment is not "find element 0 inside the current context" -- it needs to find the `hooks` key inside the matcher object first, then find element 0 of that sub-array. The keyPath should be `['hooks', 'PreToolUse', '0', 'hooks', '0']` to correctly navigate the nested structure.
-
-This means the fix is in the **builder** (keyPath construction), not in `findKeyLine()`.
-
----
-
-## Complexity Assessment
-
-| Feature | Estimated LOC Change | Risk | Verification |
-|---------|---------------------|------|-------------|
-| Overlap indicators (description + tooltip) | ~40-60 lines in builder.ts | Low | Manual inspection: expand same entity in two scopes, verify description shows overlap |
-| Overlap badge (FileDecorationProvider) | ~30-40 lines new provider + URI scheme | Low | Manual inspection: badge appears on overlapping entities |
-| Plugin checkbox lock fix | ~10-20 lines in extension.ts + builder.ts | Low | Lock User scope, click plugin checkbox, verify no flicker and tooltip shown |
-| Hook navigation fix | ~5-10 lines in builder.ts keyPath | Low | Click hook entry, verify editor lands on correct line |
-| Dead code cleanup | ~-80 lines (deletion) | None | Compile succeeds, no runtime changes |
-
-**Total estimated LOC change:** ~85-130 lines modified/added, ~80 lines removed. Net change: small.
-
----
+Defer: Plugin inline buttons (checkbox/icon interaction), hook move/copy (complex nesting), Settings "add" button (scope creep).
 
 ## Sources
 
-- Direct codebase analysis: `src/viewmodel/builder.ts` (TreeViewModelBuilder, all build methods, override resolution integration)
-- Direct codebase analysis: `src/viewmodel/types.ts` (BaseVM, PluginVM, HookEntryVM -- checkboxState, command properties)
-- Direct codebase analysis: `src/config/overrideResolver.ts` (5 resolver functions, allScopes pattern)
-- Direct codebase analysis: `src/utils/jsonLocation.ts` (findKeyLine, findArrayElement, findObjectKey)
-- Direct codebase analysis: `src/extension.ts` lines 128-157 (onDidChangeCheckboxState handler)
-- Direct codebase analysis: `src/tree/nodes/pluginNode.ts` (PluginDecorationProvider, PLUGIN_URI_SCHEME)
-- Direct codebase analysis: `src/tree/lockDecorations.ts` (LockDecorationProvider pattern)
-- Direct codebase analysis: `src/commands/openFileCommands.ts` (revealInFile command, findKeyLine usage)
-- [VS Code Tree View API](https://code.visualstudio.com/api/extension-guides/tree-view) -- TreeItem description, tooltip, contextValue, checkboxState
-- [VS Code TreeItem checkbox API](https://github.com/microsoft/vscode/issues/116141) -- checkboxState object form with tooltip
-- [VS Code FileDecoration badge](https://github.com/microsoft/vscode/issues/125658) -- badge limited to 2 characters
-- [VS Code FileDecorationProvider API](https://github.com/microsoft/vscode/issues/47502) -- custom view decoration support
-- Confidence: HIGH -- all three features are well within established VS Code extension API patterns already used in this codebase
-
----
-*Feature research for: Claude Code Config Manager v0.7.0 -- Visual Fidelity*
-*Researched: 2026-03-08*
+- Direct codebase analysis of `package.json` menu registrations (view/item/context section, lines 229-344)
+- Direct codebase analysis of `src/viewmodel/builder.ts` (all entity builder methods, overlap wiring, description/tooltip computation)
+- Direct codebase analysis of `src/viewmodel/types.ts` (BaseVM fields, per-type VM interfaces)
+- Direct codebase analysis of `src/tree/nodes/*.ts` (node implementations, getChildren patterns)
+- VS Code TreeView API: TreeItem properties (description, tooltip, contextValue, command, iconPath, checkboxState)
+- VS Code `when` clause context: regex matching on contextValue for menu visibility
+- PROJECT.md: validated requirements, key decisions, out-of-scope items

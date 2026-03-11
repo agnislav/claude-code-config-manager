@@ -1,227 +1,237 @@
 # Domain Pitfalls
 
-**Domain:** Adding visual overlap indicators, lock enforcement for plugins, and editor navigation fixes to a VS Code TreeView extension with ViewModel architecture
-**Researched:** 2026-03-08
-**Scope:** Integration pitfalls specific to v0.7.0 Visual Fidelity features on the existing v0.6.0 codebase (6,247 LOC, ViewModel layer, 14 node types)
+**Domain:** UX consistency audit and fixes across 14 node types in a VS Code TreeView extension
+**Researched:** 2026-03-11
+**Scope:** Integration pitfalls specific to v0.9.0 UX Audit -- auditing and fixing inline buttons, context menus, tooltips, descriptions, click behavior, and visual indicators across all 7 entity types, scope nodes, and section headers in the existing v0.8.0 codebase (5,672 LOC, ViewModel layer, 14 node types)
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause broken tree rendering, incorrect state, or require reverting the feature.
+Mistakes that cause regressions, data loss, or require reverting shipped changes.
 
-### Pitfall 1: Overlap Detection Confusing "Override" with "Overlap"
+### Pitfall 1: contextValue Regex Breakage in package.json `when` Clauses
 
-**What goes wrong:** The overlap indicator reuses the existing `isOverridden` field in `NodeContext`, causing overlap indicators to trigger override dimming, or override dimming to trigger overlap badges. These are two distinct concepts that get conflated.
+**What goes wrong:** Changing a node's `contextValue` string to "fix consistency" silently breaks inline buttons or context menu items because the regex in `package.json` `when` clauses no longer matches. The extension compiles fine, tests pass, but the button disappears in the UI with no error.
 
-**Why it happens:** The existing override system answers "is this value shadowed by a higher-precedence scope?" (one value wins, one loses). Overlap answers "does this entity exist in multiple scopes?" (both exist, neither necessarily loses). For example, an env var `API_KEY` in both User and Project Local scopes: Project Local overrides User (User is dimmed), but from User's perspective it also overlaps with Project Local. The current `ResolvedValue` type has `isOverridden` and `overriddenByScope` -- there is no `overlapsWithScopes: ConfigScope[]` field.
+**Why it happens:** The `contextValue` is the only bridge between tree node types and menu visibility. The current codebase uses regex patterns like `viewItem =~ /^permissionRule\.editable/` and compound patterns like `viewItem =~ /\.editable/ && viewItem =~ /permissionRule|envVar|hookEntry|mcpServer|plugin|setting|sandboxProperty/`. Any rename or restructuring of the `contextValue` format silently severs this connection. VS Code does not log `when` clause evaluation failures.
 
-If overlap detection piggybacks on the `isOverridden` boolean or mutates `overriddenByScope`, the existing override dimming (ThemeColor `disabledForeground`) and override tooltips will break for nodes that overlap but are not overridden (i.e., the winning scope's node).
-
-**Consequences:** The winning scope's entity gets incorrectly dimmed, or overlap badges appear only on the losing scope (missing the point of overlap indicators, which should show on both sides). Worst case: the `contextValue` pattern `{nodeType}.{editability}.overridden` gets applied to overlap nodes, triggering wrong context menu items.
+**Consequences:** Users lose the ability to edit, delete, move, or copy specific node types. No error message appears -- the button just vanishes. The 56-test suite validates viewmodel output, not `when` clause matching, so tests pass while the UI is broken.
 
 **Prevention:**
-- Add new fields to `NodeContext` or `BaseVM` for overlap, separate from override: `overlapsWithScopes?: ConfigScope[]` or `overlapCount?: number`.
-- Never reuse `isOverridden` for overlap. Override = "this value is shadowed." Overlap = "this entity exists elsewhere too."
-- The builder already has access to `allScopes` in every `build*` method. Overlap detection is a scan of other scopes for the same key, which is structurally similar to override resolution but returns different data.
-- Do NOT modify the 5 existing `resolve*Override()` functions to also return overlap data. Write separate overlap-detection functions or inline the logic in the builder.
+1. Create a reference table mapping every `contextValue` pattern to every `when` clause regex it must match BEFORE making changes. The current package.json has 24 `view/item/context` entries and 17 `commandPalette` entries.
+2. After any `contextValue` change, manually verify in the Extension Development Host that all expected inline buttons and context menu items appear for EVERY node type.
+3. Consider adding a test helper that extracts all `when` clause regexes from `package.json` and asserts that each node type's `contextValue` matches its expected set of command regexes.
+4. Never change `contextValue` and `when` clause in separate commits -- always change them atomically.
 
-**Detection:** Set up User scope with `model: "claude-3-opus"` and Project Local with `model: "claude-3-sonnet"`. Verify: User's setting is dimmed (overridden), Project Local's is NOT dimmed. Both show overlap badge/description. If Project Local is dimmed, overlap is conflated with override.
+**Detection:** Missing inline buttons or context menu items on specific node types. The only reliable detection is manual visual testing of every node type after every `contextValue` change.
 
 ---
 
-### Pitfall 2: Hook Entry `keyPath` Does Not Match JSON Structure for `findKeyLine`
+### Pitfall 2: Inline Button Order Regression via `group` Index Collision
 
-**What goes wrong:** Clicking a hook entry leaf node opens the editor but jumps to the wrong line or fails to navigate at all. This is the existing bug being fixed, but the fix can introduce new problems.
+**What goes wrong:** Adding a new inline button to a node type that already has inline buttons, or reordering existing ones, causes buttons to swap positions or disappear. VS Code resolves `inline@N` conflicts unpredictably when multiple menu entries match the same node.
 
-**Why it happens:** The hook entry `keyPath` is `['hooks', eventType, matcherIndex, hookIndex]` (e.g., `['hooks', 'PreToolUse', '0', '0']`). The `findKeyLine()` function in `jsonLocation.ts` interprets numeric string segments as array indices via `findArrayElement()`. The hooks JSON structure is:
+**Why it happens:** The current codebase has MULTIPLE `view/item/context` entries for the same command targeting different node types. For example, `claudeConfig.moveToScope` appears 4 times in the menu configuration:
+- `inline@0` for `envVar.editable`
+- `inline@1` for `permissionRule.editable`
+- `inline@0` for `setting.editable`
+- `group: "2_move"` (context menu, not inline) for the general `.editable` pattern
 
-```json
-{
-  "hooks": {
-    "PreToolUse": [        // Array of matchers
-      {                    // Matcher 0
-        "matcher": "Bash",
-        "hooks": [         // Array of hook commands
-          {                // Hook 0
-            "type": "command",
-            "command": "echo hello"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
+When adding a new inline action to a node type, the developer must find ALL existing entries whose `when` clause could match and ensure `@N` indices don't collide.
 
-The keyPath `['hooks', 'PreToolUse', '0', '0']` means: find key `hooks`, then key `PreToolUse`, then array element 0 (matcher), then array element 0 (hook command). But `findArrayElement()` looks for `[` on or after the current search line. After finding matcher 0, it needs to navigate INTO the matcher object to find the `hooks` array, then find element 0 within THAT array. The current code does not descend into `matcher.hooks` -- it looks for the next `[` at the current level, which could match the wrong bracket.
-
-**Consequences:** Editor jumps to the matcher object's opening brace instead of the hook command's opening brace. Or it finds the wrong array entirely and jumps to a completely unrelated line.
+**Consequences:** Buttons appear in wrong order (destructive delete button ends up in position 0), or two buttons occupy the same slot. Users develop muscle memory for button positions -- unexpected reordering leads to accidental deletes. The established convention (edit@0, move@1, copy@2, delete@3) gets broken for specific node types.
 
 **Prevention:**
-- The keyPath needs to include the intermediate `hooks` key within the matcher: `['hooks', 'PreToolUse', '0', 'hooks', '0']`. This changes the keyPath from 4 segments to 5. This is a breaking change to the keyPath contract.
-- If the keyPath changes, update ALL code that reads hook entry keyPaths: the builder (`buildHookEntryVM`), the `findNodeByKeyPath` walker, the `contextValue` generation, and any commands that parse `keyPath` for hook entries.
-- Alternative: fix `findKeyLine` to handle the nested-array-within-object case without changing keyPath. This is harder but avoids contract changes.
-- Test with multiple matchers and multiple hooks per matcher to verify correct line targeting.
+1. Build a per-node-type inline button matrix before making any changes. Map which buttons appear at which positions for every node type.
+2. When adding any inline button, audit ALL `view/item/context` entries whose `when` clause could match the same `contextValue`.
+3. Ensure the `@N` ordering is consistent across all node types where possible: edit@0, move@1, copy@2, delete@3.
+4. Test in Extension Development Host by hovering over each node type and verifying button order matches the matrix.
 
-**Detection:** Create a config with 2 matchers, each with 2 hooks. Click each of the 4 hook entry leaf nodes. Verify the editor cursor lands on the correct hook command object each time, not on the matcher or a sibling hook.
+**Detection:** Visual inspection of inline buttons per node type in Extension Development Host. Compare against the documented order.
 
 ---
 
-### Pitfall 3: Plugin Checkbox Toggle Bypasses Lock Check at the VS Code API Level
+### Pitfall 3: Breaking the `&& false` Disabled-Button Pattern
 
-**What goes wrong:** User clicks a plugin checkbox in the locked User scope, VS Code visually toggles it (checkbox state changes in the UI), and then the handler rejects the write and calls `treeProvider.refresh()` to revert. But the user sees a flicker: checked -> unchecked -> checked again. Worse, if `refresh()` is slow or debounced, the checkbox stays in the wrong state for a noticeable duration.
+**What goes wrong:** The codebase uses `&& false` appended to `when` clauses to intentionally disable certain inline buttons. During a consistency audit, a developer removes `&& false` to "fix" what appears to be a bug, re-enabling buttons that were deliberately disabled because the underlying feature is deferred.
 
-**Why it happens:** VS Code's `onDidChangeCheckboxState` fires AFTER the checkbox has already changed in the UI. The extension cannot prevent the toggle -- it can only react to it. The current code (extension.ts line 128-139) checks `isReadOnly` and calls `treeProvider.refresh()` to revert, but this is a full tree rebuild. The checkbox flickers because the revert is asynchronous.
+**Why it happens:** The current package.json has 5 entries with `&& false`:
+- Plugin move (`inline@1`), copy (`inline@2`), delete (`inline@3`) -- all disabled
+- EnvVar/SandboxProperty editValue (`inline@1`) -- disabled
+These look like dead code or debugging artifacts. PROJECT.md notes "EditValue inline improvements -- deferred to separate phase" but this intent is not obvious from package.json alone.
 
-The root cause is that the ViewModel sets `checkboxState` on the PluginVM regardless of lock state. The checkbox is always interactive at the VS Code API level. There is no VS Code API to make a checkbox read-only.
-
-**Consequences:** Users see the checkbox flicker. If they click rapidly, multiple `refresh()` calls queue up. If a write is in flight to the same file from another operation, the `isWriteInFlight` check blocks the toggle but the checkbox is already visually changed.
+**Consequences:** Buttons appear that trigger commands which silently fail or produce incorrect behavior. For example, the disabled `editValue` inline button for envVar at `inline@1` would collide with `moveToScope` at `inline@0` if enabled, and the edit pre-fill reads `node.description` which may contain override suffix text.
 
 **Prevention:**
-- VS Code TreeView API does not support read-only checkboxes. The only mitigation is to minimize flicker latency.
-- Instead of full `treeProvider.refresh()` on lock rejection, fire a targeted `_onDidChangeTreeData.fire(node)` for just the affected node. This is faster than a full rebuild.
-- Consider not setting `checkboxState` at all when the scope is locked. Remove the checkbox entirely for locked plugins. This is the cleanest fix: no checkbox = no toggle = no flicker. The PluginVM builder already has access to `scopedConfig.isReadOnly`.
-- If removing the checkbox when locked, ensure the `contextValue` pattern updates accordingly so context menu items adjust (e.g., no "Toggle Plugin" menu item for locked plugins).
+1. Before removing any `&& false` clause, check PROJECT.md "Out of Scope" and "Key Decisions" sections.
+2. Treat `&& false` entries as "reserved slots" and never modify them during a consistency audit.
+3. If auditing identifies that these buttons SHOULD be enabled, that is a separate feature task, not a consistency fix.
 
-**Detection:** Lock User scope. Click a plugin checkbox rapidly 5 times. Verify no write occurs, no error appears, and the checkbox state remains stable without visible flicker.
+**Detection:** New inline buttons appearing on node types where they were previously absent.
+
+---
+
+### Pitfall 4: Tooltip Homogenization Destroying Intentional Variation
+
+**What goes wrong:** When "fixing" tooltips for consistency, applying the same tooltip format across all node types creates misleading information or loses valuable context-specific content.
+
+**Why it happens:** The current tooltip strategy is intentionally heterogeneous by design:
+- **Permissions:** Override warnings with category-aware text ("This allow rule is overridden by a deny rule in User")
+- **Settings:** JSON code block for object values, nothing for scalars
+- **MCP servers:** Full command string with type label ("Stdio Server, Command: `npx ...`")
+- **Env vars:** Nothing (value already fully visible in description)
+- **Plugins:** Metadata description from PluginMetadataService
+- **Sandbox:** Markdown list for array values
+- **Hooks:** Command string in inline code
+- **ALL node types:** Overlap tooltip suffix via `buildOverlapTooltip()`
+
+A naive "make all tooltips look the same" approach destroys this intentional variation. The overlap tooltip appended by `buildOverlapTooltip()` is the shared consistency layer -- the base tooltip is intentionally per-type.
+
+**Consequences:** Users see redundant information (description already shows the value, tooltip repeats it), or useful context-specific tooltips get replaced with a generic format that loses information. The permission override warning in tooltips is particularly important and must not be displaced.
+
+**Prevention:**
+1. Audit tooltips by asking "what information does this tooltip add that isn't already visible?" rather than "do all tooltips look the same?"
+2. Preserve the `buildOverlapTooltip()` append pattern -- it is the shared consistency layer.
+3. Document the tooltip strategy: "Base tooltip = type-specific context. Overlap suffix = shared format. Never homogenize the base."
+
+**Detection:** Side-by-side comparison of tooltip content vs. visible label+description for every node type. Any tooltip that merely repeats visible information is a regression.
 
 ---
 
 ## Moderate Pitfalls
 
-### Pitfall 4: Overlap Indicators Breaking the `description` String Contract
+### Pitfall 5: Click Command (revealInFile) Regression on Collapsibility Changes
 
-**What goes wrong:** Commands that read `node.description` for pre-fill values (editCommands.ts line 34: `node.description?.toString()`) get overlap text mixed in. For example, a setting's description changes from `"claude-3-opus"` to `"claude-3-opus (also in Project Local)"`. The edit command pre-fills `"claude-3-opus (also in Project Local)"` and if the user saves without modifying, it writes the overlap text as the value.
+**What goes wrong:** Making a previously-leaf node collapsible (or vice versa) breaks the click-to-reveal behavior. The `computeCommand()` helper in `builder.ts` returns `undefined` for any node with `collapsibleState !== None`.
 
-**Why it happens:** The existing `applyOverrideSuffix()` function in `builder.ts` already appends ` (overridden by X)` to description strings. Adding overlap text follows the same pattern. But overlap text is even more likely to be appended to value-bearing descriptions (env vars, settings, sandbox properties) because overlap applies to the winning scope too, not just the overridden one.
+**Why it happens:** VS Code TreeView has a fundamental constraint: clicking a collapsible node toggles expansion, and setting a `command` on a collapsible node creates a double-action (expand + navigate). The builder correctly guards this, but the guard is implicit. If a consistency fix changes a node from leaf to expandable (e.g., making MCP servers expandable to show their properties), clicking the node no longer reveals in file.
 
-**Consequences:** Config values get corrupted with descriptive text. This is a data-loss bug that is hard to notice because the extension writes valid JSON -- just with wrong values.
+**Consequences:** Users lose the ability to click-to-navigate on nodes that were previously clickable. This is a silent regression with no error.
 
 **Prevention:**
-- This is the same problem identified in v0.6.0 Pitfall 8 (description-as-data). The proper fix is to NOT append overlap text to the `description` field. Use a separate `badge` or custom tooltip instead.
-- VS Code TreeItem has a `badge` property (`TreeItemLabel` with highlights, or numeric badge). However, TreeItem badge support is limited -- only `TreeItemDescription` and `tooltip` are reliably customizable.
-- Use tooltip for overlap details (which scopes overlap). Use description only for the raw value. Add a visual indicator through icon color or a badge character.
-- If overlap text MUST go in description, ensure edit commands strip it before pre-filling. Use a known sentinel like ` [+N scopes]` that can be regex-stripped.
-
-**Detection:** Set up a setting that overlaps across scopes. Click "Edit Value" on it. Verify the pre-filled value in the input box is the raw value, not the value with overlap text appended.
+1. Never change `collapsibleState` without checking whether `computeCommand()` will still produce the expected behavior.
+2. If making a leaf node collapsible, ensure "Reveal in Config File" is available via right-click context menu.
+3. Document the invariant: "Leaf nodes click to reveal. Collapsible nodes click to expand. This is by design."
 
 ---
 
-### Pitfall 5: Overlap Detection Performance with Many Scopes and Entities
+### Pitfall 6: Lock-Aware State Not Propagated to New Inline Buttons
 
-**What goes wrong:** Tree rendering becomes noticeably slow when overlap detection scans all scopes for every entity in every scope. The current override resolution is O(entities * scopes) per scope -- it runs for each entity in the current scope, checking higher-precedence scopes. Overlap detection is O(entities * all_scopes) because it must check ALL scopes, not just higher-precedence ones.
+**What goes wrong:** Adding a new inline action (e.g., edit button on MCP servers, move button on hooks) that doesn't respect the User scope lock. The button appears on locked User scope nodes and either silently fails or shows an error.
 
-**Why it happens:** For N entities across S scopes, override detection does N*S comparisons per scope build. Overlap detection does the same but for every scope (not just higher ones). With 4 scopes and ~50 entities per scope, this is 200*4 = 800 comparisons per tree build. Not a problem. But permission rules use `rulesOverlap()` which does glob pattern matching, and with many rules this can be expensive.
+**Why it happens:** Lock state flows through `isReadOnly` on `ScopedConfig` -- the builder sets `isReadOnly: true` when locked. The `contextValue` then gets `readOnly` instead of `editable`, and `when` clauses filter on `\.editable`. But if a new command is registered with a `when` clause that matches on node type alone (e.g., `viewItem =~ /mcpServer/`) without requiring `.editable`, it will show on locked nodes.
 
-**Consequences:** Tree refresh takes 100ms+ instead of <10ms. File watcher triggers noticeable UI lag.
+**Consequences:** Buttons appear on locked nodes that shouldn't be editable. Users click them and get confusing error messages, or worse, the operation succeeds on the wrong file.
 
 **Prevention:**
-- For simple key-based overlap (settings, env vars, plugins, sandbox), overlap detection is just a Set lookup -- fast enough.
-- For permissions, do NOT do cross-scope `rulesOverlap()` for overlap indicators. Just check if the same literal rule string exists in another scope. Pattern overlap ("Bash(curl *)" overlapping with "Bash(*)") is an override concern, not an overlap indicator concern.
-- Build the overlap data in a single pass over all scopes before building per-scope VMs, not inside each per-scope builder method. Collect `Map<entityKey, Set<ConfigScope>>` once, then look up during VM construction.
-
-**Detection:** Create a config with 30+ permission rules per scope across 3 scopes. Trigger a tree refresh. Measure time using `console.time()` in the builder. If >50ms, optimize the overlap scan.
+1. Every new `when` clause for an inline action MUST include `.editable` check.
+2. Every new command handler MUST include the standard `isReadOnly` guard with the `MESSAGES.userScopeLocked` branch (see editCommands.ts lines 25-32 for the pattern).
+3. Test every new inline button with User scope locked AND unlocked.
 
 ---
 
-### Pitfall 6: `findKeyPathAtLine` Reverse Mapping Incorrect for Hook Array Indices
+### Pitfall 7: MCP Server File Path vs Config File Path Confusion
 
-**What goes wrong:** Editor-to-tree sync fails for hook entries. When the user clicks on a hook command line in the JSON editor, `findKeyPathAtLine()` must produce a keyPath that matches the hook entry's `nodeContext.keyPath`. If the keyPath convention changes (Pitfall 2), the reverse mapping must also change.
+**What goes wrong:** MCP servers store their config in a separate `.mcp.json` file, not the main settings file. Commands that assume `nodeContext.filePath` points to `settings.json` will read/write the wrong file structure for MCP server operations.
 
-**Why it happens:** `findKeyPathAtLine()` walks backward from the cursor line, detecting `{` at decreasing indent levels and using `countArrayElementIndex()` to produce numeric segments. It produces keyPaths like `['hooks', 'PreToolUse', '0', 'hooks', '0', 'command']`. The tree node's keyPath is `['hooks', 'PreToolUse', '0', '0']` (current) or `['hooks', 'PreToolUse', '0', 'hooks', '0']` (if fixed). The `findNodeByKeyPath` walker uses prefix matching to handle the mismatch, but this is fragile.
+**Why it happens:** The builder sets `filePath: scopedConfig.mcpFilePath ?? scopedConfig.filePath` for MCP server nodes. This means `filePath` on an MCP server node already points to the MCP config file. But if a new move/copy command reads the source config via `readJsonFile(filePath)` expecting a `ClaudeCodeConfig` shape, it will get the MCP config shape instead (which has `mcpServers` at the root, not nested under a section).
 
-**Consequences:** Clicking on a hook command in the editor does not highlight the corresponding tree node, or highlights the wrong one (e.g., the event node instead of the entry node).
+**Consequences:** Move/copy operations silently corrupt the target file by writing MCP config structure into a settings file, or fail to find the expected data in the source file.
 
 **Prevention:**
-- If the hook entry keyPath changes, update `findKeyPathAtLine()` and `findNodeByKeyPath()` simultaneously.
-- The `findNodeByKeyPath` walker already has fallback logic (lines 130-135: tries progressively shorter prefixes). Test that this fallback correctly resolves to the hook entry node.
-- Write a test: given a JSON file with hooks, call `findKeyPathAtLine()` for a line inside a hook command object, assert the returned keyPath matches the builder's hook entry keyPath.
-
-**Detection:** Open a config with hooks in the editor. Click on the `"command": "echo hello"` line inside a hook entry. Verify the tree highlights the correct hook entry node, not the hook event node or no node.
+1. When adding commands for MCP server nodes, always check whether the file is `.mcp.json` or `settings.json`.
+2. The delete command already handles MCP servers correctly via `removeMcpServer` -- copy the pattern.
+3. Test MCP server operations separately from other node types.
 
 ---
 
-### Pitfall 7: Lock Enforcement Inconsistency Between Checkbox and Context Menu
+### Pitfall 8: Overlap ResourceUri Conflicts with Node-Specific ResourceUri
 
-**What goes wrong:** The plugin checkbox correctly rejects toggling when the scope is locked, but the "Toggle Plugin" context menu command (extension.ts line 160-188) has a subtly different code path that may not check lock state identically.
+**What goes wrong:** Plugins use `resourceUri` for both disabled-state dimming AND overlap coloring, with a priority system. Adding `resourceUri`-based visual features to other node types will conflict with the existing overlap decoration system.
 
-**Why it happens:** Both the checkbox handler and the toggle command check `isReadOnly`, but they get this value differently. The checkbox handler reads from `node.nodeContext.isReadOnly`, which is set by the builder based on `configStore.isScopeLocked()` at build time. The toggle command also reads from `node.nodeContext.isReadOnly`. But if the lock state changes AFTER the tree was built (user unlocks, then clicks context menu before tree refreshes), the node's `isReadOnly` is stale.
+**Why it happens:** VS Code allows only ONE `resourceUri` per TreeItem. The plugin builder already has a priority chain (overlap > disabled decoration > undefined). The overlap decoration system uses its own URI scheme (`OVERLAP_URI_SCHEME`) and the plugin disabled state uses `PLUGIN_URI_SCHEME`. Adding any new `resourceUri`-based feature requires extending this priority logic for every affected node type.
 
-**Consequences:** Race condition: user unlocks scope, quickly right-clicks "Toggle Plugin", gets blocked because the tree hasn't refreshed yet. Or conversely: user locks scope, tree hasn't refreshed, context menu toggle succeeds when it shouldn't.
+**Consequences:** New decorations override overlap coloring, making overlap indicators invisible on decorated nodes. Or overlap coloring overrides the new decoration, defeating its purpose.
 
 **Prevention:**
-- The lock toggle fires `_onDidChange` which triggers `refresh()` which rebuilds all VMs. The tree should be up-to-date before the user can interact. The timing window is small (milliseconds between lock toggle and refresh completion).
-- For safety, the toggle command should check `configStore.isScopeLocked()` directly, not rely on `node.nodeContext.isReadOnly`. This is a runtime check, not a cached-at-build-time check.
-- The checkbox handler cannot do this because it doesn't have access to `configStore` -- it reads from `node.nodeContext`. Accept this asymmetry and document it.
-
-**Detection:** Toggle lock on/off rapidly while clicking plugin checkboxes and context menu toggle commands. Verify no write occurs while the scope is supposed to be locked.
+1. Before adding any `resourceUri` to a node type, check whether `buildOverlapResourceUri()` already produces a URI for that node type.
+2. If both are needed, implement a priority chain with clear documentation.
+3. Consider whether the visual effect can be achieved through `iconPath` ThemeColor instead of `resourceUri`.
 
 ---
 
-### Pitfall 8: Overlap Badge Appearing on Nodes Without Visual Space
+### Pitfall 9: Section-Level "Add" Button Asymmetry Is Intentional
 
-**What goes wrong:** Overlap indicators (badges, description text) visually clash with existing override indicators. A node that is both overridden AND overlapping shows double decoration: dimmed icon + override description + overlap description. The label becomes unreadable in narrow tree panels.
+**What goes wrong:** An audit identifies that Permissions section has an inline "Add" button (`addPermissionRule` at `inline@0`) while Environment, Hooks, and MCP Servers only have context menu "Add" entries (`group: "3_add"`). The "fix" adds inline add buttons to all sections, cluttering the UI.
 
-**Why it happens:** The description string has limited visual space. Override text is already ` (overridden by User)`. Adding overlap text ` [+2 scopes]` makes descriptions like `claude-3-opus (overridden by Project Local) [+2 scopes]` which wraps or truncates.
+**Why it happens:** The current design is intentional -- Permissions is the most frequently edited section. Other sections use context menu for add operations. But this intentional asymmetry looks like a "bug" during an audit.
 
-**Consequences:** Tree panel looks cluttered. Description text gets truncated by VS Code's TreeItem rendering, hiding useful information. Users cannot distinguish override from overlap at a glance.
+**Consequences:** Every section header gets an add button, making the tree visually busier. Sections where items are rarely added (MCP Servers, Sandbox) have permanent clutter.
 
 **Prevention:**
-- Prioritize indicators: if a node is overridden, show the override indicator (more actionable). Overlap is informational only.
-- Use tooltip for overlap details (lists which scopes), not description text.
-- For description, use a short prefix like a count: `+2` or a dot character to indicate overlap, not a full text label.
-- Consider using `iconPath` color variation: a distinct ThemeColor for overlap (not `disabledForeground`, which is taken by override).
-- Test with a narrow tree panel (300px width). Verify all information is accessible via tooltip even if description is truncated.
+1. Distinguish between "inconsistency that is a bug" and "inconsistency that is a design choice."
+2. Before adding inline buttons to sections that don't have them, ask: "How often do users add items to this section?"
+3. The audit should DOCUMENT the asymmetry with rationale, not blindly fix it.
 
-**Detection:** Set up a setting that exists in 3 scopes, with the lowest-precedence one overridden. Verify the tree shows clear, non-cluttered indicators. Hover for tooltip. Verify tooltip contains the full overlap information.
+---
+
+### Pitfall 10: Description Suffix Pollution from applyOverrideSuffix
+
+**What goes wrong:** When modifying description formatting for consistency, the override suffix gets double-applied or displaced.
+
+**Why it happens:** `applyOverrideSuffix()` appends "(overridden by [Scope])" to the description. This is called AFTER the description is built. If a consistency fix reformats descriptions (e.g., adding type hints, truncating long values), and the formatting is applied AFTER `applyOverrideSuffix()`, the suffix ends up in the middle of the description instead of at the end.
+
+**Consequences:** Descriptions show malformed text like `"value (overridden by User) [string]"` instead of `"value [string] (overridden by User)"`.
+
+**Prevention:**
+1. Always apply `applyOverrideSuffix()` as the LAST step in description construction.
+2. Never modify the description string after the suffix is applied.
+3. Test descriptions with overlap scenarios, not just clean single-scope scenarios.
+
+---
+
+### Pitfall 11: Edit Command Pre-fill Reads from Description (Includes Override Text)
+
+**What goes wrong:** The `editValue` command reads `node.description?.toString()` (editCommands.ts line 36) for the pre-fill value. If the description contains override suffix text, the input box pre-fills with `"value (overridden by User)"` and if the user saves without noticing, the override text gets written as the value.
+
+**Why it happens:** This is an existing design weakness that becomes more dangerous during a UX audit. If the audit adds MORE information to descriptions (type hints, truncation markers, overlap text), the pre-fill becomes even more polluted.
+
+**Consequences:** Config values get corrupted with descriptive text. This is a data-corruption bug that is hard to notice because the extension writes valid JSON -- just with wrong string values.
+
+**Prevention:**
+1. Any description formatting change must be tested with the edit-value flow.
+2. The long-term fix is to read the pre-fill value from `nodeContext` or the original config data, not from the rendered `description` string. But this is noted as out of scope ("EditValue inline improvements -- deferred").
+3. For the audit, do NOT add any new text to descriptions that could contaminate edit pre-fill.
 
 ---
 
 ## Minor Pitfalls
 
-### Pitfall 9: Dead HookKeyValueVM/Node Code Cleanup Interacting with Hook Navigation Fix
+### Pitfall 12: SettingKeyValue Nodes Should Not Get Entity-Level Inline Buttons
 
-**What goes wrong:** The v0.7.0 active requirements include "Clean up dead HookKeyValueVM/Node/builder code from v0.6.0." If this cleanup happens in the same phase as the hook navigation fix, the cleanup removes code that the navigation fix needs to reference or modify.
+**What goes wrong:** `settingKeyValue` nodes (children of expandable object settings) are not in the `when` clause regex for most inline actions (move, copy). Adding consistency by including them would allow users to move/delete individual keys of an object setting, which doesn't make semantic sense.
 
-**Why it happens:** `HookKeyValueVM`, `HookKeyValueNode`, and `buildHookKeyValueVM()` exist in the codebase but are unused (hook entries are leaf nodes now). The hook navigation fix may need to add keyPath segments that align with the old HookKeyValue approach (descending into hook command properties). If cleanup deletes the VM type and builder method first, the navigation fix loses reference code.
-
-**Prevention:**
-- Fix hook navigation FIRST, then clean up dead code. The cleanup should happen in a separate commit after the navigation fix is verified.
-- If the navigation fix needs to re-introduce HookKeyValue-like keyPath segments, decide this before cleaning up the dead code.
-
-**Detection:** Run the test suite after cleanup. If hook navigation tests fail, the cleanup removed something still needed.
+**Prevention:** Leave `settingKeyValue` nodes without inline move/copy actions. This is correct behavior, not an inconsistency. The audit should document it as intentional.
 
 ---
 
-### Pitfall 10: Overlap Detection for MCP Servers and Hooks Not Meaningful
+### Pitfall 13: HookEvent vs HookEntry Command Handler Confusion
 
-**What goes wrong:** Overlap indicators are added to MCP servers and hook events, but these entity types don't have meaningful overlap semantics. Two different MCP servers with the same name in different scopes are genuinely different configurations (different commands, URLs). Showing overlap implies they are "the same thing" when they may not be.
+**What goes wrong:** `hookEvent` nodes ("PreToolUse") and `hookEntry` nodes (specific commands) have different `keyPath` structures. Adding an edit or add command that targets "hookEntry" but uses a `when` clause that also matches "hookEvent" causes the wrong handler path to execute.
 
-**Why it happens:** The overlap detection is applied uniformly to all entity types because the builder handles them similarly. But unlike settings (where `model` in two scopes is clearly the same setting), MCP server `"my-server"` in User scope and `"my-server"` in Project scope could have completely different configurations.
-
-**Consequences:** Users see overlap indicators on MCP servers and think they should reconcile them, when actually having the same server name in different scopes with different configs is intentional.
-
-**Prevention:**
-- Only add overlap indicators to entity types where overlap is semantically meaningful: settings, env vars, plugins, sandbox properties, and permission rules.
-- Skip overlap detection for MCP servers and hooks. These have unique-per-scope semantics.
-- If MCP server overlap is desired later, show it with a different visual treatment that indicates "same name, possibly different config."
-
-**Detection:** Set up a MCP server with the same name in User and Project scopes but different commands. Verify no misleading overlap indicator appears.
+**Prevention:** When adding commands for hook nodes, always use precise `when` clause patterns (`^hookEntry\.` vs `^hookEvent\.`). The existing `addHook` command correctly uses `viewItem =~ /^section\.hooks\.editable|^hookEvent/` to target both section and event nodes.
 
 ---
 
-### Pitfall 11: `TreeItemCheckboxState` Type Incompatibility Across VS Code Versions
+### Pitfall 14: Test Suite Validates Builder Output, Not Visual Rendering
 
-**What goes wrong:** The fix that removes checkbox state for locked plugins (`checkboxState: undefined`) causes a type error or runtime issue on older VS Code versions.
-
-**Why it happens:** `TreeItem.checkboxState` was added in VS Code 1.79.0. The extension targets minimum 1.90.0, so the API exists. However, the behavior of setting `checkboxState` to `undefined` after it was previously set (on a tree refresh) may not cleanly remove the checkbox on all VS Code versions. Some versions may show a blank checkbox instead of no checkbox.
+**What goes wrong:** The 56-test suite validates `contextValue`, `description`, and overlap resolution at the viewmodel level. But no tests verify that the correct inline buttons appear in the UI. A change can pass all tests while breaking the visual experience.
 
 **Prevention:**
-- Test on the minimum supported VS Code version (1.90.0) to verify checkbox removal behavior.
-- If `undefined` doesn't cleanly remove the checkbox, consider using `TreeItemCollapsibleState.None` as a workaround, or keeping the checkbox but making the toggle command a no-op with an immediate revert.
-
-**Detection:** Install VS Code 1.90.0 in a test environment. Lock User scope. Verify plugin nodes show no checkbox, not a blank/broken checkbox.
+1. Accept that manual Extension Development Host testing is required for every UX change.
+2. Consider adding a cross-reference test that parses `package.json` `when` clauses and verifies that builder-generated `contextValue` strings match the expected patterns.
+3. After the audit, add snapshot-style tests for the complete set of `contextValue` values generated by the builder.
 
 ---
 
@@ -229,17 +239,15 @@ The root cause is that the ViewModel sets `checkboxState` on the PluginVM regard
 
 | Phase Topic | Likely Pitfall | Mitigation |
 |-------------|---------------|------------|
-| Add overlap detection to builder | Pitfall 1: conflating override and overlap | New fields on BaseVM/NodeContext, never reuse `isOverridden` |
-| Add overlap detection to builder | Pitfall 5: performance with many entities | Single-pass overlap map before per-scope build |
-| Add overlap visual indicators | Pitfall 4: description corruption for edit commands | Use tooltip for overlap details, minimal description markers |
-| Add overlap visual indicators | Pitfall 8: visual clutter with override + overlap | Prioritize override indicator; overlap in tooltip |
-| Add overlap visual indicators | Pitfall 10: MCP/hooks false overlap | Skip overlap for MCP servers and hooks |
-| Fix plugin lock enforcement | Pitfall 3: checkbox flicker on locked scope | Remove checkbox entirely when locked, not just block the write |
-| Fix plugin lock enforcement | Pitfall 7: stale isReadOnly after lock toggle | Toggle command should check configStore directly |
-| Fix plugin lock enforcement | Pitfall 11: checkbox removal across VS Code versions | Test on minimum supported version |
-| Fix hook leaf navigation | Pitfall 2: keyPath does not match JSON nesting | Include intermediate `hooks` key in keyPath, or fix findKeyLine |
-| Fix hook leaf navigation | Pitfall 6: reverse mapping (editor-to-tree) breaks | Update findKeyPathAtLine if keyPath changes |
-| Clean up dead HookKeyValue code | Pitfall 9: cleanup before navigation fix | Fix navigation first, then clean up dead code |
+| Auditing inline button consistency | Pitfall 2 (index collision), Pitfall 3 (`&& false` removal) | Build a per-node-type button matrix before making changes |
+| Standardizing tooltips | Pitfall 4 (destroying intentional variation) | Document what each tooltip adds beyond visible text |
+| Adding move/copy to new node types | Pitfall 6 (lock state), Pitfall 7 (MCP file path) | Copy guard patterns from existing commands; test MCP separately |
+| Changing node collapsibility | Pitfall 5 (revealInFile breakage) | Verify click behavior after every collapsibility change |
+| Adding new inline buttons to sections | Pitfall 9 (section-level asymmetry is intentional) | Confirm asymmetry is a bug before "fixing" it |
+| Modifying contextValue format | Pitfall 1 (regex breakage) | Build contextValue-to-regex mapping table first |
+| Adding resourceUri decorations | Pitfall 8 (overlap URI conflict) | Check existing overlap decoration before adding new ones |
+| Touching description formatting | Pitfall 10 (suffix displacement), Pitfall 11 (edit pre-fill corruption) | Apply override suffix last; test edit pre-fill after every change |
+| Adding commands to hook nodes | Pitfall 13 (event vs entry confusion) | Use precise `^hookEntry\.` patterns in `when` clauses |
 
 ---
 
@@ -247,58 +255,43 @@ The root cause is that the ViewModel sets `checkboxState` on the PluginVM regard
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Overlap fields + override fields on `NodeContext` | Reuse `isOverridden` for overlap, causing override dimming on overlap-only nodes | Add separate `overlapsWithScopes` field; keep `isOverridden` strictly for precedence-shadowed values |
-| Overlap in `description` + `editCommands` pre-fill | Overlap text gets saved as config value | Never append overlap text to description; use tooltip or badge |
-| Lock state + `checkboxState` on PluginVM | Checkbox exists but toggle is rejected, causing flicker | Omit `checkboxState` entirely when scope is locked |
-| Lock state + `contextValue` pattern | Locked plugin gets `plugin.readOnly` contextValue, breaking context menu | Verify `contextValue` patterns in package.json handle the locked-no-checkbox case |
-| Hook keyPath change + `findKeyLine` | keyPath `['hooks', 'PreToolUse', '0', '0']` doesn't navigate nested arrays | Include intermediate property keys: `['hooks', 'PreToolUse', '0', 'hooks', '0']` |
-| Hook keyPath change + `findKeyPathAtLine` | Reverse mapping produces different keyPath than forward mapping | Test both directions with same JSON file and line number |
-| Hook keyPath change + `findNodeByKeyPath` | Walker prefix matching fails with new keyPath length | Update walker logic if keyPath depth changes from 4 to 5 segments |
-| Overlap detection + section item counts | Overlap badges on section headers (`3 settings [+5 overlaps]`) add noise | Do not show overlap on section nodes, only on leaf entities |
-| Dead code cleanup + navigation fix | Removing `buildHookKeyValueVM` before deciding if navigation fix needs similar logic | Fix navigation first, verify, then clean up |
+| New `when` clause + existing `contextValue` | Regex too broad, matches node types it shouldn't | Use `^nodeType\.` prefix anchor; test with all node types |
+| New inline button + existing `inline@N` | Index collision causes button reorder or disappearance | Check ALL existing entries for overlapping `when` matches |
+| New command handler + lock state | Missing `isReadOnly` guard; button works on locked scope | Copy guard pattern from editCommands.ts lines 25-32 |
+| Description change + edit pre-fill | New text in description corrupts edit input box | Test edit flow after every description format change |
+| `&& false` removal + deferred feature | Re-enables unfinished feature, causing silent failures | Check PROJECT.md "Out of Scope" before removing `&& false` |
+| MCP server command + filePath | Assumes settings.json structure for `.mcp.json` file | Check file extension or use MCP-specific writer functions |
+| Tooltip change + overlap suffix | Base tooltip replaces or disconnects from `buildOverlapTooltip()` | Always call `buildOverlapTooltip()` as the last tooltip step |
+| Collapsibility change + click command | `computeCommand()` returns undefined for collapsible nodes | Verify click behavior; add context menu "Reveal" as fallback |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Overlap separate from override:** Node with overlap but no override is NOT dimmed. Node with override but no overlap shows ONLY override indicator.
-- [ ] **Overlap on winning scope:** The highest-precedence scope's entity shows an overlap indicator too, not just the overridden one.
-- [ ] **Edit commands clean:** Click "Edit Value" on a setting with overlap. Pre-filled value is the raw value only, no overlap text.
-- [ ] **Plugin checkbox absent when locked:** Lock User scope. Plugin nodes show no checkbox at all (not a greyed-out checkbox).
-- [ ] **Plugin checkbox present when unlocked:** Unlock User scope. Plugin nodes show working checkboxes. Toggle works.
-- [ ] **No flicker:** Lock User scope. Click where the checkbox used to be. No flicker, no error.
-- [ ] **Hook navigation accurate:** Click each hook entry leaf. Editor opens correct file and cursor lands on the correct hook command object.
-- [ ] **Hook reverse navigation:** Click on a hook command line in the JSON editor. Tree highlights the correct hook entry node.
-- [ ] **Multiple matchers:** Config with 2+ matchers, each with 2+ hooks. Each hook entry navigates to the correct line.
-- [ ] **MCP servers no overlap:** Same server name in two scopes. No overlap indicator (or intentional different-config indicator).
-- [ ] **Performance:** Config with 30+ entities per scope. Tree refresh < 50ms.
-- [ ] **Dead code removed:** No unused `HookKeyValueVM`/`HookKeyValueNode`/`buildHookKeyValueVM` references after cleanup.
-
----
-
-## Recovery Strategies
-
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Overlap-override conflation (P1) | MEDIUM | Add new fields; remove any mutations to `isOverridden` for overlap; retest all override indicators |
-| Hook keyPath mismatch (P2) | HIGH | Changing keyPath is a cross-cutting contract change; must update builder, walker, and location utils simultaneously |
-| Checkbox flicker (P3) | LOW | Remove `checkboxState` from PluginVM when locked; test locked/unlocked transitions |
-| Description corruption (P4) | LOW | Move overlap text to tooltip; strip from description; verify edit pre-fill |
-| Performance regression (P5) | MEDIUM | Pre-compute overlap map in single pass; avoid per-entity all-scopes scan |
-| Editor-to-tree sync broken (P6) | MEDIUM | Update `findKeyPathAtLine` to match new keyPath convention; add test coverage |
-| Lock check inconsistency (P7) | LOW | Add runtime `configStore.isScopeLocked()` check in toggle command |
-| Visual clutter (P8) | LOW | Simplify overlap indicator to tooltip-only; remove description text |
-| Cleanup-before-fix ordering (P9) | LOW | Revert cleanup commit; fix navigation first |
-| False overlap on MCP/hooks (P10) | LOW | Skip overlap detection for these entity types |
+- [ ] **All node types tested:** Every one of the 14 node types has been verified in Extension Development Host with both locked and unlocked User scope
+- [ ] **Inline button order matches convention:** edit@0, move@1, copy@2, delete@3 (where applicable) for every node type
+- [ ] **No `&& false` entries accidentally enabled:** Package.json still has all 5 `&& false` entries intact
+- [ ] **contextValue patterns match:** Every builder-generated `contextValue` matches at least one `when` clause regex for each expected command
+- [ ] **Edit pre-fill clean:** Click "Edit Value" on every editable node type with override suffix. Pre-filled value is clean.
+- [ ] **Lock enforcement universal:** Lock User scope. Verify NO inline action buttons appear on User scope nodes for any entity type.
+- [ ] **Tooltips not redundant:** Every tooltip adds information beyond what label+description already show.
+- [ ] **Click-to-reveal works:** Every leaf node click navigates to the correct JSON line. Every collapsible node click expands without navigation.
+- [ ] **MCP operations use correct file:** Delete/edit an MCP server. Verify `.mcp.json` was modified, not `settings.json`.
+- [ ] **Context menus complete:** Right-click every node type. Verify expected context menu items appear (even when inline buttons are absent).
+- [ ] **Managed scope read-only:** Verify no edit/delete/move buttons appear on Managed scope nodes.
 
 ---
 
 ## Sources
 
-- Direct codebase analysis of `src/viewmodel/builder.ts` (1041 LOC), `src/config/overrideResolver.ts` (195 LOC), `src/utils/jsonLocation.ts` (262 LOC), `src/extension.ts` (401 LOC), `src/commands/pluginCommands.ts` (169 LOC), `src/tree/configTreeProvider.ts` (197 LOC), `src/tree/nodes/pluginNode.ts`, `src/tree/nodes/baseNode.ts`, `src/tree/lockDecorations.ts`
-- VS Code TreeView API: `TreeItem.checkboxState` behavior, `onDidChangeCheckboxState` post-mutation semantics, `FileDecorationProvider` for `resourceUri`-based styling
-- Confidence: HIGH -- all pitfalls derived from direct code reading of this specific codebase and its existing patterns
+- Direct codebase analysis: `package.json` menu contributions (24 `view/item/context` entries, 5 with `&& false`, 17 `commandPalette` entries)
+- Direct codebase analysis: `src/viewmodel/builder.ts` (1018 lines, `computeStandardContextValue()`, `computeCommand()`, `buildOverlapTooltip()`, `applyOverrideSuffix()`)
+- Direct codebase analysis: `src/commands/editCommands.ts` (line 36: `node.description?.toString()` pre-fill pattern)
+- Direct codebase analysis: `src/commands/moveCommands.ts` (lock-aware guard patterns, MCP file path handling)
+- VS Code TreeView API constraints: collapsible node click behavior, single `resourceUri` per TreeItem, `contextValue` regex matching in `when` clauses
+- PROJECT.md: Key decisions table (147 entries), out-of-scope items, deferred features including "EditValue inline improvements"
+- Confidence: HIGH -- all pitfalls derived from direct code reading of this specific codebase and its established patterns
 
 ---
-*Pitfalls research for v0.7.0: Visual Fidelity (overlap indicators, lock enforcement, hook navigation)*
-*Researched: 2026-03-08*
+*Pitfalls research for v0.9.0: UX Audit (inline buttons, context menus, tooltips, click behavior, visual indicators)*
+*Researched: 2026-03-11*
