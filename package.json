@@ -2,7 +2,7 @@
   "name": "claude-code-config-manager",
   "displayName": "Claude Code Config Manager",
   "description": "Visual config viewer and editor for Claude Code settings — scope-aware TreeView with override detection, inline editing, and file watching.",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "publisher": "agnislav",
   "license": "MIT",
   "repository": {
