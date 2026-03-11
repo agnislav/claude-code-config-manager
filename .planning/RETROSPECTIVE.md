@@ -83,6 +83,46 @@
 
 ---
 
+## Milestone: v0.8.0 — Tree Display Polish
+
+**Shipped:** 2026-03-11
+**Phases:** 2 | **Plans:** 3 | **Commits:** 14
+
+### What Was Built
+- Plugin checkbox-only display — icon and resourceUri set to undefined when unlocked
+- Flat permission list — removed PermissionGroupVM intermediary, rules directly under Section
+- Category-specific icons (check/question/close) on each permission rule
+- Inline pencil button for type switching via QuickPick with (current) marker
+- Inline + button on Permissions section header for direct rule creation
+- Full dead code cleanup — PermissionGroupVM, permissionGroupNode.ts, related menu entries
+
+### What Worked
+- Small, focused milestone (2 phases, 3 plans) — fast execution with clear scope
+- Visual verification during Phase 23 caught resourceUri fallback issue immediately (VS Code renders file icon when no ThemeIcon but resourceUri exists)
+- Phase 24 Plan 01 executed in 2 minutes — flat PermissionRuleVM with category field was a clean architectural change
+- Audit passed on first attempt — no gaps, no integration issues
+
+### What Was Inefficient
+- Nyquist validation missing for both phases (VALIDATION.md not generated) — flagged by audit but not blocking
+- ROADMAP.md progress table had formatting inconsistencies (Phase 23/24 rows had misaligned columns)
+
+### Patterns Established
+- Checkbox-only pattern: set both icon and resourceUri to undefined for clean checkbox-only TreeItems
+- Flat section children: permission rules as direct children of SectionVM (no intermediate group)
+- Inline type-switch pattern: QuickPick with (current) marker, synchronous remove+add for single refresh
+
+### Key Lessons
+1. When removing an icon from a TreeItem, also clear resourceUri — VS Code uses resourceUri as icon fallback
+2. Synchronous remove+add in configWriter prevents double tree refresh (better than async with two writes)
+3. Two-phase approach (flatten first, add inline buttons second) kept each plan small and independently verifiable
+
+### Cost Observations
+- Model mix: ~50% sonnet, ~50% opus
+- Sessions: ~3 across 2 phases + audit
+- Notable: Fastest milestone yet — 2 days, minimal rework
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -91,6 +131,7 @@
 |-----------|---------|--------|------------|
 | v0.6.0 | 10 | 3 | ViewModel layer introduced; first milestone with unit tests |
 | v0.7.0 | ~30 | 4 | Overlap system replacing override; milestone audit → gap closure pattern |
+| v0.8.0 | 14 | 2 | Flat permission list; checkbox-only plugin pattern; inline type switching |
 
 ### Cumulative Quality
 
@@ -98,6 +139,7 @@
 |-----------|-------|-----|--------------|
 | v0.6.0 | 23 | 6,247 | First test infrastructure; ViewModel decoupling |
 | v0.7.0 | 56 | 5,672 | Overlap resolver tests (+25), lock tests (+3); legacy code removed (-575 LOC) |
+| v0.8.0 | 56 | 5,672 | Net +20 LOC source; PermissionGroup dead code removed; inline buttons restored |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -105,3 +147,5 @@
 2. Pre-computing display state in a builder yields simpler, more testable node constructors
 3. Milestone audit before completion catches test coverage gaps that would ship undetected
 4. Visual verification as final step catches UI issues invisible to unit tests
+5. When removing a TreeItem icon, also clear resourceUri to prevent VS Code fallback rendering
+6. Synchronous remove+add is preferable to two async writes when changing entity categories
