@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.3
-milestone_name: milestone
-status: completed
-last_updated: "2026-03-11T13:09:19.713Z"
-last_activity: 2026-03-11 — Phase 24 Plan 02 completed
+milestone: v0.9.0
+milestone_name: ux-audit
+status: active
+last_updated: "2026-03-11"
+last_activity: 2026-03-11 — Milestone v0.9.0 started
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -20,13 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-11)
 
 **Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
-**Current focus:** Planning next milestone
+**Current focus:** v0.9.0 UX Audit
 
 ## Current Position
 
-Milestone: v0.8.0 Tree Display Polish — SHIPPED 2026-03-11
-Status: Complete
-Last activity: 2026-03-11 — v0.8.0 milestone archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-11 — Milestone v0.9.0 started
 
 Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓
 

@@ -8,9 +8,14 @@ A VS Code extension that provides a visual config viewer and editor for Claude C
 
 Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
 
-## Current State
+## Current Milestone: v0.9.0 UX Audit
 
-Shipped v0.8.0 (2026-03-11). Plugin nodes show clean checkbox-only appearance when unlocked. Permission rules flattened to single list with type-aware icons and inline type switching. All 8 milestones shipped across 24 phases.
+**Goal:** Systematically audit every entity type's tree structure, node behavior, and inline buttons — find inconsistencies and UX gaps, then fix them.
+
+**Target features:**
+- Full audit of all 7 entity types (Permissions, MCP Servers, Plugins, Hooks, Settings, Environment, Sandbox)
+- Audit scope nodes and section headers
+- Fix all inconsistencies, missing affordances, and rough edges found
 
 ## Requirements
 
@@ -68,7 +73,9 @@ Shipped v0.8.0 (2026-03-11). Plugin nodes show clean checkbox-only appearance wh
 
 ### Active
 
-(Planning next milestone)
+- [ ] Audit all 7 entity types for structure, behavior, and inline button consistency
+- [ ] Audit scope nodes and section headers for consistent UX
+- [ ] Fix all identified inconsistencies and gaps
 
 ### Out of Scope
 
@@ -140,4 +147,4 @@ Shipped v0.8.0 (2026-03-11). Plugin nodes show clean checkbox-only appearance wh
 | changePermissionType uses synchronous remove+add | Single tree refresh; no double-render flicker | ✓ Good |
 
 ---
-*Last updated: 2026-03-11 after v0.8.0 milestone*
+*Last updated: 2026-03-11 after v0.9.0 milestone start*
