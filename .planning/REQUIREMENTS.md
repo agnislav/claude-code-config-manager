@@ -16,7 +16,7 @@ Requirements for Tree Display Polish milestone. Each maps to roadmap phases.
 - [x] **PERM-01**: Permission rules display as flat list directly under Permissions section node (no Allow/Ask/Deny group nodes)
 - [x] **PERM-02**: Permission rule icons reflect their permission type (allow/deny/ask) using distinct visual icons
 - [x] **PERM-03**: Flat permission list maintains correct contextValue for edit/delete/move operations
-- [ ] **PERM-04**: Inline button on permission rules to switch between Allow/Ask/Deny groups via QuickPick dropdown
+- [x] **PERM-04**: Inline button on permission rules to switch between Allow/Ask/Deny groups via QuickPick dropdown
 
 ## Future Requirements
 
@@ -45,7 +45,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERM-01 | Phase 24 | Complete |
 | PERM-02 | Phase 24 | Complete |
 | PERM-03 | Phase 24 | Complete |
-| PERM-04 | Phase 24 | Pending |
+| PERM-04 | Phase 24 | Complete |
 
 **Coverage:**
 - v0.8.0 requirements: 5 total
