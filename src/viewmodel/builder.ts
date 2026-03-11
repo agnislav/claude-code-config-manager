@@ -43,7 +43,6 @@ import {
   HookEventVM,
   McpServerVM,
   NodeKind,
-  PermissionGroupVM,
   PermissionRuleVM,
   PluginVM,
   SandboxPropertyVM,
@@ -415,7 +414,7 @@ export class TreeViewModelBuilder {
   ): BaseVM[] {
     switch (sectionType) {
       case SectionType.Permissions:
-        return this.buildPermissionGroups(scopedConfig, allScopes);
+        return this.buildPermissionRules(scopedConfig, allScopes);
       case SectionType.Sandbox:
         return this.buildSandboxProperties(scopedConfig, allScopes);
       case SectionType.Hooks:
@@ -435,54 +434,26 @@ export class TreeViewModelBuilder {
 
   // ── Permissions ──────────────────────────────────────────────
 
-  private buildPermissionGroups(
+  private buildPermissionRules(
     scopedConfig: ScopedConfig,
     allScopes: ScopedConfig[],
-  ): PermissionGroupVM[] {
+  ): PermissionRuleVM[] {
     const perms = scopedConfig.config.permissions;
     if (!perms) return [];
 
-    return (['deny', 'ask', 'allow'] as const).map((category) => {
+    const result: PermissionRuleVM[] = [];
+    for (const category of ['allow', 'ask', 'deny'] as const) {
       const rules = perms[category] ?? [];
-      const ctx: NodeContext = {
-        scope: scopedConfig.scope,
-        section: undefined,
-        keyPath: ['permissions', category],
-        isReadOnly: scopedConfig.isReadOnly,
-        overlap: {},
-        filePath: scopedConfig.filePath,
-      };
-
       const seen = new Set<string>();
-      const ruleChildren = rules
-        .filter((rule) => {
-          if (seen.has(rule)) return false;
-          seen.add(rule);
-          return true;
-        })
-        .map((rule) =>
+      for (const rule of rules) {
+        if (seen.has(rule)) continue;
+        seen.add(rule);
+        result.push(
           this.buildPermissionRule(rule, category as PermissionCategory, scopedConfig, allScopes),
         );
-
-      const collapsibleState =
-        rules.length > 0
-          ? vscode.TreeItemCollapsibleState.Collapsed
-          : vscode.TreeItemCollapsibleState.None;
-
-      return {
-        kind: NodeKind.PermissionGroup,
-        category,
-        label: PERMISSION_CATEGORY_LABELS[category] ?? category,
-        description: `${rules.length} rule${rules.length !== 1 ? 's' : ''}`,
-        icon: new vscode.ThemeIcon(PERMISSION_CATEGORY_ICONS[category] ?? 'circle'),
-        collapsibleState,
-        contextValue: computeStandardContextValue('permissionGroup', scopedConfig.isReadOnly, {}),
-        tooltip: undefined,
-        nodeContext: ctx,
-        children: ruleChildren,
-        id: computeId(ctx),
-      };
-    });
+      }
+    }
+    return result;
   }
 
   private buildPermissionRule(
@@ -516,12 +487,13 @@ export class TreeViewModelBuilder {
     return {
       kind: NodeKind.PermissionRule,
       rule,
+      category,
       overriddenByCategory: overlap.overriddenByCategory,
       label: rule,
       description,
       icon: new vscode.ThemeIcon(
-        'symbol-event',
-        new vscode.ThemeColor(hasOverlap ? 'disabledForeground' : 'icon.foreground'),
+        PERMISSION_CATEGORY_ICONS[category] ?? 'circle',
+        hasOverlap ? new vscode.ThemeColor('disabledForeground') : undefined,
       ),
       collapsibleState,
       contextValue: computeStandardContextValue('permissionRule', scopedConfig.isReadOnly, overlap),

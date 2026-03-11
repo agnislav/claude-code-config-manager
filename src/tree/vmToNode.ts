@@ -5,7 +5,6 @@ import {
   HookEventVM,
   McpServerVM,
   NodeKind,
-  PermissionGroupVM,
   PermissionRuleVM,
   PluginVM,
   SandboxPropertyVM,
@@ -20,7 +19,6 @@ import { EnvVarNode } from './nodes/envVarNode';
 import { HookEntryNode } from './nodes/hookEntryNode';
 import { HookEventNode } from './nodes/hookEventNode';
 import { McpServerNode } from './nodes/mcpServerNode';
-import { PermissionGroupNode } from './nodes/permissionGroupNode';
 import { PermissionRuleNode } from './nodes/permissionRuleNode';
 import { PluginNode } from './nodes/pluginNode';
 import { SandboxPropertyNode } from './nodes/sandboxPropertyNode';
@@ -38,8 +36,6 @@ export function vmToNode(vm: BaseVM): ConfigTreeNode {
       return new ScopeNode(vm as ScopeVM);
     case NodeKind.Section:
       return new SectionNode(vm as SectionVM);
-    case NodeKind.PermissionGroup:
-      return new PermissionGroupNode(vm as PermissionGroupVM);
     case NodeKind.PermissionRule:
       return new PermissionRuleNode(vm as PermissionRuleVM);
     case NodeKind.Setting:
