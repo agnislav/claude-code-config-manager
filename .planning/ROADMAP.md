@@ -150,7 +150,7 @@ Phases execute in numeric order: 23 → 24
 | 21. Visual Overlap Indicators | v0.7.0 | 2/2 | Complete | 2026-03-09 |
 | 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 | 23. Plugin Checkbox-Only Display | v0.8.0 | Complete    | 2026-03-10 | 2026-03-10 |
-| 24. Flatten Permissions | 2/2 | Complete   | 2026-03-11 | - |
+| 24. Flatten Permissions | 2/2 | Complete    | 2026-03-11 | - |
 
 ---
 
