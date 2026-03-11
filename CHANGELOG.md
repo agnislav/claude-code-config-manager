@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 - `PermissionGroupVM` type and `permissionGroupNode.ts` — replaced by flat permission list with category field
 - Permission group context menu entries from package.json
 
+### Fixed
+- `.vscodeignore` now excludes `.planning/` and `.serena/` directories — reduced VSIX package from 683 KB (227 files) to 56 KB (41 files)
+
 ## [0.7.0] - 2026-03-09
 
 ### Added
