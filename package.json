@@ -242,11 +242,6 @@
           "group": "2_move"
         },
         {
-          "command": "claudeConfig.addPermissionRule",
-          "when": "view == claudeConfigTree && viewItem =~ /^permissionGroup\\.editable/",
-          "group": "3_add"
-        },
-        {
           "command": "claudeConfig.addEnvVar",
           "when": "view == claudeConfigTree && viewItem =~ /^section\\.env\\.editable/",
           "group": "3_add"
