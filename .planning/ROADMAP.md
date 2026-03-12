@@ -116,8 +116,8 @@
 **Plans**: 2 plans
 
 Plans:
-- [ ] 25-01-PLAN.md — Audit matrix: code analysis documenting all node types across 5 audit vectors
-- [ ] 25-02-PLAN.md — Trivial fixes: sandbox count, hook type description, envvar base tooltip
+- [x] 25-01-PLAN.md — Audit matrix: code analysis documenting all node types across 5 audit vectors
+- [x] 25-02-PLAN.md — Trivial fixes: sandbox count, hook type description, envvar base tooltip
 
 ### Phase 26: Inline Button Cleanup
 **Goal**: Every entity type uses fixed-position inline button slots with consistent ordering; dead guards removed and intentional guards documented
@@ -128,10 +128,10 @@ Plans:
   2. Plugin `&& false` guards (move, copy, delete) documented as intentional design decisions in audit matrix
   3. All entity types use fixed-position inline button slots: edit@0, move@1, copy@2, delete@3 — matching ITEMS.md
   4. EnvVar moveToScope uses inline@1 (not @0); Setting moveToScope uses inline@1 and copySettingToScope uses inline@2
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 26-01: TBD
+- [ ] 26-01-PLAN.md — Remove dead editValue guard, reposition inline button slots, document plugin guard decisions
 
 ### Phase 27: Hook Overlap Detection
 **Goal**: Hook entries participate in the overlap detection system, completing coverage for all 7 entity types
@@ -191,8 +191,8 @@ Phases execute in numeric order: 25 → 26 → 27 → 28
 | 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 | 23. Plugin Checkbox-Only Display | v0.8.0 | 1/1 | Complete | 2026-03-10 |
 | 24. Flatten Permissions | v0.8.0 | 2/2 | Complete | 2026-03-11 |
-| 25. Audit Catalog + Trivial Fixes | 2/2 | Complete    | 2026-03-12 | - |
-| 26. Inline Button Cleanup | v0.9.0 | 0/? | Not started | - |
+| 25. Audit Catalog + Trivial Fixes | v0.9.0 | 2/2 | Complete | 2026-03-12 |
+| 26. Inline Button Cleanup | v0.9.0 | 0/1 | Not started | - |
 | 27. Hook Overlap Detection | v0.9.0 | 0/? | Not started | - |
 | 28. Action Parity | v0.9.0 | 0/? | Not started | - |
 
