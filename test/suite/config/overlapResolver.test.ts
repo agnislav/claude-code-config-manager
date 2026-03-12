@@ -3,6 +3,8 @@ import {
   ConfigScope,
   ScopedConfig,
   ClaudeCodeConfig,
+  HookEventType,
+  HookCommand,
   PermissionCategory,
 } from '../../../src/types';
 import {
@@ -14,6 +16,7 @@ import {
   resolveMcpOverlap,
   resolveSandboxOverlap,
   resolvePermissionOverlap,
+  resolveHookOverlap,
   OverlapInfo,
 } from '../../../src/config/overlapResolver';
 
@@ -365,6 +368,184 @@ suite('overlapResolver', () => {
         scope: ConfigScope.Managed,
         value: 'managed-model',
       });
+    });
+  });
+
+  suite('resolveHookOverlap', () => {
+    const bashHook: HookCommand = { type: 'command', command: 'echo hello' };
+    const bashHookDiffTimeout: HookCommand = { type: 'command', command: 'echo hello', timeout: 5000 };
+    const writeHook: HookCommand = { type: 'command', command: 'echo write' };
+
+    test('identical hook in User and ProjectLocal: User has isDuplicatedBy pointing to ProjectLocal', () => {
+      const scopes = [
+        makeScopedConfig(ConfigScope.User, {
+          hooks: {
+            [HookEventType.PreToolUse]: [
+              { matcher: 'Bash', hooks: [bashHook] },
+            ],
+          },
+        }),
+        makeScopedConfig(ConfigScope.ProjectLocal, {
+          hooks: {
+            [HookEventType.PreToolUse]: [
+              { matcher: 'Bash', hooks: [{ ...bashHook }] },
+            ],
+          },
+        }),
+      ];
+      const result = resolveHookOverlap(HookEventType.PreToolUse, 'Bash', bashHook, 0, ConfigScope.User, scopes);
+      assert.deepStrictEqual(result.isDuplicatedBy, {
+        scope: ConfigScope.ProjectLocal,
+        value: bashHook,
+      });
+      assert.strictEqual(result.isOverriddenBy, undefined);
+    });
+
+    test('same eventType and matcher but different HookCommand fields: isOverriddenBy (different values)', () => {
+      const scopes = [
+        makeScopedConfig(ConfigScope.User, {
+          hooks: {
+            [HookEventType.PreToolUse]: [
+              { matcher: 'Bash', hooks: [bashHook] },
+            ],
+          },
+        }),
+        makeScopedConfig(ConfigScope.ProjectLocal, {
+          hooks: {
+            [HookEventType.PreToolUse]: [
+              { matcher: 'Bash', hooks: [bashHookDiffTimeout] },
+            ],
+          },
+        }),
+      ];
+      const result = resolveHookOverlap(HookEventType.PreToolUse, 'Bash', bashHook, 0, ConfigScope.User, scopes);
+      assert.deepStrictEqual(result.isOverriddenBy, {
+        scope: ConfigScope.ProjectLocal,
+        value: bashHookDiffTimeout,
+      });
+      assert.strictEqual(result.isDuplicatedBy, undefined);
+    });
+
+    test('same eventType but different matcher patterns: no overlap detected', () => {
+      const scopes = [
+        makeScopedConfig(ConfigScope.User, {
+          hooks: {
+            [HookEventType.PreToolUse]: [
+              { matcher: 'Bash', hooks: [bashHook] },
+            ],
+          },
+        }),
+        makeScopedConfig(ConfigScope.ProjectLocal, {
+          hooks: {
+            [HookEventType.PreToolUse]: [
+              { matcher: 'Write', hooks: [writeHook] },
+            ],
+          },
+        }),
+      ];
+      const result = resolveHookOverlap(HookEventType.PreToolUse, 'Bash', bashHook, 0, ConfigScope.User, scopes);
+      assert.strictEqual(result.isDuplicatedBy, undefined);
+      assert.strictEqual(result.isOverriddenBy, undefined);
+      assert.strictEqual(result.duplicates, undefined);
+      assert.strictEqual(result.overrides, undefined);
+    });
+
+    test('hook exists in only one scope: empty OverlapInfo', () => {
+      const scopes = [
+        makeScopedConfig(ConfigScope.User, {
+          hooks: {
+            [HookEventType.PreToolUse]: [
+              { matcher: 'Bash', hooks: [bashHook] },
+            ],
+          },
+        }),
+      ];
+      const result = resolveHookOverlap(HookEventType.PreToolUse, 'Bash', bashHook, 0, ConfigScope.User, scopes);
+      assert.strictEqual(result.isDuplicatedBy, undefined);
+      assert.strictEqual(result.isOverriddenBy, undefined);
+      assert.strictEqual(result.duplicates, undefined);
+      assert.strictEqual(result.overrides, undefined);
+    });
+
+    test('hook in User scope with identical hook in both ProjectShared and ProjectLocal: isDuplicatedBy points to nearest higher scope (ProjectShared)', () => {
+      // SCOPE_PRECEDENCE = [Managed, ProjectLocal, ProjectShared, User] (higher index = lower precedence)
+      // From User (index 3), nearest higher-precedence scope is ProjectShared (index 2)
+      // ProjectLocal (index 1) is higher precedence but farther away
+      const scopes = [
+        makeScopedConfig(ConfigScope.User, {
+          hooks: {
+            [HookEventType.PreToolUse]: [
+              { matcher: 'Bash', hooks: [bashHook] },
+            ],
+          },
+        }),
+        makeScopedConfig(ConfigScope.ProjectShared, {
+          hooks: {
+            [HookEventType.PreToolUse]: [
+              { matcher: 'Bash', hooks: [{ ...bashHook }] },
+            ],
+          },
+        }),
+        makeScopedConfig(ConfigScope.ProjectLocal, {
+          hooks: {
+            [HookEventType.PreToolUse]: [
+              { matcher: 'Bash', hooks: [{ ...bashHook }] },
+            ],
+          },
+        }),
+      ];
+      const result = resolveHookOverlap(HookEventType.PreToolUse, 'Bash', bashHook, 0, ConfigScope.User, scopes);
+      // Nearest higher from User is ProjectShared (closest in precedence chain)
+      assert.deepStrictEqual(result.isDuplicatedBy, {
+        scope: ConfigScope.ProjectShared,
+        value: bashHook,
+      });
+    });
+
+    test('hook with undefined matcher matches hook with undefined matcher in other scope', () => {
+      const scopes = [
+        makeScopedConfig(ConfigScope.User, {
+          hooks: {
+            [HookEventType.SessionStart]: [
+              { hooks: [bashHook] }, // no matcher
+            ],
+          },
+        }),
+        makeScopedConfig(ConfigScope.ProjectLocal, {
+          hooks: {
+            [HookEventType.SessionStart]: [
+              { hooks: [{ ...bashHook }] }, // no matcher
+            ],
+          },
+        }),
+      ];
+      const result = resolveHookOverlap(HookEventType.SessionStart, undefined, bashHook, 0, ConfigScope.User, scopes);
+      assert.deepStrictEqual(result.isDuplicatedBy, {
+        scope: ConfigScope.ProjectLocal,
+        value: bashHook,
+      });
+    });
+
+    test('hook with undefined matcher does NOT match hook with explicit matcher', () => {
+      const scopes = [
+        makeScopedConfig(ConfigScope.User, {
+          hooks: {
+            [HookEventType.PreToolUse]: [
+              { hooks: [bashHook] }, // no matcher (undefined)
+            ],
+          },
+        }),
+        makeScopedConfig(ConfigScope.ProjectLocal, {
+          hooks: {
+            [HookEventType.PreToolUse]: [
+              { matcher: 'Bash', hooks: [{ ...bashHook }] }, // explicit matcher
+            ],
+          },
+        }),
+      ];
+      const result = resolveHookOverlap(HookEventType.PreToolUse, undefined, bashHook, 0, ConfigScope.User, scopes);
+      assert.strictEqual(result.isDuplicatedBy, undefined);
+      assert.strictEqual(result.isOverriddenBy, undefined);
     });
   });
 });

@@ -1,5 +1,7 @@
 import {
   ConfigScope,
+  HookCommand,
+  HookEventType,
   OverlapInfo,
   OverlapItem,
   PermissionCategory,
@@ -194,6 +196,26 @@ export function resolveSandboxOverlap(
       }
     }
     return obj;
+  });
+}
+
+export function resolveHookOverlap(
+  eventType: HookEventType,
+  matcherPattern: string | undefined,
+  hook: HookCommand,
+  hookIndex: number,
+  currentScope: ConfigScope,
+  allScopes: ScopedConfig[],
+): OverlapInfo {
+  return resolveOverlapGeneric(currentScope, allScopes, (sc) => {
+    const matchers = sc.config.hooks?.[eventType];
+    if (!matchers) return undefined;
+    for (const matcher of matchers) {
+      if ((matcher.matcher ?? '') !== (matcherPattern ?? '')) continue;
+      const h = matcher.hooks[hookIndex];
+      return h !== undefined ? h : undefined;
+    }
+    return undefined;
   });
 }
 
