@@ -49,6 +49,7 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 
 - Add "go to (scope/entity)" to the command palette (ui)
 - Multiselect for batch copy and move operations (ui)
+- Automatic CPU and memory profiling for tree builder (ui)
 
 ### Quick Tasks Completed
 
