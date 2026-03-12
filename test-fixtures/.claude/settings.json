@@ -1,6 +1,51 @@
 {
   "env": {
-    "DISABLE_AUTOUPDATER": "1"
+    "DISABLE_AUTOUPDATER": "1",
+    "NODE_ENV": "development",
+    "API_BASE_URL": "https://api.example.com/v1"
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": false,
+    "network": {
+      "allowedDomains": ["api.example.com", "cdn.example.com"],
+      "allowLocalBinding": true
+    },
+    "filesystem": {
+      "allowWrite": ["/tmp", "/var/cache"],
+      "denyRead": ["/etc/secrets"]
+    }
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Pre-edit check passed'"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Review this shell command for safety before executing"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "Verify that unit tests still pass after this code change"
+          }
+        ]
+      }
+    ]
   },
   "permissions": {
     "allow": [

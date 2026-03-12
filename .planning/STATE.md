@@ -45,6 +45,10 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 - Edit pre-fill reads from node.description — description changes in Phase 25 must be tested against edit flow
 - 4 `&& false` entries in package.json need explicit enable/remove decisions — Phase 26
 
+## Roadmap Evolution
+
+- Phase 29 added: Permission Overlap Performance — batch indexed algorithm for O(R²) → O(R×G) overlap resolution
+
 ## Pending Todos
 
 - Add "go to (scope/entity)" to the command palette (ui)
