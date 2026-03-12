@@ -67,6 +67,13 @@
 - **Expected behavior:** N/A -- intentionally disabled
 - **Classification:** Intentional -- Plugin interaction model uses checkbox for enable/disable; move/copy/delete as inline buttons conflicts with the checkbox UX. Copy works via context menu. Per REQUIREMENTS.md out of scope.
 
+- **Design Decision (Phase 26 -- INLN-03):** The three `&& false` guards on plugin inline buttons (`moveToScope`, `copyPluginToScope`, `deletePlugin`) are confirmed intentional and must be preserved. Rationale:
+  - Plugin interaction uses a checkbox toggle model (Phase 23)
+  - Move/copy/delete as inline buttons conflicts with checkbox UX
+  - Copy is available via context menu for locked scopes
+  - These are tracked as DEFR-01 in REQUIREMENTS.md and listed as Out of Scope
+  - The `&& false` guards serve as both suppression and documentation of the design decision
+
 ### Section
 
 **1. Inline Buttons -- Gap (INLN-04)**
@@ -179,7 +186,7 @@
 | 287 | `moveToScope` | plugin.editable | Intentional (out of scope) |
 | 292 | `copyPluginToScope` | plugin.editable | Intentional (out of scope) |
 | 297 | `deletePlugin` | plugin.editable | Intentional (checkbox UX) |
-| 302 | `editValue` | envVar\|sandboxProperty | Gap -- INLN-01, INLN-02 |
+| 302 | `editValue` | envVar\|sandboxProperty | Removed in Phase 26 (INLN-03) -- editValue for envVar/sandboxProperty deferred to EditValue phase (DEFR-06, DEFR-07) |
 | 307 | `moveToScope` | envVar.editable | Active (no `&& false`) |
 
 **Correction:** Line 307 (`moveToScope` for `envVar.editable`) does NOT have `&& false` -- it is active. The research noted "5 entries with `&& false` guards" but line 307 is a separate active entry. The actual `&& false` guarded entries are 4: lines 287, 292, 297, 302.
