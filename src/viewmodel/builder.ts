@@ -7,6 +7,7 @@ import {
   resolveMcpOverlap,
   resolveSandboxOverlap,
   resolvePermissionOverlap,
+  resolveHookOverlap,
   getOverlapColor,
 } from '../config/overlapResolver';
 import { OVERLAP_URI_SCHEME } from '../tree/overlapDecorations';
@@ -418,7 +419,7 @@ export class TreeViewModelBuilder {
       case SectionType.Sandbox:
         return this.buildSandboxProperties(scopedConfig, allScopes);
       case SectionType.Hooks:
-        return this.buildHookEvents(scopedConfig);
+        return this.buildHookEvents(scopedConfig, allScopes);
       case SectionType.McpServers:
         return this.buildMcpServers(scopedConfig, allScopes);
       case SectionType.Environment:
@@ -879,7 +880,7 @@ export class TreeViewModelBuilder {
 
   // ── Hooks ────────────────────────────────────────────────────
 
-  private buildHookEvents(scopedConfig: ScopedConfig): HookEventVM[] {
+  private buildHookEvents(scopedConfig: ScopedConfig, allScopes: ScopedConfig[]): HookEventVM[] {
     const hooks = scopedConfig.config.hooks;
     if (!hooks) return [];
 
@@ -887,7 +888,7 @@ export class TreeViewModelBuilder {
     for (const eventType of Object.values(HookEventType)) {
       const matchers = hooks[eventType];
       if (matchers && matchers.length > 0) {
-        result.push(this.buildHookEventVM(eventType, matchers, scopedConfig));
+        result.push(this.buildHookEventVM(eventType, matchers, scopedConfig, allScopes));
       }
     }
     return result;
@@ -897,6 +898,7 @@ export class TreeViewModelBuilder {
     eventType: HookEventType,
     matchers: HookMatcher[],
     scopedConfig: ScopedConfig,
+    allScopes: ScopedConfig[],
   ): HookEventVM {
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
@@ -916,7 +918,7 @@ export class TreeViewModelBuilder {
         const label = matcher.matcher
           ? `[${matcher.matcher}] ${hook.command ?? hook.prompt ?? hook.type}`
           : hook.command ?? hook.prompt ?? hook.type;
-        entryChildren.push(this.buildHookEntryVM(label, eventType, i, j, hook, scopedConfig));
+        entryChildren.push(this.buildHookEntryVM(label, eventType, matcher.matcher, i, j, hook, scopedConfig, allScopes));
       }
     }
 
@@ -938,16 +940,20 @@ export class TreeViewModelBuilder {
   private buildHookEntryVM(
     label: string,
     eventType: HookEventType,
+    matcherPattern: string | undefined,
     matcherIndex: number,
     hookIndex: number,
     hook: HookCommand,
     scopedConfig: ScopedConfig,
+    allScopes: ScopedConfig[],
   ): HookEntryVM {
+    const overlap = resolveHookOverlap(eventType, matcherPattern, hook, hookIndex, scopedConfig.scope, allScopes);
+
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
       keyPath: ['hooks', eventType, String(matcherIndex), 'hooks', String(hookIndex)],
       isReadOnly: scopedConfig.isReadOnly,
-      overlap: {},
+      overlap,
       filePath: scopedConfig.filePath,
     };
 
@@ -958,11 +964,13 @@ export class TreeViewModelBuilder {
     };
 
     const hookDetail = hook.command ?? hook.prompt ?? hook.type;
-    const description = `${hook.type}: ${hookDetail}`;
+    const rawDescription = `${hook.type}: ${hookDetail}`;
+    const description = applyOverrideSuffix(rawDescription, overlap);
 
-    const tooltip = hook.command
+    const baseTooltip: vscode.MarkdownString | undefined = hook.command
       ? new vscode.MarkdownString(`\`${hook.command}\``)
       : undefined;
+    const tooltip = buildOverlapTooltip(baseTooltip, overlap);
 
     const collapsibleState = vscode.TreeItemCollapsibleState.None;
 
@@ -973,14 +981,17 @@ export class TreeViewModelBuilder {
       hookIndex,
       label,
       description,
-      icon: new vscode.ThemeIcon(iconMap[hook.type] ?? 'terminal'),
+      icon: overlap.isOverriddenBy
+        ? new vscode.ThemeIcon(iconMap[hook.type] ?? 'terminal', new vscode.ThemeColor('disabledForeground'))
+        : new vscode.ThemeIcon(iconMap[hook.type] ?? 'terminal'),
       collapsibleState,
-      contextValue: computeStandardContextValue('hookEntry', scopedConfig.isReadOnly, {}),
+      contextValue: computeStandardContextValue('hookEntry', scopedConfig.isReadOnly, overlap),
       tooltip,
       nodeContext: ctx,
       children: [],
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'hook', `${eventType}/${matcherIndex}/${hookIndex}`, overlap),
     };
   }
 

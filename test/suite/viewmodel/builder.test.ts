@@ -848,6 +848,246 @@ suite('TRIV-02: HookEntry description', () => {
   });
 });
 
+// ── Hook Overlap Tests (TEST-HOOK-OVERLAP) ────────────────────────
+
+suite('Hook Overlap (TEST-HOOK-OVERLAP)', () => {
+  test('HookEntryVM has populated overlap when same hook exists in two scopes', () => {
+    const hook = { type: 'command' as const, command: 'echo test' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [hook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [{ ...hook }] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    // User scope entry should have isDuplicatedBy (same hook in ProjectLocal which has higher precedence)
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const userEntry = findVM(userScope.children, NodeKind.HookEntry);
+    assert.ok(userEntry, 'HookEntry should exist in User scope');
+    assert.ok(
+      userEntry.nodeContext.overlap.isDuplicatedBy || userEntry.nodeContext.overlap.isOverriddenBy,
+      'HookEntry overlap should be populated (not empty {})',
+    );
+  });
+
+  test('HookEntryVM.contextValue includes "overridden" suffix when isOverriddenBy is set', () => {
+    const userHook = { type: 'command' as const, command: 'echo user' };
+    const localHook = { type: 'command' as const, command: 'echo local' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [userHook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [localHook] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const userEntry = findVM(userScope.children, NodeKind.HookEntry);
+    assert.ok(userEntry, 'HookEntry should exist');
+    // User has different value from ProjectLocal -> isOverriddenBy
+    assert.ok(userEntry.nodeContext.overlap.isOverriddenBy, 'Should be overridden');
+    assert.ok(
+      userEntry.contextValue.includes('overridden'),
+      `contextValue should include "overridden", got: ${userEntry.contextValue}`,
+    );
+  });
+
+  test('HookEntryVM.icon uses disabledForeground color when isOverriddenBy is set', () => {
+    const userHook = { type: 'command' as const, command: 'echo user' };
+    const localHook = { type: 'command' as const, command: 'echo local' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [userHook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [localHook] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const userEntry = findVM(userScope.children, NodeKind.HookEntry);
+    assert.ok(userEntry, 'HookEntry should exist');
+    assert.ok(userEntry.nodeContext.overlap.isOverriddenBy, 'Should be overridden');
+    assert.ok(userEntry.icon?.color, 'Overridden icon should have a color');
+    assert.strictEqual(
+      (userEntry.icon!.color as vscode.ThemeColor).id,
+      'disabledForeground',
+      'Overridden HookEntry icon should use disabledForeground color',
+    );
+  });
+
+  test('HookEntryVM.resourceUri is set (not undefined) when overlap exists', () => {
+    const hook = { type: 'command' as const, command: 'echo test' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [hook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [{ ...hook }] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const userEntry = findVM(userScope.children, NodeKind.HookEntry);
+    assert.ok(userEntry, 'HookEntry should exist');
+    assert.ok(
+      userEntry.nodeContext.overlap.isDuplicatedBy || userEntry.nodeContext.overlap.isOverriddenBy,
+      'Overlap should be populated',
+    );
+    assert.ok(userEntry.resourceUri, 'resourceUri should be set when overlap exists');
+  });
+
+  test('HookEntryVM.tooltip contains overlap markdown content when overlap is present', () => {
+    const hook = { type: 'command' as const, command: 'echo test' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [hook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [{ ...hook }] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const userEntry = findVM(userScope.children, NodeKind.HookEntry);
+    assert.ok(userEntry, 'HookEntry should exist');
+    assert.ok(
+      userEntry.nodeContext.overlap.isDuplicatedBy || userEntry.nodeContext.overlap.isOverriddenBy,
+      'Overlap should be populated',
+    );
+    assert.ok(userEntry.tooltip instanceof vscode.MarkdownString, 'Tooltip should be MarkdownString when overlap present');
+    const tooltipValue = (userEntry.tooltip as vscode.MarkdownString).value;
+    assert.ok(
+      tooltipValue.includes('Duplicated') || tooltipValue.includes('Overridden') ||
+      tooltipValue.includes('duplicated') || tooltipValue.includes('overridden'),
+      `Tooltip should contain overlap info, got: ${tooltipValue}`,
+    );
+  });
+
+  test('HookEntryVM.description includes override suffix when isOverriddenBy is set', () => {
+    const userHook = { type: 'command' as const, command: 'echo user' };
+    const localHook = { type: 'command' as const, command: 'echo local' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [userHook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [localHook] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const userEntry = findVM(userScope.children, NodeKind.HookEntry);
+    assert.ok(userEntry, 'HookEntry should exist');
+    assert.ok(userEntry.nodeContext.overlap.isOverriddenBy, 'Should be overridden');
+    assert.ok(
+      userEntry.description.includes('overridden'),
+      `description should include "overridden", got: ${userEntry.description}`,
+    );
+  });
+
+  test('HookEventVM container still has overlap: {} (no overlap on container nodes)', () => {
+    const hook = { type: 'command' as const, command: 'echo test' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [hook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [{ ...hook }] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const hookEvent = findVM(userScope.children, NodeKind.HookEvent, 'PreToolUse');
+    assert.ok(hookEvent, 'HookEvent container should exist');
+    assert.deepStrictEqual(
+      hookEvent.nodeContext.overlap,
+      {},
+      'HookEvent container should have empty overlap {}',
+    );
+  });
+});
+
 // ── TRIV-03: EnvVar Base Tooltip ────────────────────────────────
 
 suite('TRIV-03: EnvVar base tooltip', () => {
