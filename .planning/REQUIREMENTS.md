@@ -1,0 +1,95 @@
+# Requirements: Claude Code Config Manager
+
+**Defined:** 2026-03-11
+**Core Value:** Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
+
+## v0.9.0 Requirements
+
+Requirements for UX Audit milestone. Each maps to roadmap phases.
+
+### Audit
+
+- [ ] **AUDIT-01**: Complete audit matrix documenting actual vs expected state for all 14 node types across all audit vectors (icons, descriptions, tooltips, inline buttons, context menus, click behavior, overlap)
+- [ ] **AUDIT-02**: Document intentional design decisions vs unintentional inconsistencies for each finding
+
+### Trivial Fixes
+
+- [ ] **TRIV-01**: Sandbox section header shows item count in description (currently empty string)
+- [ ] **TRIV-02**: HookEntry description shows hook type (command, prompt, or agent)
+- [ ] **TRIV-03**: EnvVar nodes show base tooltip with key=value context (not just overlap tooltip)
+
+### Inline Buttons
+
+- [ ] **INLN-01**: EnvVar edit inline button enabled (remove `&& false` guard)
+- [ ] **INLN-02**: SandboxProperty edit inline button enabled (remove `&& false` guard)
+- [ ] **INLN-03**: Plugin inline dead entries resolved (enable or remove `&& false` for move/copy/delete)
+- [ ] **INLN-04**: Uniform inline button ordering documented and applied across all entity types
+
+### Overlap
+
+- [ ] **OVLP-01**: Hook entries show overlap detection when same hook exists in multiple scopes
+- [ ] **OVLP-02**: Hook overlap uses color-coded decorations and tooltips consistent with other entity types
+
+### Action Parity
+
+- [ ] **ACTN-01**: EnvVar supports copy-to-scope (matching permissions and settings pattern)
+- [ ] **ACTN-02**: MCP Server supports move-to-scope between config scopes
+- [ ] **ACTN-03**: MCP Server supports copy-to-scope between config scopes
+- [ ] **ACTN-04**: SettingKeyValue nodes support edit action (edit child value)
+- [ ] **ACTN-05**: SettingKeyValue nodes support delete action (remove child key)
+
+## Future Requirements
+
+Deferred to future release. Tracked but not in current roadmap.
+
+### Deferred UX
+
+- **DEFR-01**: Plugin inline buttons beyond openReadme (checkbox interaction complicates this)
+- **DEFR-02**: Hook move/copy between scopes (complex nesting requires hierarchy reconstruction)
+- **DEFR-03**: Settings section "Add" button for arbitrary config keys
+- **DEFR-04**: Drag-and-drop between scopes
+- **DEFR-05**: Accessibility labels via TreeItem.accessibilityInformation
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| Deep-edit inline for complex values | JSON editing in QuickPick is error-prone; revealInFile works |
+| Multiselect batch operations | Significant state management complexity; deferred per PROJECT.md |
+| Inline text editing (rename in place) | VS Code TreeView does not support this natively |
+| Sort controls in toolbar | Minimal value with few items per section; deferred per PROJECT.md |
+| Plugin/Sandbox section "Add" buttons | Plugins are registry-discovered; sandbox keys are schema-defined |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| AUDIT-01 | — | Pending |
+| AUDIT-02 | — | Pending |
+| TRIV-01 | — | Pending |
+| TRIV-02 | — | Pending |
+| TRIV-03 | — | Pending |
+| INLN-01 | — | Pending |
+| INLN-02 | — | Pending |
+| INLN-03 | — | Pending |
+| INLN-04 | — | Pending |
+| OVLP-01 | — | Pending |
+| OVLP-02 | — | Pending |
+| ACTN-01 | — | Pending |
+| ACTN-02 | — | Pending |
+| ACTN-03 | — | Pending |
+| ACTN-04 | — | Pending |
+| ACTN-05 | — | Pending |
+
+**Coverage:**
+- v0.9.0 requirements: 16 total
+- Mapped to phases: 0
+- Unmapped: 16 ⚠️
+
+---
+*Requirements defined: 2026-03-11*
+*Last updated: 2026-03-11 after initial definition*
