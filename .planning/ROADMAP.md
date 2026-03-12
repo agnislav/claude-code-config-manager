@@ -1,8 +1,8 @@
 # Roadmap: Claude Code Config Manager
 
 **Created:** 2026-02-18
-**Updated:** 2026-03-11
-**Status:** v0.3.x-v0.8.0 complete (Phases 1-24)
+**Updated:** 2026-03-12
+**Status:** v0.3.x-v0.8.0 complete (Phases 1-24), v0.9.0 in progress (Phases 25-28)
 
 ---
 
@@ -15,6 +15,7 @@
 - ✅ **v0.6.0 Decouple State from Tree** — Phases 16-18 (shipped 2026-03-08)
 - ✅ **v0.7.0 Visual Fidelity** — Phases 19-22 (shipped 2026-03-09)
 - ✅ **v0.8.0 Tree Display Polish** — Phases 23-24 (shipped 2026-03-11)
+- 🚧 **v0.9.0 UX Audit** — Phases 25-28 (in progress)
 
 ---
 
@@ -88,7 +89,80 @@
 
 ---
 
+### 🚧 v0.9.0 UX Audit (In Progress)
+
+**Milestone Goal:** Systematically audit every entity type's tree structure, node behavior, and inline buttons -- find inconsistencies and UX gaps, then fix them.
+
+## Phases
+
+- [ ] **Phase 25: Audit Catalog + Trivial Fixes** - Document actual-vs-expected state for all node types; ship zero-risk fixes
+- [ ] **Phase 26: Inline Button Cleanup** - Enable valid disabled guards, document intentional ones, establish uniform inline button ordering
+- [ ] **Phase 27: Hook Overlap Detection** - Complete overlap model coverage for all 7 entity types
+- [ ] **Phase 28: Action Parity** - Add missing actions where structurally valid (EnvVar copy, MCP UX, SettingKeyValue edit/delete)
+
+## Phase Details
+
+### Phase 25: Audit Catalog + Trivial Fixes
+**Goal**: Every node type's actual behavior is documented against expected behavior, and trivial display gaps are fixed
+**Depends on**: Nothing (first phase of v0.9.0)
+**Requirements**: AUDIT-01, AUDIT-02, TRIV-01, TRIV-02, TRIV-03
+**Success Criteria** (what must be TRUE):
+  1. A complete audit matrix exists documenting all 14 node types across all audit vectors (icons, descriptions, tooltips, inline buttons, context menus, click behavior, overlap)
+  2. Each audit finding is labeled as intentional design decision or unintentional inconsistency
+  3. Sandbox section header shows item count in its description (matching other section headers)
+  4. HookEntry nodes display the hook type (command, prompt, or agent) in their description
+  5. EnvVar nodes show a base tooltip with key=value context (not just overlap tooltip)
+**Plans**: TBD
+
+Plans:
+- [ ] 25-01: TBD
+- [ ] 25-02: TBD
+
+### Phase 26: Inline Button Cleanup
+**Goal**: Every entity type has the correct set of inline buttons with consistent ordering; intentionally disabled guards are documented
+**Depends on**: Phase 25
+**Requirements**: INLN-01, INLN-02, INLN-03, INLN-04
+**Success Criteria** (what must be TRUE):
+  1. EnvVar nodes show an edit inline button that opens the edit flow when clicked
+  2. SandboxProperty nodes show an edit inline button that opens the edit flow when clicked
+  3. Plugin `&& false` guards documented as intentional in audit; envVar and sandboxProperty guards removed
+  4. All entity types follow the documented inline button ordering convention (edit@0, move@1, copy@2, delete@3)
+**Plans**: TBD
+
+Plans:
+- [ ] 26-01: TBD
+
+### Phase 27: Hook Overlap Detection
+**Goal**: Hook entries participate in the overlap detection system, completing coverage for all 7 entity types
+**Depends on**: Phase 25
+**Requirements**: OVLP-01, OVLP-02
+**Success Criteria** (what must be TRUE):
+  1. When the same hook exists in multiple scopes, each instance shows overlap color-coding (red/green/yellow/orange) matching the conventions used by other entity types
+  2. Overlapping hook entries display MarkdownString tooltips showing scope, value, and relationship details consistent with other overlap tooltips
+**Plans**: TBD
+
+Plans:
+- [ ] 27-01: TBD
+
+### Phase 28: Action Parity
+**Goal**: Add missing actions where structurally valid — EnvVar copy-to-scope, MCP Server UX enrichment, SettingKeyValue edit/delete
+**Depends on**: Phase 26
+**Requirements**: ACTN-01, ACTN-02, ACTN-03, ACTN-04, ACTN-05
+**Success Criteria** (what must be TRUE):
+  1. EnvVar nodes show a copy-to-scope inline button that copies the variable to another scope (matching permissions and settings)
+  2. MCP Server nodes show enriched tooltip with server type and command details; description is consistent with other entities
+  3. MCP Server inline button set reviewed and corrected based on what's structurally valid (.mcp.json is workspace-scoped)
+  4. SettingKeyValue child nodes support editing the value via inline edit button
+  5. SettingKeyValue child nodes support deleting the key via inline delete button or context menu
+**Plans**: TBD
+
+Plans:
+- [ ] 28-01: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 25 → 26 → 27 → 28
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -116,8 +190,12 @@
 | 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 | 23. Plugin Checkbox-Only Display | v0.8.0 | 1/1 | Complete | 2026-03-10 |
 | 24. Flatten Permissions | v0.8.0 | 2/2 | Complete | 2026-03-11 |
+| 25. Audit Catalog + Trivial Fixes | v0.9.0 | 0/? | Not started | - |
+| 26. Inline Button Cleanup | v0.9.0 | 0/? | Not started | - |
+| 27. Hook Overlap Detection | v0.9.0 | 0/? | Not started | - |
+| 28. Action Parity | v0.9.0 | 0/? | Not started | - |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-11 — v0.8.0 shipped*
+*Last updated: 2026-03-12 -- v0.9.0 roadmap added*
