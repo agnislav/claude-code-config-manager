@@ -4,13 +4,13 @@ milestone: v0.9.0
 milestone_name: ux-audit
 status: active
 last_updated: "2026-03-12"
-last_activity: 2026-03-12 — Completed 25-01-PLAN.md (audit matrix)
+last_activity: 2026-03-12 — Completed 25-02-PLAN.md (trivial display fixes)
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -25,17 +25,19 @@ See: .planning/PROJECT.md (updated 2026-03-11)
 ## Current Position
 
 Phase: 25 (first of 4 in v0.9.0 milestone)
-Plan: 1 of 2 in current phase
-Status: Plan 25-01 complete, ready for 25-02
-Last activity: 2026-03-12 — Completed 25-01-PLAN.md (audit matrix)
+Plan: 2 of 2 in current phase (complete)
+Status: Phase 25 complete, ready for Phase 26
+Last activity: 2026-03-12 — Completed 25-02-PLAN.md (trivial display fixes)
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 [█████.....] 50%
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 [██████████] 100% (Phase 25)
 
 ## Decisions
 
 - NodeKind has 12 members (not 14); PermissionGroup is a conceptual grouping without distinct NodeKind
 - 4 actual `&& false` guards (not 5); moveToScope for envVar at line 307 is active
 - TRIV-01/TRIV-02 are display fixes, not audit gaps (description is not an audit vector)
+- Used IIFE for EnvVar tooltip to keep it inline with the return object in builder.ts
+- Fixed pre-existing PermissionGroup NodeKind reference in tests (never existed in enum)
 
 ## Blockers/Concerns
 
@@ -57,4 +59,4 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 ---
 
 *State initialized: 2026-02-20*
-*Last updated: 2026-03-12 — Completed 25-01-PLAN.md*
+*Last updated: 2026-03-12 — Completed 25-02-PLAN.md (Phase 25 complete)*

@@ -95,7 +95,7 @@
 
 ## Phases
 
-- [ ] **Phase 25: Audit Catalog + Trivial Fixes** - Document actual-vs-expected state for all node types; ship zero-risk fixes
+- [x] **Phase 25: Audit Catalog + Trivial Fixes** - Document actual-vs-expected state for all node types; ship zero-risk fixes (completed 2026-03-12)
 - [ ] **Phase 26: Inline Button Cleanup** - Enable valid disabled guards, document intentional ones, establish uniform inline button ordering
 - [ ] **Phase 27: Hook Overlap Detection** - Complete overlap model coverage for all 7 entity types
 - [ ] **Phase 28: Action Parity** - Add missing actions where structurally valid (EnvVar copy, MCP UX, SettingKeyValue edit/delete)
@@ -190,7 +190,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28
 | 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 | 23. Plugin Checkbox-Only Display | v0.8.0 | 1/1 | Complete | 2026-03-10 |
 | 24. Flatten Permissions | v0.8.0 | 2/2 | Complete | 2026-03-11 |
-| 25. Audit Catalog + Trivial Fixes | 1/2 | In Progress|  | - |
+| 25. Audit Catalog + Trivial Fixes | 2/2 | Complete   | 2026-03-12 | - |
 | 26. Inline Button Cleanup | v0.9.0 | 0/? | Not started | - |
 | 27. Hook Overlap Detection | v0.9.0 | 0/? | Not started | - |
 | 28. Action Parity | v0.9.0 | 0/? | Not started | - |

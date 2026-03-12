@@ -14,9 +14,9 @@ Requirements for UX Audit milestone. Each maps to roadmap phases.
 
 ### Trivial Fixes
 
-- [ ] **TRIV-01**: Sandbox section header shows item count in description (currently empty string)
-- [ ] **TRIV-02**: HookEntry description shows hook type (command, prompt, or agent)
-- [ ] **TRIV-03**: EnvVar nodes show base tooltip with key=value context (not just overlap tooltip)
+- [x] **TRIV-01**: Sandbox section header shows item count in description (currently empty string)
+- [x] **TRIV-02**: HookEntry description shows hook type (command, prompt, or agent)
+- [x] **TRIV-03**: EnvVar nodes show base tooltip with key=value context (not just overlap tooltip)
 
 ### Inline Buttons
 
@@ -72,9 +72,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | AUDIT-01 | Phase 25 | Complete |
 | AUDIT-02 | Phase 25 | Complete |
-| TRIV-01 | Phase 25 | Pending |
-| TRIV-02 | Phase 25 | Pending |
-| TRIV-03 | Phase 25 | Pending |
+| TRIV-01 | Phase 25 | Complete |
+| TRIV-02 | Phase 25 | Complete |
+| TRIV-03 | Phase 25 | Complete |
 | INLN-01 | Phase 26 | Pending |
 | INLN-02 | Phase 26 | Pending |
 | INLN-03 | Phase 26 | Pending |
