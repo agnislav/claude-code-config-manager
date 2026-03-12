@@ -298,14 +298,9 @@
           "group": "inline@3"
         },
         {
-          "command": "claudeConfig.editValue",
-          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /envVar|sandboxProperty/ && false",
-          "group": "inline@1"
-        },
-        {
           "command": "claudeConfig.moveToScope",
           "when": "view == claudeConfigTree && viewItem =~ /^envVar\\.editable/",
-          "group": "inline@0"
+          "group": "inline@1"
         },
         {
           "command": "claudeConfig.changePermissionType",
@@ -330,12 +325,12 @@
         {
           "command": "claudeConfig.moveToScope",
           "when": "view == claudeConfigTree && viewItem =~ /^setting\\.editable/",
-          "group": "inline@0"
+          "group": "inline@1"
         },
         {
           "command": "claudeConfig.copySettingToScope",
           "when": "view == claudeConfigTree && viewItem =~ /^setting\\.editable/",
-          "group": "inline@1"
+          "group": "inline@2"
         },
         {
           "command": "claudeConfig.deleteItem",
