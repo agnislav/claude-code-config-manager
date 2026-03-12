@@ -140,10 +140,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. When the same hook exists in multiple scopes, each instance shows overlap color-coding (red/green/yellow/orange) matching the conventions used by other entity types
   2. Overlapping hook entries display MarkdownString tooltips showing scope, value, and relationship details consistent with other overlap tooltips
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 27-01: TBD
+- [ ] 27-01-PLAN.md — Add resolveHookOverlap resolver and wire overlap into builder for HookEntry nodes
 
 ### Phase 28: Action Parity
 **Goal**: Add missing actions where structurally valid — EnvVar copy-to-scope, MCP Server UX enrichment, SettingKeyValue edit/delete
@@ -155,7 +155,7 @@ Plans:
   3. MCP Server inline button set reviewed and corrected based on what's structurally valid (.mcp.json is workspace-scoped)
   4. SettingKeyValue child nodes support editing the value via inline edit button
   5. SettingKeyValue child nodes support deleting the key via inline delete button or context menu
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 - [ ] 28-01: TBD
@@ -205,7 +205,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28
   2. Eliminate redundant RegExp compilations and unnecessary cross-tool comparisons
   3. "Expand All" on a tree with 140+ rules per scope completes without perceptible hang
   4. Existing overlap test suite passes unchanged (no behavioral regression)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 29 to break down)
