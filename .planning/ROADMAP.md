@@ -193,7 +193,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28
 | 24. Flatten Permissions | v0.8.0 | 2/2 | Complete | 2026-03-11 |
 | 25. Audit Catalog + Trivial Fixes | v0.9.0 | 2/2 | Complete | 2026-03-12 |
 | 26. Inline Button Cleanup | 1/1 | Complete    | 2026-03-12 | - |
-| 27. Hook Overlap Detection | 1/1 | Complete   | 2026-03-12 | - |
+| 27. Hook Overlap Detection | 1/1 | Complete    | 2026-03-12 | - |
 | 28. Action Parity | v0.9.0 | 0/? | Not started | - |
 
 ### Phase 29: Permission Overlap Performance
