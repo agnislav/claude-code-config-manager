@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.3
-milestone_name: milestone
-status: completed
+milestone: v0.9.0
+milestone_name: UX Audit
+status: in_progress
 last_updated: "2026-03-12T12:45:05.976Z"
 last_activity: 2026-03-12 — Completed 25-02-PLAN.md (trivial display fixes)
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 1
-  total_plans: 2
+  total_plans: 3
   completed_plans: 2
-  percent: 100
+  percent: 20
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-11)
 
 **Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place
-**Current focus:** Phase 25 - Audit Catalog + Trivial Fixes
+**Current focus:** Phase 26 - Inline Button Cleanup
 
 ## Current Position
 
-Phase: 25 (first of 4 in v0.9.0 milestone)
-Plan: 2 of 2 in current phase (complete)
-Status: Phase 25 complete, ready for Phase 26
+Phase: 26 (second of 5 in v0.9.0 milestone)
+Plan: 0 of 1 in current phase (planned, ready for execution)
+Status: Phase 26 planned, ready for execution
 Last activity: 2026-03-12 — Completed 25-02-PLAN.md (trivial display fixes)
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 [██████████] 100% (Phase 25)
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 [██░░░░░░░░] 20% (Phase 25 done)
 
 ## Decisions
 
@@ -64,4 +64,4 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 ---
 
 *State initialized: 2026-02-20*
-*Last updated: 2026-03-12 — Completed 25-02-PLAN.md (Phase 25 complete)*
+*Last updated: 2026-03-12 — Fixed stale state: milestone v0.9.0, Phase 26 next*
