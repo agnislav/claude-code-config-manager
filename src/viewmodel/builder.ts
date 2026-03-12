@@ -654,7 +654,15 @@ export class TreeViewModelBuilder {
           : new vscode.ThemeIcon('terminal'),
         collapsibleState,
         contextValue: computeStandardContextValue('envVar', scopedConfig.isReadOnly, overlap),
-        tooltip: buildOverlapTooltip(undefined, overlap),
+        tooltip: (() => {
+          const truncatedValue = value.length > 80 ? value.substring(0, 80) + '...' : value;
+          const scopeLabel = SCOPE_LABELS[scopedConfig.scope];
+          const shortPath = getShortPath(scopedConfig.filePath);
+          const baseTooltipMd = new vscode.MarkdownString(
+            `**${key}** = \`${truncatedValue}\`\n\nDefined in: ${scopeLabel} (${shortPath})`,
+          );
+          return buildOverlapTooltip(baseTooltipMd, overlap);
+        })(),
         nodeContext: ctx,
         children: [],
         id: computeId(ctx),
@@ -949,6 +957,9 @@ export class TreeViewModelBuilder {
       agent: 'hubot',
     };
 
+    const hookDetail = hook.command ?? hook.prompt ?? hook.type;
+    const description = `${hook.type}: ${hookDetail}`;
+
     const tooltip = hook.command
       ? new vscode.MarkdownString(`\`${hook.command}\``)
       : undefined;
@@ -961,7 +972,7 @@ export class TreeViewModelBuilder {
       matcherIndex,
       hookIndex,
       label,
-      description: '',
+      description,
       icon: new vscode.ThemeIcon(iconMap[hook.type] ?? 'terminal'),
       collapsibleState,
       contextValue: computeStandardContextValue('hookEntry', scopedConfig.isReadOnly, {}),
@@ -1003,8 +1014,19 @@ export class TreeViewModelBuilder {
         const count = p ? Object.keys(p).length : 0;
         return `${count} plugin${count !== 1 ? 's' : ''}`;
       }
-      case SectionType.Sandbox:
-        return '';
+      case SectionType.Sandbox: {
+        const s = scopedConfig.config.sandbox;
+        if (!s) return '0 properties';
+        let count = 0;
+        for (const [key, value] of Object.entries(s)) {
+          if (key === 'network' && typeof value === 'object' && value !== null) {
+            count += Object.keys(value).length;
+          } else {
+            count++;
+          }
+        }
+        return `${count} ${count !== 1 ? 'properties' : 'property'}`;
+      }
       case SectionType.Settings: {
         const count = Object.keys(scopedConfig.config).filter(
           (k) => !DEDICATED_SECTION_KEYS.has(k),
