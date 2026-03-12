@@ -9,8 +9,8 @@ Requirements for UX Audit milestone. Each maps to roadmap phases.
 
 ### Audit
 
-- [ ] **AUDIT-01**: Complete audit matrix documenting actual vs expected state for all 14 node types across all audit vectors (icons, descriptions, tooltips, inline buttons, context menus, click behavior, overlap)
-- [ ] **AUDIT-02**: Document intentional design decisions vs unintentional inconsistencies for each finding
+- [x] **AUDIT-01**: Complete audit matrix documenting actual vs expected state for all 14 node types across all audit vectors (icons, descriptions, tooltips, inline buttons, context menus, click behavior, overlap)
+- [x] **AUDIT-02**: Document intentional design decisions vs unintentional inconsistencies for each finding
 
 ### Trivial Fixes
 
@@ -70,8 +70,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUDIT-01 | Phase 25 | Pending |
-| AUDIT-02 | Phase 25 | Pending |
+| AUDIT-01 | Phase 25 | Complete |
+| AUDIT-02 | Phase 25 | Complete |
 | TRIV-01 | Phase 25 | Pending |
 | TRIV-02 | Phase 25 | Pending |
 | TRIV-03 | Phase 25 | Pending |
