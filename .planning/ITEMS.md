@@ -79,7 +79,7 @@ UPDATE:
 
 | Position | Command | Icon | Visibility |
 |----------|---------|------|------------|
-| inline@0 | deleteItem | `$(trash)` | `.editable` only |
+| inline@3 | deleteItem | `$(trash)` | `.editable` only |
 
 Context menu:
 - Delete
@@ -104,7 +104,7 @@ UPDATE:
 
 | Position | Command | Icon | Visibility |
 |----------|---------|------|------------|
-| inline@0 | deleteItem | `$(trash)` | `.editable` only |
+| inline@3 | deleteItem | `$(trash)` | `.editable` only |
 
 Context menu:
 - Delete
@@ -122,7 +122,7 @@ Editable: `[delete]`
 
 | Position | Command | Icon | Visibility |
 |----------|---------|------|------------|
-| inline@0 | deleteItem | `$(trash)` | `.editable` only |
+| inline@3 | deleteItem | `$(trash)` | `.editable` only |
 
 Context menu:
 - Delete
@@ -138,9 +138,9 @@ Editable: `[move] [delete]`
 
 | Position | Command | Icon | Visibility |
 |----------|---------|------|------------|
-| inline@0 | moveToScope | `$(arrow-swap)` | `.editable` only |
-| inline@1 | copyToScope | `$(add)` | always |
-| inline@2 | deleteItem | `$(trash)` | `.editable` only |
+| inline@1 | moveToScope | `$(arrow-swap)` | `.editable` only |
+| inline@2 | copyToScope | `$(add)` | always |
+| inline@3 | deleteItem | `$(trash)` | `.editable` only |
 
 Context menu:
 - Edit Value
@@ -174,9 +174,9 @@ Editable: `[move] [copy] [delete]`
 
 | Position | Command | Icon | Visibility |
 |----------|---------|------|------------|
-| inline@0 | moveToScope | `$(arrow-swap)` | `.editable` only |
-| inline@1 | copySettingToScope | `$(add)` | always |
-| inline@2 | deleteItem | `$(trash)` | `.editable` only |
+| inline@1 | moveToScope | `$(arrow-swap)` | `.editable` only |
+| inline@2 | copySettingToScope | `$(add)` | always |
+| inline@3 | deleteItem | `$(trash)` | `.editable` only |
 
 Context menu:
 - Edit Value

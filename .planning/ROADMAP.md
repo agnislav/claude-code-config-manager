@@ -120,14 +120,14 @@ Plans:
 - [ ] 25-02-PLAN.md — Trivial fixes: sandbox count, hook type description, envvar base tooltip
 
 ### Phase 26: Inline Button Cleanup
-**Goal**: Every entity type has the correct set of inline buttons with consistent ordering; intentionally disabled guards are documented
+**Goal**: Every entity type uses fixed-position inline button slots with consistent ordering; dead guards removed and intentional guards documented
 **Depends on**: Phase 25
-**Requirements**: INLN-01, INLN-02, INLN-03, INLN-04
+**Requirements**: INLN-03, INLN-04
 **Success Criteria** (what must be TRUE):
-  1. EnvVar nodes show an edit inline button that opens the edit flow when clicked
-  2. SandboxProperty nodes show an edit inline button that opens the edit flow when clicked
-  3. Plugin `&& false` guards documented as intentional in audit; envVar and sandboxProperty guards removed
-  4. All entity types follow the documented inline button ordering convention (edit@0, move@1, copy@2, delete@3)
+  1. Dead `&& false` editValue guard removed from package.json (was blocking envVar/sandboxProperty edit — deferred to separate EditValue phase)
+  2. Plugin `&& false` guards (move, copy, delete) documented as intentional design decisions in audit matrix
+  3. All entity types use fixed-position inline button slots: edit@0, move@1, copy@2, delete@3 — matching ITEMS.md
+  4. EnvVar moveToScope uses inline@1 (not @0); Setting moveToScope uses inline@1 and copySettingToScope uses inline@2
 **Plans**: TBD
 
 Plans:

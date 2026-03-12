@@ -20,10 +20,8 @@ Requirements for UX Audit milestone. Each maps to roadmap phases.
 
 ### Inline Buttons
 
-- [ ] **INLN-01**: EnvVar edit inline button enabled (remove `&& false` guard)
-- [ ] **INLN-02**: SandboxProperty edit inline button enabled (remove `&& false` guard)
-- [ ] **INLN-03**: Disabled `&& false` guards resolved — envVar and sandboxProperty edit enabled; plugin guards documented as intentional
-- [ ] **INLN-04**: Uniform inline button ordering documented and applied across all entity types
+- [ ] **INLN-03**: Dead `&& false` editValue guard removed (cleanup); plugin `&& false` guards documented as intentional design decisions
+- [ ] **INLN-04**: Uniform inline button ordering applied — fixed positions per action type (edit@0, move@1, copy@2, delete@3) across all entity types
 
 ### Overlap
 
@@ -49,6 +47,8 @@ Deferred to future release. Tracked but not in current roadmap.
 - **DEFR-03**: Settings section "Add" button for arbitrary config keys
 - **DEFR-04**: Drag-and-drop between scopes
 - **DEFR-05**: Accessibility labels via TreeItem.accessibilityInformation
+- **DEFR-06**: EnvVar inline edit button (editValue for env vars — separate EditValue phase per ITEMS.md)
+- **DEFR-07**: SandboxProperty inline edit button (editValue for sandbox properties — separate EditValue phase per ITEMS.md)
 
 ## Out of Scope
 
@@ -75,8 +75,6 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRIV-01 | Phase 25 | Complete |
 | TRIV-02 | Phase 25 | Complete |
 | TRIV-03 | Phase 25 | Complete |
-| INLN-01 | Phase 26 | Pending |
-| INLN-02 | Phase 26 | Pending |
 | INLN-03 | Phase 26 | Pending |
 | INLN-04 | Phase 26 | Pending |
 | OVLP-01 | Phase 27 | Pending |
@@ -88,8 +86,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ACTN-05 | Phase 28 | Pending |
 
 **Coverage:**
-- v0.9.0 requirements: 16 total
-- Mapped to phases: 16
+- v0.9.0 requirements: 14 total (INLN-01/02 deferred as DEFR-06/07)
+- Mapped to phases: 14
 - Unmapped: 0
 
 ---
