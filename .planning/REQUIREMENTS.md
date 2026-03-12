@@ -20,8 +20,8 @@ Requirements for UX Audit milestone. Each maps to roadmap phases.
 
 ### Inline Buttons
 
-- [ ] **INLN-03**: Dead `&& false` editValue guard removed (cleanup); plugin `&& false` guards documented as intentional design decisions
-- [ ] **INLN-04**: Uniform inline button ordering applied — fixed positions per action type (edit@0, move@1, copy@2, delete@3) across all entity types
+- [x] **INLN-03**: Dead `&& false` editValue guard removed (cleanup); plugin `&& false` guards documented as intentional design decisions
+- [x] **INLN-04**: Uniform inline button ordering applied — fixed positions per action type (edit@0, move@1, copy@2, delete@3) across all entity types
 
 ### Overlap
 
@@ -75,8 +75,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRIV-01 | Phase 25 | Complete |
 | TRIV-02 | Phase 25 | Complete |
 | TRIV-03 | Phase 25 | Complete |
-| INLN-03 | Phase 26 | Pending |
-| INLN-04 | Phase 26 | Pending |
+| INLN-03 | Phase 26 | Complete |
+| INLN-04 | Phase 26 | Complete |
 | OVLP-01 | Phase 27 | Pending |
 | OVLP-02 | Phase 27 | Pending |
 | ACTN-01 | Phase 28 | Pending |
