@@ -25,8 +25,8 @@ Requirements for UX Audit milestone. Each maps to roadmap phases.
 
 ### Overlap
 
-- [ ] **OVLP-01**: Hook entries show overlap detection when same hook exists in multiple scopes
-- [ ] **OVLP-02**: Hook overlap uses color-coded decorations and tooltips consistent with other entity types
+- [x] **OVLP-01**: Hook entries show overlap detection when same hook exists in multiple scopes
+- [x] **OVLP-02**: Hook overlap uses color-coded decorations and tooltips consistent with other entity types
 
 ### Action Parity
 
@@ -77,8 +77,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRIV-03 | Phase 25 | Complete |
 | INLN-03 | Phase 26 | Complete |
 | INLN-04 | Phase 26 | Complete |
-| OVLP-01 | Phase 27 | Pending |
-| OVLP-02 | Phase 27 | Pending |
+| OVLP-01 | Phase 27 | Complete |
+| OVLP-02 | Phase 27 | Complete |
 | ACTN-01 | Phase 28 | Pending |
 | ACTN-02 | Phase 28 | Pending |
 | ACTN-03 | Phase 28 | Pending |
