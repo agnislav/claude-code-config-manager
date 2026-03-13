@@ -3,6 +3,13 @@ export interface ParsedPermissionRule {
   specifier?: string;
 }
 
+// ── Caches ────────────────────────────────────────────────────────
+
+const _regexpCache = new Map<string, RegExp>();
+const _parseCache = new Map<string, ParsedPermissionRule>();
+
+// ── Public API ────────────────────────────────────────────────────
+
 /**
  * Parses a permission rule string like "Bash(npm run *)" into tool and specifier.
  * - "Bash" → { tool: "Bash" }
@@ -20,6 +27,19 @@ export function parsePermissionRule(rule: string): ParsedPermissionRule {
   };
 }
 
+/**
+ * Cached version of parsePermissionRule. Returns the same object reference
+ * for identical rule strings — avoids repeated regex and object allocation.
+ */
+export function getCachedParse(rule: string): ParsedPermissionRule {
+  let cached = _parseCache.get(rule);
+  if (!cached) {
+    cached = parsePermissionRule(rule);
+    _parseCache.set(rule, cached);
+  }
+  return cached;
+}
+
 export function formatPermissionRule(parsed: ParsedPermissionRule): string {
   if (parsed.specifier) {
     return `${parsed.tool}(${parsed.specifier})`;
@@ -32,8 +52,8 @@ export function formatPermissionRule(parsed: ParsedPermissionRule): string {
  * A deny rule for "Bash(curl *)" conflicts with an allow for "Bash(curl http://example.com)".
  */
 export function rulesOverlap(ruleA: string, ruleB: string): boolean {
-  const a = parsePermissionRule(ruleA);
-  const b = parsePermissionRule(ruleB);
+  const a = getCachedParse(ruleA);
+  const b = getCachedParse(ruleB);
 
   if (a.tool !== b.tool) {
     return false;
@@ -59,9 +79,14 @@ export function rulesOverlap(ruleA: string, ruleB: string): boolean {
 
 function wildcardMatch(pattern: string, text: string): boolean {
   const escaped = pattern.replace(/[-/\\^$+?.()|[\]{}]/g, '\\$&').replace(/\*/g, '.*');
-  try {
-    return new RegExp(`^${escaped}$`).test(text);
-  } catch {
-    return false;
+  let re = _regexpCache.get(escaped);
+  if (!re) {
+    try {
+      re = new RegExp(`^${escaped}$`);
+      _regexpCache.set(escaped, re);
+    } catch {
+      return false;
+    }
   }
+  return re.test(text);
 }
