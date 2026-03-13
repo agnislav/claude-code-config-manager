@@ -158,6 +158,12 @@
         "icon": "$(add)"
       },
       {
+        "command": "claudeConfig.copyMcpServerToScope",
+        "title": "Copy to Scope...",
+        "category": "Claude Config",
+        "icon": "$(add)"
+      },
+      {
         "command": "claudeConfig.filterSections",
         "title": "Filter Sections",
         "category": "Claude Config",
@@ -255,8 +261,13 @@
         },
         {
           "command": "claudeConfig.moveToScope",
-          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /permissionRule|envVar|plugin|setting/",
+          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /permissionRule|envVar|plugin|setting|mcpServer/",
           "group": "2_move"
+        },
+        {
+          "command": "claudeConfig.copyMcpServerToScope",
+          "when": "view == claudeConfigTree && viewItem =~ /^mcpServer\\.editable/",
+          "group": "2_copyMove"
         },
         {
           "command": "claudeConfig.copyEnvVarToScope",
@@ -307,6 +318,16 @@
           "command": "claudeConfig.deletePlugin",
           "when": "view == claudeConfigTree && viewItem =~ /^plugin\\.editable/ && false",
           "group": "inline@3"
+        },
+        {
+          "command": "claudeConfig.moveToScope",
+          "when": "view == claudeConfigTree && viewItem =~ /^mcpServer\\.editable/",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeConfig.copyMcpServerToScope",
+          "when": "view == claudeConfigTree && viewItem =~ /^mcpServer\\.editable/",
+          "group": "inline@2"
         },
         {
           "command": "claudeConfig.moveToScope",
@@ -410,6 +431,10 @@
         },
         {
           "command": "claudeConfig.copyEnvVarToScope",
+          "when": "false"
+        },
+        {
+          "command": "claudeConfig.copyMcpServerToScope",
           "when": "false"
         },
         {

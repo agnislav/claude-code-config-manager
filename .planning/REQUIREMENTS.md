@@ -31,8 +31,8 @@ Requirements for UX Audit milestone. Each maps to roadmap phases.
 ### Action Parity
 
 - [x] **ACTN-01**: EnvVar supports copy-to-scope (matching permissions and settings pattern)
-- [ ] **ACTN-02**: MCP Server nodes show enriched inline UX (tooltip with server type/command details, consistent description)
-- [ ] **ACTN-03**: MCP Server inline button set reviewed and corrected (currently delete-only; assess add/edit needs)
+- [x] **ACTN-02**: MCP Server nodes show enriched inline UX (tooltip with server type/command details, consistent description)
+- [x] **ACTN-03**: MCP Server inline button set reviewed and corrected (currently delete-only; assess add/edit needs)
 - [x] **ACTN-04**: SettingKeyValue nodes support edit action (edit child value)
 - [x] **ACTN-05**: SettingKeyValue nodes support delete action (remove child key)
 
@@ -56,7 +56,6 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| MCP Server move/copy between scopes | `.mcp.json` is workspace-scoped, not per config scope; structurally invalid |
 | Deep-edit inline for complex values | JSON editing in QuickPick is error-prone; revealInFile works |
 | Multiselect batch operations | Significant state management complexity; deferred per PROJECT.md |
 | Inline text editing (rename in place) | VS Code TreeView does not support this natively |
@@ -80,8 +79,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OVLP-01 | Phase 27 | Complete |
 | OVLP-02 | Phase 27 | Complete |
 | ACTN-01 | Phase 28 | Complete |
-| ACTN-02 | Phase 28 | Pending |
-| ACTN-03 | Phase 28 | Pending |
+| ACTN-02 | Phase 28 | Complete |
+| ACTN-03 | Phase 28 | Complete |
 | ACTN-04 | Phase 28 | Complete |
 | ACTN-05 | Phase 28 | Complete |
 

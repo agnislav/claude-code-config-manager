@@ -853,6 +853,13 @@ export class TreeViewModelBuilder {
         baseTooltip = new vscode.MarkdownString(`**Stdio Server**\n\nCommand: \`${cmd}\``);
       }
 
+      // Append scope info line — use mcpFilePath if available (User/Local use ~/.claude.json)
+      const mcpShortPath = getShortPath(scopedConfig.mcpFilePath ?? scopedConfig.filePath);
+      baseTooltip = new vscode.MarkdownString(
+        baseTooltip.value +
+          `\n\nDefined in: ${SCOPE_LABELS[scopedConfig.scope]} (${mcpShortPath})`,
+      );
+
       description = applyOverrideSuffix(description, overlap);
       const tooltip = buildOverlapTooltip(baseTooltip, overlap);
 
