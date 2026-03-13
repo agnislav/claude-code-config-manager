@@ -2,7 +2,7 @@
 
 **Created:** 2026-02-18
 **Updated:** 2026-03-13
-**Status:** v0.3.x-v0.8.0 complete (Phases 1-24), v0.9.0 in progress (Phases 25-28)
+**Status:** v0.3.x-v0.8.0 complete (Phases 1-24), v0.9.0 in progress (Phases 25-29)
 
 ---
 
@@ -15,7 +15,7 @@
 - ✅ **v0.6.0 Decouple State from Tree** — Phases 16-18 (shipped 2026-03-08)
 - ✅ **v0.7.0 Visual Fidelity** — Phases 19-22 (shipped 2026-03-09)
 - ✅ **v0.8.0 Tree Display Polish** — Phases 23-24 (shipped 2026-03-11)
-- 🚧 **v0.9.0 UX Audit** — Phases 25-28 (in progress)
+- 🚧 **v0.9.0 UX Audit** — Phases 25-29 (in progress)
 
 ---
 
@@ -164,7 +164,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 25 → 26 → 27 → 28
+Phases execute in numeric order: 25 → 26 → 27 → 28 → 29
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -196,6 +196,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28
 | 26. Inline Button Cleanup | 1/1 | Complete    | 2026-03-12 | - |
 | 27. Hook Overlap Detection | 1/1 | Complete    | 2026-03-12 | - |
 | 28. Action Parity | 2/2 | Complete    | 2026-03-13 | - |
+| 29. Permission Overlap Performance | v0.9.0 | 0/1 | Planned | - |
 
 ### Phase 29: Permission Overlap Performance
 **Goal**: Tree renders instantly with 140+ permission rules per scope by replacing O(R²) per-rule overlap resolution with a batch indexed algorithm
@@ -209,9 +210,9 @@ Phases execute in numeric order: 25 → 26 → 27 → 28
 **Plans**: 1 plan
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 29 to break down)
+- [ ] 29-01-PLAN.md — Batch indexed overlap algorithm with RegExp/parse caching and builder wiring
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-13 -- Phase 28 planned (2 plans)*
+*Last updated: 2026-03-13 -- Phase 29 planned (1 plan)*
