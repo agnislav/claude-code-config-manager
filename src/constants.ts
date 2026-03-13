@@ -173,6 +173,7 @@ export const MESSAGES = {
   copiedSetting: (settingKey: string, targetScopeLabel: string) => `Claude Config: Copied "${settingKey}" to ${targetScopeLabel}`,
   copiedPermission: (rule: string, categoryLabel: string, scopeLabel: string) => `Claude Config: Copied "${rule}" to ${categoryLabel} in ${scopeLabel}`,
   copiedPlugin: (itemName: string, targetScopeLabel: string, stateLabel: string) => `Claude Config: Copied "${itemName}" to ${targetScopeLabel} as ${stateLabel}`,
+  copiedEnvVar: (key: string, scopeLabel: string) => `Claude Config: Copied env var "${key}" to ${scopeLabel}`,
 
   // Permission-specific
   permissionAlreadyExists: (rule: string, categoryLabel: string, scopeLabel: string) => `Claude Config: "${rule}" already exists in ${categoryLabel} in ${scopeLabel}.`,

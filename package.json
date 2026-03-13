@@ -152,6 +152,12 @@
         "icon": "$(add)"
       },
       {
+        "command": "claudeConfig.copyEnvVarToScope",
+        "title": "Copy to Scope...",
+        "category": "Claude Config",
+        "icon": "$(add)"
+      },
+      {
         "command": "claudeConfig.filterSections",
         "title": "Filter Sections",
         "category": "Claude Config",
@@ -234,7 +240,7 @@
         },
         {
           "command": "claudeConfig.editValue",
-          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /setting|envVar|sandboxProperty/",
+          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /setting|envVar|sandboxProperty|settingKeyValue/",
           "group": "1_edit"
         },
         {
@@ -244,13 +250,18 @@
         },
         {
           "command": "claudeConfig.deleteItem",
-          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /permissionRule|envVar|hookEntry|mcpServer|plugin|setting|sandboxProperty/",
+          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /permissionRule|envVar|hookEntry|mcpServer|plugin|setting|sandboxProperty|settingKeyValue/",
           "group": "1_edit"
         },
         {
           "command": "claudeConfig.moveToScope",
           "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /permissionRule|envVar|plugin|setting/",
           "group": "2_move"
+        },
+        {
+          "command": "claudeConfig.copyEnvVarToScope",
+          "when": "view == claudeConfigTree && viewItem =~ /^envVar\\.editable/",
+          "group": "2_copyMove"
         },
         {
           "command": "claudeConfig.addEnvVar",
@@ -303,6 +314,16 @@
           "group": "inline@1"
         },
         {
+          "command": "claudeConfig.copyEnvVarToScope",
+          "when": "view == claudeConfigTree && viewItem =~ /^envVar\\.editable/",
+          "group": "inline@2"
+        },
+        {
+          "command": "claudeConfig.editValue",
+          "when": "view == claudeConfigTree && viewItem =~ /^settingKeyValue\\.editable/",
+          "group": "inline@0"
+        },
+        {
           "command": "claudeConfig.changePermissionType",
           "when": "view == claudeConfigTree && viewItem =~ /^permissionRule\\.editable/",
           "group": "inline@0"
@@ -334,7 +355,7 @@
         },
         {
           "command": "claudeConfig.deleteItem",
-          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /permissionRule|envVar|hookEntry|mcpServer|setting|sandboxProperty/",
+          "when": "view == claudeConfigTree && viewItem =~ /\\.editable/ && viewItem =~ /permissionRule|envVar|hookEntry|mcpServer|setting|sandboxProperty|settingKeyValue/",
           "group": "inline@3"
         }
       ],
@@ -385,6 +406,10 @@
         },
         {
           "command": "claudeConfig.copyPermissionToScope",
+          "when": "false"
+        },
+        {
+          "command": "claudeConfig.copyEnvVarToScope",
           "when": "false"
         },
         {

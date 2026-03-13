@@ -231,6 +231,91 @@ export function registerMoveCommands(
     ),
   );
 
+  // ── Copy env var to scope (inline button) ───────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'claudeConfig.copyEnvVarToScope',
+      async (node?: ConfigTreeNode) => {
+        if (!node?.nodeContext) return;
+        const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
+
+        if (!filePath) {
+          return;
+        }
+        // Allow copy from locked User scope (non-destructive).
+        // Block copy from truly read-only scopes (Managed).
+        if (isReadOnly && scope !== ConfigScope.User) {
+          vscode.window.showWarningMessage(MESSAGES.readOnlyCopy);
+          return;
+        }
+
+        if (!validateKeyPath(keyPath, 1, 'copyEnvVarToScope')) return;
+
+        if (keyPath[0] !== 'env' || keyPath.length !== 2) return;
+
+        const envKey = keyPath[1];
+
+        const keys = configStore.getWorkspaceFolderKeys();
+        if (keys.length === 0) {
+          vscode.window.showInformationMessage(MESSAGES.noWorkspaceFolders);
+          return;
+        }
+        const key = node.nodeContext.workspaceFolderUri ?? keys[0];
+        const allScopes = configStore.getAllScopes(key);
+
+        const copyEnvTargetScopes = allScopes.filter(
+          (s) => s.scope !== scope && !s.isReadOnly && s.scope !== ConfigScope.Managed && !configStore.isScopeLocked(s.scope),
+        );
+
+        if (copyEnvTargetScopes.length === 0) {
+          vscode.window.showInformationMessage(MESSAGES.noEditableScopes);
+          return;
+        }
+
+        const copyEnvPick = await vscode.window.showQuickPick(
+          copyEnvTargetScopes.map((s) => ({
+            label: `Copy to ${SCOPE_LABELS[s.scope]}`,
+            description: s.filePath ?? '',
+            value: s,
+          })),
+          { placeHolder: 'Copy env var to which scope?' },
+        );
+        if (!copyEnvPick) return;
+
+        const pick = copyEnvPick;
+        const targetFilePath = pick.value.filePath;
+        if (!targetFilePath) {
+          vscode.window.showWarningMessage(MESSAGES.noTargetFile);
+          return;
+        }
+
+        // Check if the env var already exists in the target
+        const targetConfig = readJsonFile<ClaudeCodeConfig>(targetFilePath).data ?? {};
+        if (targetConfig.env && envKey in targetConfig.env) {
+          const overwrite = await vscode.window.showWarningMessage(
+            `Claude Config: "${envKey}" already exists in ${SCOPE_LABELS[pick.value.scope]}. Overwrite?`,
+            { modal: true },
+            'Overwrite',
+          );
+          if (overwrite !== 'Overwrite') return;
+        }
+
+        const currentSc = allScopes.find((s) => s.scope === scope);
+        const value = currentSc?.config.env?.[envKey] ?? '';
+        try {
+          setEnvVar(targetFilePath, envKey, value);
+          vscode.window.showInformationMessage(
+            MESSAGES.copiedEnvVar(envKey, SCOPE_LABELS[pick.value.scope]),
+          );
+        } catch (error) {
+          await showWriteError(targetFilePath, error, () => {
+            setEnvVar(targetFilePath, envKey, value);
+          });
+        }
+      },
+    ),
+  );
+
   // ── Copy permission to scope (inline button) ────────────────────
   context.subscriptions.push(
     vscode.commands.registerCommand(
