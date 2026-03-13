@@ -17,6 +17,7 @@ import {
   resolveSandboxOverlap,
   resolvePermissionOverlap,
   resolveHookOverlap,
+  computePermissionOverlapMap,
   OverlapInfo,
 } from '../../../src/config/overlapResolver';
 
@@ -546,6 +547,157 @@ suite('overlapResolver', () => {
       const result = resolveHookOverlap(HookEventType.PreToolUse, undefined, bashHook, 0, ConfigScope.User, scopes);
       assert.strictEqual(result.isDuplicatedBy, undefined);
       assert.strictEqual(result.isOverriddenBy, undefined);
+    });
+  });
+
+  suite('computePermissionOverlapMap', () => {
+    test('parity: map entries match resolvePermissionOverlap for each rule', () => {
+      const scopes = [
+        makeScopedConfig(ConfigScope.User, {
+          permissions: {
+            allow: ['Bash(curl *)', 'Read(*)'],
+            deny: [],
+          },
+        }),
+        makeScopedConfig(ConfigScope.ProjectLocal, {
+          permissions: {
+            deny: ['Bash(curl *)'],
+            allow: ['Read(*)'],
+          },
+        }),
+      ];
+
+      const overlapMap = computePermissionOverlapMap(scopes);
+
+      // Verify each (scope, category, rule) triple matches resolvePermissionOverlap
+      const triples: [PermissionCategory, string, ConfigScope][] = [
+        [PermissionCategory.Allow, 'Bash(curl *)', ConfigScope.User],
+        [PermissionCategory.Allow, 'Read(*)', ConfigScope.User],
+        [PermissionCategory.Deny, 'Bash(curl *)', ConfigScope.ProjectLocal],
+        [PermissionCategory.Allow, 'Read(*)', ConfigScope.ProjectLocal],
+      ];
+
+      for (const [category, rule, scope] of triples) {
+        const key = `${scope}/${category}/${rule}`;
+        const mapEntry = overlapMap.get(key);
+        const perRuleResult = resolvePermissionOverlap(category, rule, scope, scopes);
+
+        assert.ok(mapEntry !== undefined, `Map should have key ${key}`);
+        assert.deepStrictEqual(
+          mapEntry.isOverriddenBy,
+          perRuleResult.isOverriddenBy,
+          `isOverriddenBy mismatch for ${key}`,
+        );
+        assert.deepStrictEqual(
+          mapEntry.isDuplicatedBy,
+          perRuleResult.isDuplicatedBy,
+          `isDuplicatedBy mismatch for ${key}`,
+        );
+        assert.deepStrictEqual(
+          mapEntry.overrides,
+          perRuleResult.overrides,
+          `overrides mismatch for ${key}`,
+        );
+        assert.deepStrictEqual(
+          mapEntry.duplicates,
+          perRuleResult.duplicates,
+          `duplicates mismatch for ${key}`,
+        );
+        assert.strictEqual(
+          mapEntry.overriddenByCategory,
+          perRuleResult.overriddenByCategory,
+          `overriddenByCategory mismatch for ${key}`,
+        );
+      }
+    });
+
+    test('key completeness: map has entry for every (scope, category, rule) triple', () => {
+      const scopes = [
+        makeScopedConfig(ConfigScope.User, {
+          permissions: { allow: ['Bash(*)', 'Read(*)'], deny: ['Write(*)'], ask: [] },
+        }),
+        makeScopedConfig(ConfigScope.ProjectShared, {
+          permissions: { allow: ['Bash(*)'], deny: [], ask: ['Read(*)'] },
+        }),
+      ];
+
+      const overlapMap = computePermissionOverlapMap(scopes);
+
+      // Compute expected triples manually
+      const expected = [
+        `${ConfigScope.User}/${PermissionCategory.Allow}/Bash(*)`,
+        `${ConfigScope.User}/${PermissionCategory.Allow}/Read(*)`,
+        `${ConfigScope.User}/${PermissionCategory.Deny}/Write(*)`,
+        `${ConfigScope.ProjectShared}/${PermissionCategory.Allow}/Bash(*)`,
+        `${ConfigScope.ProjectShared}/${PermissionCategory.Ask}/Read(*)`,
+      ];
+
+      assert.strictEqual(overlapMap.size, expected.length, 'Map size should equal unique triple count');
+      for (const key of expected) {
+        assert.ok(overlapMap.has(key), `Map should contain key: ${key}`);
+      }
+    });
+
+    test('scale: handles 140+ rules per scope without throwing', () => {
+      const makeRules = (count: number, prefix: string): string[] =>
+        Array.from({ length: count }, (_, i) => `Tool_${prefix}_${i}(*)`);
+
+      const scopes = [
+        makeScopedConfig(ConfigScope.User, {
+          permissions: { allow: makeRules(140, 'u') },
+        }),
+        makeScopedConfig(ConfigScope.ProjectLocal, {
+          permissions: { allow: makeRules(140, 'pl') },
+        }),
+        makeScopedConfig(ConfigScope.ProjectShared, {
+          permissions: { allow: makeRules(140, 'ps') },
+        }),
+        makeScopedConfig(ConfigScope.Managed, {
+          permissions: { allow: makeRules(140, 'm') },
+        }),
+      ];
+
+      let overlapMap: ReturnType<typeof computePermissionOverlapMap> | undefined;
+      assert.doesNotThrow(() => {
+        overlapMap = computePermissionOverlapMap(scopes);
+      });
+      // 4 scopes × 140 rules each = 560 entries
+      assert.strictEqual(overlapMap!.size, 560);
+    });
+
+    test('cross-tool isolation: rules with different tool names never show overlap', () => {
+      const scopes = [
+        makeScopedConfig(ConfigScope.User, {
+          permissions: { allow: ['Bash(*)'], deny: ['Read(*)'] },
+        }),
+        makeScopedConfig(ConfigScope.ProjectLocal, {
+          permissions: { allow: ['Bash(*)'], deny: ['Read(*)'] },
+        }),
+      ];
+
+      const overlapMap = computePermissionOverlapMap(scopes);
+
+      // Bash(*) allow in User should only show overlap with Bash rules, not Read rules
+      const bashUserAllow = overlapMap.get(`${ConfigScope.User}/${PermissionCategory.Allow}/Bash(*)`);
+      assert.ok(bashUserAllow !== undefined);
+      // isOverriddenBy should not reference a Read rule
+      if (bashUserAllow.isOverriddenBy) {
+        assert.notStrictEqual(
+          String(bashUserAllow.isOverriddenBy.value).toLowerCase(),
+          'read',
+          'Bash allow should not show overlap caused by a Read rule',
+        );
+      }
+
+      // Read(*) deny in User vs Bash(*) allow in ProjectLocal — these should NOT cross
+      const readUserDeny = overlapMap.get(`${ConfigScope.User}/${PermissionCategory.Deny}/Read(*)`);
+      assert.ok(readUserDeny !== undefined);
+      // Read deny should only compare against Read rules in higher scopes
+      // ProjectLocal has Read deny — so isDuplicatedBy should point to that
+      assert.deepStrictEqual(readUserDeny.isDuplicatedBy, {
+        scope: ConfigScope.ProjectLocal,
+        value: PermissionCategory.Deny,
+      });
     });
   });
 });
