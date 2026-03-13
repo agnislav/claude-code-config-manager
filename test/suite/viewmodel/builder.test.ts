@@ -299,7 +299,7 @@ suite('Entity Types (TEST-01)', () => {
       vscode.TreeItemCheckboxState.Unchecked,
       'Disabled plugin should be unchecked',
     );
-    assert.ok(disabledPlugin.icon, 'Disabled plugin should have extensions icon');
+    assert.strictEqual(disabledPlugin.icon, undefined, 'Unlocked: no icon (checkboxes convey state)');
   });
 
   test('builds sandbox property VMs', () => {
@@ -706,7 +706,7 @@ suite('Lock-Aware Plugin Display (LOCK-01/02/03)', () => {
       vscode.TreeItemCheckboxState.Checked,
       'Unlocked: enabled plugin has Checked checkbox',
     );
-    assert.strictEqual(unlockedEnabled?.icon?.id, 'extensions', 'Unlocked: extensions icon');
+    assert.strictEqual(unlockedEnabled?.icon, undefined, 'Unlocked: no icon (checkboxes convey state)');
     assert.strictEqual(
       unlockedDisabled?.checkboxState,
       vscode.TreeItemCheckboxState.Unchecked,

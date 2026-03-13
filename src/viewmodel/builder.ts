@@ -1090,7 +1090,14 @@ export class TreeViewModelBuilder {
       case SectionType.Sandbox: {
         const s = scopedConfig.config.sandbox;
         if (!s) return '0 properties';
-        const count = Object.keys(s).length;
+        let count = 0;
+        for (const value of Object.values(s)) {
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            count += Object.keys(value).length;
+          } else {
+            count++;
+          }
+        }
         return `${count} ${count !== 1 ? 'properties' : 'property'}`;
       }
       case SectionType.Settings: {

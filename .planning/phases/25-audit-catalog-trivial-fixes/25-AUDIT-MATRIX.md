@@ -91,9 +91,9 @@
 ### SandboxProperty
 
 **1. Inline Buttons -- Gap (INLN-02)**
-- **Current behavior:** An `editValue` entry exists for `envVar|sandboxProperty` but is disabled with `&& false` guard (package.json line 302). `deleteItem` at `inline@3` is active.
-- **Expected behavior:** Edit inline button should be enabled for editable sandboxProperty nodes
-- **Classification:** Gap
+- **Current behavior:** `deleteItem` at `inline@3` is active. The `editValue` guard for `envVar|sandboxProperty` was removed in Phase 26 (INLN-03); edit deferred to future EditValue phase (DEFR-07).
+- **Expected behavior:** Edit inline button deferred per DEFR-07; delete-only is correct for now
+- **Classification:** Intentional (deferred)
 
 ### HookEntry
 

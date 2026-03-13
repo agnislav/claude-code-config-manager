@@ -36,6 +36,11 @@ Requirements for UX Audit milestone. Each maps to roadmap phases.
 - [x] **ACTN-04**: SettingKeyValue nodes support edit action (edit child value)
 - [x] **ACTN-05**: SettingKeyValue nodes support delete action (remove child key)
 
+### Performance
+
+- [x] **PERF-01**: Pre-index permission rules by tool name and cache parsed results to compute all overlaps in a single batch pass
+- [x] **PERF-02**: Eliminate redundant RegExp compilations and unnecessary cross-tool comparisons so "Expand All" on 140+ rules per scope completes without perceptible hang
+
 ## Future Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -83,10 +88,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ACTN-03 | Phase 28 | Complete |
 | ACTN-04 | Phase 28 | Complete |
 | ACTN-05 | Phase 28 | Complete |
+| PERF-01 | Phase 29 | Complete |
+| PERF-02 | Phase 29 | Complete |
 
 **Coverage:**
-- v0.9.0 requirements: 14 total (INLN-01/02 deferred as DEFR-06/07)
-- Mapped to phases: 14
+- v0.9.0 requirements: 16 total (INLN-01/02 deferred as DEFR-06/07)
+- Mapped to phases: 16
 - Unmapped: 0
 
 ---
