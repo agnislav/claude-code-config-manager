@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
 status: completed
-last_updated: "2026-03-13T10:59:07.865Z"
-last_activity: 2026-03-13 — Completed 28-01-PLAN.md (SettingKeyValue edit/delete + EnvVar copy-to-scope)
+last_updated: "2026-03-13T11:11:00Z"
+last_activity: 2026-03-13 — Completed 28-02-PLAN.md (MCP multi-scope discovery + move/copy/tooltip)
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 5
-  percent: 60
+  total_plans: 7
+  completed_plans: 6
+  percent: 85
 ---
 
 # Project State
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-03-11)
 
 ## Current Position
 
-Phase: 28 in progress (fourth of 5 in v0.9.0 milestone) — Plan 01 of 1 complete
-Plan: 1 of 1 in Phase 28 (complete)
-Status: Phase 28 Plan 01 done — SettingKeyValue edit/delete + EnvVar copy-to-scope
-Last activity: 2026-03-13 — Completed 28-01-PLAN.md (SettingKeyValue edit/delete + EnvVar copy-to-scope)
+Phase: 28 complete (fourth of 5 in v0.9.0 milestone) — all 2 plans done
+Plan: 2 of 2 in Phase 28 (complete)
+Status: Phase 28 Plan 02 done — MCP multi-scope discovery + move/copy/tooltip
+Last activity: 2026-03-13 — Completed 28-02-PLAN.md (MCP multi-scope discovery + move/copy/tooltip)
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 [█████████░] 90% (Phase 25+26+27+28 done)
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 [████████████░] 85% (Phase 25+26+27+28 done)
 
 ## Decisions
 
@@ -44,6 +44,9 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 - [Phase 27]: Hook identity is (eventType, matcherPattern, hookIndex) — positional within matcher, not content-based
 - [Phase 28-action-parity]: removeSettingKeyValue leaves parent as {} when last child key removed — consistent with existing empty-parent-retention UX decision
 - [Phase 28-action-parity]: settingKeyValue branch guard: keyPath.length === 2 && !DEDICATED_SECTION_KEYS.has(rootKey) used in edit/delete dispatch chains
+- [Phase 28-02]: Use Record<string,unknown> for ~/.claude.json reads to preserve non-MCP data on write
+- [Phase 28-02]: dispatchMcpWrite/dispatchMcpRemove helpers centralize scope-based writer dispatch
+- [Phase 28-02]: MCP tooltip scope line appended before buildOverlapTooltip (overlap section appended after)
 
 ## Blockers/Concerns
 
@@ -69,4 +72,4 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 ---
 
 *State initialized: 2026-02-20*
-*Last updated: 2026-03-13 — Completed Phase 28 (28-01): SettingKeyValue edit/delete + EnvVar copy-to-scope*
+*Last updated: 2026-03-13 — Completed Phase 28 (28-02): MCP multi-scope discovery + move/copy/tooltip*
