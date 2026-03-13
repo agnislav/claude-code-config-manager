@@ -6,8 +6,8 @@ import {
   resolvePluginOverlap,
   resolveMcpOverlap,
   resolveSandboxOverlap,
-  resolvePermissionOverlap,
   resolveHookOverlap,
+  computePermissionOverlapMap,
   getOverlapColor,
 } from '../config/overlapResolver';
 import { OVERLAP_URI_SCHEME } from '../tree/overlapDecorations';
@@ -442,6 +442,8 @@ export class TreeViewModelBuilder {
     const perms = scopedConfig.config.permissions;
     if (!perms) return [];
 
+    const overlapMap = computePermissionOverlapMap(allScopes);
+
     const result: PermissionRuleVM[] = [];
     for (const category of ['allow', 'ask', 'deny'] as const) {
       const rules = perms[category] ?? [];
@@ -450,7 +452,7 @@ export class TreeViewModelBuilder {
         if (seen.has(rule)) continue;
         seen.add(rule);
         result.push(
-          this.buildPermissionRule(rule, category as PermissionCategory, scopedConfig, allScopes),
+          this.buildPermissionRule(rule, category as PermissionCategory, scopedConfig, overlapMap),
         );
       }
     }
@@ -461,9 +463,10 @@ export class TreeViewModelBuilder {
     rule: string,
     category: PermissionCategory,
     scopedConfig: ScopedConfig,
-    allScopes: ScopedConfig[],
+    overlapMap: Map<string, OverlapInfo & { overriddenByCategory?: string }>,
   ): PermissionRuleVM {
-    const overlap = resolvePermissionOverlap(category, rule, scopedConfig.scope, allScopes);
+    const key = `${scopedConfig.scope}/${category}/${rule}`;
+    const overlap = overlapMap.get(key) ?? {};
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
       keyPath: ['permissions', category, rule],
