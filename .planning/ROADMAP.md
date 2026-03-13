@@ -1,7 +1,7 @@
 # Roadmap: Claude Code Config Manager
 
 **Created:** 2026-02-18
-**Updated:** 2026-03-12
+**Updated:** 2026-03-13
 **Status:** v0.3.x-v0.8.0 complete (Phases 1-24), v0.9.0 in progress (Phases 25-28)
 
 ---
@@ -98,7 +98,7 @@
 - [x] **Phase 25: Audit Catalog + Trivial Fixes** - Document actual-vs-expected state for all node types; ship zero-risk fixes (completed 2026-03-12)
 - [x] **Phase 26: Inline Button Cleanup** - Enable valid disabled guards, document intentional ones, establish uniform inline button ordering (completed 2026-03-12)
 - [x] **Phase 27: Hook Overlap Detection** - Complete overlap model coverage for all 7 entity types (completed 2026-03-12)
-- [ ] **Phase 28: Action Parity** - Add missing actions where structurally valid (EnvVar copy, MCP UX, SettingKeyValue edit/delete)
+- [ ] **Phase 28: Action Parity** - Add missing actions where structurally valid (EnvVar copy, MCP multi-scope discovery + UX, SettingKeyValue edit/delete)
 - [ ] **Phase 29: Permission Overlap Performance** - Replace O(R²) per-rule overlap resolution with batch indexed algorithm
 
 ## Phase Details
@@ -146,19 +146,20 @@ Plans:
 - [ ] 27-01-PLAN.md — Add resolveHookOverlap resolver and wire overlap into builder for HookEntry nodes
 
 ### Phase 28: Action Parity
-**Goal**: Add missing actions where structurally valid — EnvVar copy-to-scope, MCP Server UX enrichment, SettingKeyValue edit/delete
+**Goal**: Add missing actions where structurally valid — EnvVar copy-to-scope, MCP Server multi-scope discovery + UX enrichment, SettingKeyValue edit/delete
 **Depends on**: Phase 26
 **Requirements**: ACTN-01, ACTN-02, ACTN-03, ACTN-04, ACTN-05
 **Success Criteria** (what must be TRUE):
   1. EnvVar nodes show a copy-to-scope inline button that copies the variable to another scope (matching permissions and settings)
   2. MCP Server nodes show enriched tooltip with server type and command details; description is consistent with other entities
-  3. MCP Server inline button set reviewed and corrected based on what's structurally valid (.mcp.json is workspace-scoped)
+  3. MCP Server inline button set reviewed and corrected based on what's structurally valid (multi-scope discovery from ~/.claude.json and .mcp.json)
   4. SettingKeyValue child nodes support editing the value via inline edit button
   5. SettingKeyValue child nodes support deleting the key via inline delete button or context menu
-**Plans**: 1 plan
+**Plans**: 2 plans
 
 Plans:
-- [ ] 28-01: TBD
+- [ ] 28-01-PLAN.md — SettingKeyValue edit/delete + EnvVar copy-to-scope (mechanical pattern extensions)
+- [ ] 28-02-PLAN.md — MCP multi-scope discovery, scope-aware writers, move/copy commands, tooltip enrichment
 
 ## Progress
 
@@ -194,7 +195,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28
 | 25. Audit Catalog + Trivial Fixes | v0.9.0 | 2/2 | Complete | 2026-03-12 |
 | 26. Inline Button Cleanup | 1/1 | Complete    | 2026-03-12 | - |
 | 27. Hook Overlap Detection | 1/1 | Complete    | 2026-03-12 | - |
-| 28. Action Parity | v0.9.0 | 0/? | Not started | - |
+| 28. Action Parity | v0.9.0 | 0/2 | Not started | - |
 
 ### Phase 29: Permission Overlap Performance
 **Goal**: Tree renders instantly with 140+ permission rules per scope by replacing O(R²) per-rule overlap resolution with a batch indexed algorithm
@@ -213,4 +214,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-12 -- v0.9.0 roadmap added*
+*Last updated: 2026-03-13 -- Phase 28 planned (2 plans)*
