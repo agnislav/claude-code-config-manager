@@ -454,6 +454,102 @@ export function removeMcpServer(filePath: string, serverName: string): void {
   trackedWrite(filePath, () => writeJsonFile(filePath, config));
 }
 
+// ── ~/.claude.json scope-aware MCP writers ───────────────────────
+
+/**
+ * Writes an MCP server to the top-level mcpServers in ~/.claude.json (User scope).
+ * Loads the full file as Record<string, unknown> to preserve all non-MCP data.
+ */
+export function setUserMcpServer(
+  claudeJsonPath: string,
+  serverName: string,
+  serverConfig: McpServerConfig,
+): void {
+  ensureDir(claudeJsonPath);
+  const data = loadOrCreate<Record<string, unknown>>(claudeJsonPath);
+
+  if (!data.mcpServers || typeof data.mcpServers !== 'object' || Array.isArray(data.mcpServers)) {
+    data.mcpServers = {};
+  }
+  (data.mcpServers as Record<string, unknown>)[serverName] = serverConfig;
+
+  trackedWrite(claudeJsonPath, () => writeJsonFile(claudeJsonPath, data));
+}
+
+/**
+ * Removes an MCP server from the top-level mcpServers in ~/.claude.json (User scope).
+ * Preserves all non-MCP data in the file.
+ */
+export function removeUserMcpServer(claudeJsonPath: string, serverName: string): void {
+  const data = loadOrCreate<Record<string, unknown>>(claudeJsonPath);
+  if (!data.mcpServers || typeof data.mcpServers !== 'object' || Array.isArray(data.mcpServers)) {
+    return;
+  }
+
+  delete (data.mcpServers as Record<string, unknown>)[serverName];
+
+  trackedWrite(claudeJsonPath, () => writeJsonFile(claudeJsonPath, data));
+}
+
+/**
+ * Writes an MCP server to ~/.claude.json projects[projectPath].mcpServers (Local scope).
+ * Preserves all non-MCP data in the file, creating intermediate objects as needed.
+ */
+export function setLocalMcpServer(
+  claudeJsonPath: string,
+  projectPath: string,
+  serverName: string,
+  serverConfig: McpServerConfig,
+): void {
+  ensureDir(claudeJsonPath);
+  const data = loadOrCreate<Record<string, unknown>>(claudeJsonPath);
+
+  if (!data.projects || typeof data.projects !== 'object' || Array.isArray(data.projects)) {
+    data.projects = {};
+  }
+  const projects = data.projects as Record<string, unknown>;
+
+  if (!projects[projectPath] || typeof projects[projectPath] !== 'object' || Array.isArray(projects[projectPath])) {
+    projects[projectPath] = {};
+  }
+  const projectEntry = projects[projectPath] as Record<string, unknown>;
+
+  if (!projectEntry.mcpServers || typeof projectEntry.mcpServers !== 'object' || Array.isArray(projectEntry.mcpServers)) {
+    projectEntry.mcpServers = {};
+  }
+  (projectEntry.mcpServers as Record<string, unknown>)[serverName] = serverConfig;
+
+  trackedWrite(claudeJsonPath, () => writeJsonFile(claudeJsonPath, data));
+}
+
+/**
+ * Removes an MCP server from ~/.claude.json projects[projectPath].mcpServers (Local scope).
+ * Preserves all non-MCP data in the file.
+ */
+export function removeLocalMcpServer(
+  claudeJsonPath: string,
+  projectPath: string,
+  serverName: string,
+): void {
+  const data = loadOrCreate<Record<string, unknown>>(claudeJsonPath);
+  if (!data.projects || typeof data.projects !== 'object' || Array.isArray(data.projects)) {
+    return;
+  }
+  const projects = data.projects as Record<string, unknown>;
+  const projectEntry = projects[projectPath];
+  if (!projectEntry || typeof projectEntry !== 'object' || Array.isArray(projectEntry)) {
+    return;
+  }
+  const mcpServers = (projectEntry as Record<string, unknown>).mcpServers;
+  if (!mcpServers || typeof mcpServers !== 'object' || Array.isArray(mcpServers)) {
+    return;
+  }
+
+  delete (mcpServers as Record<string, unknown>)[serverName];
+
+  trackedWrite(claudeJsonPath, () => writeJsonFile(claudeJsonPath, data));
+}
+
 // ── Plugins ─────────────────────────────────────────────────────
 
 export function setPluginEnabled(filePath: string, pluginId: string, enabled: boolean): void {

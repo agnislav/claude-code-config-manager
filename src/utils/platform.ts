@@ -24,3 +24,7 @@ export function getUserSettingsPath(): string {
 export function getUserSettingsDir(): string {
   return path.join(os.homedir(), USER_SETTINGS_DIR);
 }
+
+export function getUserClaudeJsonPath(): string {
+  return path.join(os.homedir(), '.claude.json');
+}

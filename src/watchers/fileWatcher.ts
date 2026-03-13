@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { ConfigStore } from '../config/configModel';
 import { MCP_CONFIG_FILE, PROJECT_CLAUDE_DIR, DEBOUNCE_RELOAD_MS, DEBOUNCE_MAX_WAIT_MS } from '../constants';
-import { getUserSettingsPath, getManagedSettingsPath } from '../utils/platform';
+import { getUserSettingsPath, getManagedSettingsPath, getUserClaudeJsonPath } from '../utils/platform';
 import { isWriteInFlight } from '../config/configWriter';
 
 export class ConfigFileWatcher implements vscode.Disposable {
@@ -27,6 +27,9 @@ export class ConfigFileWatcher implements vscode.Disposable {
 
     // Watch user settings (absolute path)
     this.watchAbsolute(getUserSettingsPath());
+
+    // Watch ~/.claude.json for User and Local MCP server changes
+    this.watchAbsolute(getUserClaudeJsonPath());
 
     // Watch managed settings (absolute path)
     this.watchAbsolute(getManagedSettingsPath());

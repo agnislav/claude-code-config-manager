@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ConfigScope, HookEventType, SectionType } from './types';
-import { getUserSettingsPath } from './utils/platform';
+import { getUserSettingsPath, getUserClaudeJsonPath } from './utils/platform';
 
 export const SCOPE_LABELS: Record<ConfigScope, string> = {
   [ConfigScope.Managed]: 'Managed (Enterprise)',
@@ -199,6 +199,7 @@ export function getAllowedWritePaths(): Set<string> {
 
   // User scope
   paths.add(getUserSettingsPath());
+  paths.add(getUserClaudeJsonPath());
 
   // Project scopes (per workspace folder)
   const workspaceFolders = vscode.workspace.workspaceFolders;
