@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
 status: completed
-last_updated: "2026-03-13T11:11:00Z"
+last_updated: "2026-03-13T11:16:10.736Z"
 last_activity: 2026-03-13 — Completed 28-02-PLAN.md (MCP multi-scope discovery + move/copy/tooltip)
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 7
+  completed_phases: 4
+  total_plans: 6
   completed_plans: 6
   percent: 85
 ---
