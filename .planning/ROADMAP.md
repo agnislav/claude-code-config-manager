@@ -99,7 +99,7 @@
 - [x] **Phase 26: Inline Button Cleanup** - Enable valid disabled guards, document intentional ones, establish uniform inline button ordering (completed 2026-03-12)
 - [x] **Phase 27: Hook Overlap Detection** - Complete overlap model coverage for all 7 entity types (completed 2026-03-12)
 - [x] **Phase 28: Action Parity** - Add missing actions where structurally valid (EnvVar copy, MCP multi-scope discovery + UX, SettingKeyValue edit/delete) (completed 2026-03-13)
-- [ ] **Phase 29: Permission Overlap Performance** - Replace O(R²) per-rule overlap resolution with batch indexed algorithm
+- [x] **Phase 29: Permission Overlap Performance** - Replace O(R²) per-rule overlap resolution with batch indexed algorithm (completed 2026-03-13)
 
 ## Phase Details
 
@@ -196,7 +196,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28 → 29
 | 26. Inline Button Cleanup | 1/1 | Complete    | 2026-03-12 | - |
 | 27. Hook Overlap Detection | 1/1 | Complete    | 2026-03-12 | - |
 | 28. Action Parity | 2/2 | Complete    | 2026-03-13 | - |
-| 29. Permission Overlap Performance | v0.9.0 | 0/1 | Planned | - |
+| 29. Permission Overlap Performance | 1/1 | Complete   | 2026-03-13 | - |
 
 ### Phase 29: Permission Overlap Performance
 **Goal**: Tree renders instantly with 140+ permission rules per scope by replacing O(R²) per-rule overlap resolution with a batch indexed algorithm

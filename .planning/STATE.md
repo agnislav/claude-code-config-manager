@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
 status: completed
-last_updated: "2026-03-13T11:16:10.736Z"
-last_activity: 2026-03-13 — Completed 28-02-PLAN.md (MCP multi-scope discovery + move/copy/tooltip)
+last_updated: "2026-03-13T18:16:33.365Z"
+last_activity: 2026-03-13 — Completed 29-01-PLAN.md (permission overlap batch algorithm + caches)
 progress:
   total_phases: 5
-  completed_phases: 4
-  total_plans: 6
-  completed_plans: 6
-  percent: 85
+  completed_phases: 5
+  total_plans: 8
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-03-11)
 
 ## Current Position
 
-Phase: 28 complete (fourth of 5 in v0.9.0 milestone) — all 2 plans done
-Plan: 2 of 2 in Phase 28 (complete)
-Status: Phase 28 Plan 02 done — MCP multi-scope discovery + move/copy/tooltip
-Last activity: 2026-03-13 — Completed 28-02-PLAN.md (MCP multi-scope discovery + move/copy/tooltip)
+Phase: 29 complete (fifth of 5 in v0.9.0 milestone) — all 1 plan done
+Plan: 1 of 1 in Phase 29 (complete)
+Status: Phase 29 Plan 01 done — permission overlap batch algorithm + caches
+Last activity: 2026-03-13 — Completed 29-01-PLAN.md (permission overlap batch algorithm + caches)
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 [████████████░] 85% (Phase 25+26+27+28 done)
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 [██████████] 100% (Phase 25+26+27+28+29 done)
 
 ## Decisions
 
@@ -47,6 +47,8 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 - [Phase 28-02]: Use Record<string,unknown> for ~/.claude.json reads to preserve non-MCP data on write
 - [Phase 28-02]: dispatchMcpWrite/dispatchMcpRemove helpers centralize scope-based writer dispatch
 - [Phase 28-02]: MCP tooltip scope line appended before buildOverlapTooltip (overlap section appended after)
+- [Phase 29-permission-overlap-performance]: computePermissionOverlapMap called once per buildPermissionRules; resolvePermissionOverlap kept for backward compat
+- [Phase 29-permission-overlap-performance]: Tool-name bucket isolation in batch algorithm structurally prevents cross-tool comparisons
 
 ## Blockers/Concerns
 
@@ -72,4 +74,4 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 ---
 
 *State initialized: 2026-02-20*
-*Last updated: 2026-03-13 — Completed Phase 28 (28-02): MCP multi-scope discovery + move/copy/tooltip*
+*Last updated: 2026-03-13 — Completed Phase 29 (29-01): Permission overlap batch algorithm + RegExp/parse caches*
