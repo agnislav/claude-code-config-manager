@@ -5,6 +5,32 @@ All notable changes to the Claude Code Config Manager extension will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.9.0] - 2026-03-14
+
+### Added
+- Complete audit matrix documenting all 12 NodeKind types across 5 audit vectors (icons, descriptions, tooltips, inline buttons, context menus)
+- Hook overlap detection — hooks in multiple scopes show color-coded overlap indicators and tooltips, completing overlap coverage for all 7 entity types
+- EnvVar copy-to-scope inline button (matching permissions and settings pattern)
+- SettingKeyValue edit and delete actions — object-setting child keys now editable and removable via inline buttons
+- MCP Server multi-scope discovery from `~/.claude.json` and `.mcp.json` with scope-aware move/copy commands
+- MCP Server enriched tooltip showing server type, command details, and scope information
+- Permission overlap batch algorithm — `computePermissionOverlapMap` pre-indexes rules by tool name for O(R×G) instead of O(R²) resolution
+- RegExp cache and ParsedPermissionRule cache for permission overlap computation
+
+### Changed
+- Inline button slot ordering standardized across all entity types: edit@0, move@1, copy@2, delete@3
+- Sandbox section header now shows flattened property count in description (matching other section headers)
+- HookEntry description now shows hook type prefix (command, prompt, or agent)
+- EnvVar nodes show base tooltip with key=value context (not just overlap tooltip)
+
+### Removed
+- Dead `&& false` editValue guard for envVar/sandboxProperty in package.json (stale artifact, not a suppressed feature)
+
+### Fixed
+- UI hang on "Expand All" with 140+ permission rules per scope — resolved by hoisting overlap map computation and adding debounce
+- Sandbox rendering regression from overlap map refactor
+- `~/.claude.json` added to revealInFile known paths whitelist
+
 ## [0.8.0] - 2026-03-11
 
 ### Added

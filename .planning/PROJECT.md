@@ -2,20 +2,11 @@
 
 ## What This Is
 
-A VS Code extension that provides a visual config viewer and editor for Claude Code settings. It displays a scope-aware TreeView with override detection, inline editing, file watching, and bidirectional editor-tree synchronization. Used as a personal productivity tool for managing Claude Code configuration across all scopes.
+A VS Code extension that provides a visual config viewer and editor for Claude Code settings. It displays a scope-aware TreeView with override detection, overlap indicators, inline editing, file watching, and bidirectional editor-tree synchronization. Every entity type has been audited for UX consistency with uniform inline button ordering, complete overlap detection across all 7 entity types, and full action parity.
 
 ## Core Value
 
 Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
-
-## Current Milestone: v0.9.0 UX Audit
-
-**Goal:** Systematically audit every entity type's tree structure, node behavior, and inline buttons — find inconsistencies and UX gaps, then fix them.
-
-**Target features:**
-- Full audit of all 7 entity types (Permissions, MCP Servers, Plugins, Hooks, Settings, Environment, Sandbox)
-- Audit scope nodes and section headers
-- Fix all inconsistencies, missing affordances, and rough edges found
 
 ## Requirements
 
@@ -70,12 +61,16 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 - ✓ Permission type-aware icons (check/question/close) — v0.8.0
 - ✓ Flat permission list preserves contextValue for edit/delete/move — v0.8.0
 - ✓ Inline type-switch button on permission rules via QuickPick — v0.8.0
+- ✓ Complete audit matrix documenting all 12 NodeKind types across 5 audit vectors — v0.9.0
+- ✓ Sandbox section shows item count, HookEntry shows type, EnvVar shows base tooltip — v0.9.0
+- ✓ Uniform inline button slot ordering (edit@0, move@1, copy@2, delete@3) — v0.9.0
+- ✓ Hook overlap detection completing coverage for all 7 entity types — v0.9.0
+- ✓ EnvVar copy-to-scope, SettingKeyValue edit/delete, MCP multi-scope discovery + move/copy — v0.9.0
+- ✓ Permission overlap batch algorithm with RegExp/parse caching — v0.9.0
 
 ### Active
 
-- [ ] Audit all 7 entity types for structure, behavior, and inline button consistency
-- [ ] Audit scope nodes and section headers for consistent UX
-- [ ] Fix all identified inconsistencies and gaps
+(No active requirements — planning next milestone)
 
 ### Out of Scope
 
@@ -87,12 +82,19 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 - Overlap description text ("also in [Scope]") on tree items — deferred enhancement (OVLP-03)
 - Overlap FileDecoration badge ("2x") for multi-scope entities — deferred enhancement (OVLP-04)
 - Sort items — deferred to separate task
+- Plugin inline buttons beyond openReadme (checkbox interaction complicates this) — DEFR-01
+- Hook move/copy between scopes (complex nesting requires hierarchy reconstruction) — DEFR-02
+- Settings section "Add" button for arbitrary config keys — DEFR-03
+- Drag-and-drop between scopes — DEFR-04
+- Accessibility labels via TreeItem.accessibilityInformation — DEFR-05
+- EnvVar inline edit button — DEFR-06
+- SandboxProperty inline edit button — DEFR-07
 - Marketplace publishing — personal tool, not targeting public release
 - Windows support — macOS/Linux only, matches Claude Code platform support
 
 ## Context
 
-5,672 LOC TypeScript. Shipped v0.8.0 with clean checkbox-only plugin display and flat permission list with type-aware icons. OverlapResolver uses nearest-neighbor algorithm with 4-directional model for all entity types. Color-coded FileDecoration and MarkdownString tooltips for overlap relationships. 56-test suite validates builder and overlap resolver. Inline buttons restored on permission rules (edit/move/copy/delete). EditValue inline buttons remain temporarily disabled.
+6,466 LOC TypeScript. Shipped v0.9.0 with full UX audit — all 7 entity types audited for consistency, overlap detection complete across all types, action parity achieved (SettingKeyValue edit/delete, EnvVar copy, MCP multi-scope), and permission overlap performance optimized with batch algorithm. 132-test suite validates builder, overlap resolver, and commands. Tech stack: TypeScript, VS Code Extension API, esbuild bundler — no runtime dependencies.
 
 ## Constraints
 
@@ -145,6 +147,11 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 | Non-overlapped icons use undefined ThemeColor | VS Code default; no explicit icon.foreground needed | ✓ Good |
 | Inline button order: edit@0, move@1, copy@2, delete@3 | Edit most frequent action, destructive action last | ✓ Good |
 | changePermissionType uses synchronous remove+add | Single tree refresh; no double-render flicker | ✓ Good |
+| Hook overlap identity: (eventType, matcherPattern, hookIndex) | Positional within matcher, not content-based; handles duplicate hooks | ✓ Good |
+| removeSettingKeyValue leaves parent as {} | Consistent with existing empty-parent-retention UX decision | ✓ Good |
+| Record<string,unknown> for ~/.claude.json reads | Preserves non-MCP data on write; safe partial file editing | ✓ Good |
+| computePermissionOverlapMap called once per buildPermissionRules | Batch over per-rule; eliminates O(R²) repeated work | ✓ Good |
+| Tool-name bucket isolation in batch overlap algorithm | Structurally prevents cross-tool comparisons; correct by construction | ✓ Good |
 
 ---
-*Last updated: 2026-03-11 after v0.9.0 milestone start*
+*Last updated: 2026-03-14 after v0.9.0 milestone*
