@@ -30,11 +30,11 @@ Requirements for UX Audit milestone. Each maps to roadmap phases.
 
 ### Action Parity
 
-- [ ] **ACTN-01**: EnvVar supports copy-to-scope (matching permissions and settings pattern)
+- [x] **ACTN-01**: EnvVar supports copy-to-scope (matching permissions and settings pattern)
 - [ ] **ACTN-02**: MCP Server nodes show enriched inline UX (tooltip with server type/command details, consistent description)
 - [ ] **ACTN-03**: MCP Server inline button set reviewed and corrected (currently delete-only; assess add/edit needs)
-- [ ] **ACTN-04**: SettingKeyValue nodes support edit action (edit child value)
-- [ ] **ACTN-05**: SettingKeyValue nodes support delete action (remove child key)
+- [x] **ACTN-04**: SettingKeyValue nodes support edit action (edit child value)
+- [x] **ACTN-05**: SettingKeyValue nodes support delete action (remove child key)
 
 ## Future Requirements
 
@@ -79,11 +79,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INLN-04 | Phase 26 | Complete |
 | OVLP-01 | Phase 27 | Complete |
 | OVLP-02 | Phase 27 | Complete |
-| ACTN-01 | Phase 28 | Pending |
+| ACTN-01 | Phase 28 | Complete |
 | ACTN-02 | Phase 28 | Pending |
 | ACTN-03 | Phase 28 | Pending |
-| ACTN-04 | Phase 28 | Pending |
-| ACTN-05 | Phase 28 | Pending |
+| ACTN-04 | Phase 28 | Complete |
+| ACTN-05 | Phase 28 | Complete |
 
 **Coverage:**
 - v0.9.0 requirements: 14 total (INLN-01/02 deferred as DEFR-06/07)

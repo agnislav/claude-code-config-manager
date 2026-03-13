@@ -195,7 +195,7 @@ Phases execute in numeric order: 25 → 26 → 27 → 28
 | 25. Audit Catalog + Trivial Fixes | v0.9.0 | 2/2 | Complete | 2026-03-12 |
 | 26. Inline Button Cleanup | 1/1 | Complete    | 2026-03-12 | - |
 | 27. Hook Overlap Detection | 1/1 | Complete    | 2026-03-12 | - |
-| 28. Action Parity | v0.9.0 | 0/2 | Not started | - |
+| 28. Action Parity | 1/2 | In Progress|  | - |
 
 ### Phase 29: Permission Overlap Performance
 **Goal**: Tree renders instantly with 140+ permission rules per scope by replacing O(R²) per-rule overlap resolution with a batch indexed algorithm

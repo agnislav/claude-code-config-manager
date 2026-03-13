@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
 status: completed
-last_updated: "2026-03-12T23:16:25.732Z"
-last_activity: 2026-03-12 — Completed 27-01-PLAN.md (hook overlap detection)
+last_updated: "2026-03-13T10:59:07.865Z"
+last_activity: 2026-03-13 — Completed 28-01-PLAN.md (SettingKeyValue edit/delete + EnvVar copy-to-scope)
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 60
 ---
 
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-03-11)
 
 ## Current Position
 
-Phase: 27 complete (third of 5 in v0.9.0 milestone)
-Plan: 1 of 1 in Phase 27 (complete)
-Status: Phase 27 done — hook overlap detection complete
-Last activity: 2026-03-12 — Completed 27-01-PLAN.md (hook overlap detection)
+Phase: 28 in progress (fourth of 5 in v0.9.0 milestone) — Plan 01 of 1 complete
+Plan: 1 of 1 in Phase 28 (complete)
+Status: Phase 28 Plan 01 done — SettingKeyValue edit/delete + EnvVar copy-to-scope
+Last activity: 2026-03-13 — Completed 28-01-PLAN.md (SettingKeyValue edit/delete + EnvVar copy-to-scope)
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 [██████░░░░] 60% (Phase 25+26+27 done)
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 [█████████░] 90% (Phase 25+26+27+28 done)
 
 ## Decisions
 
@@ -42,6 +42,8 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 - Plugin && false guards preserved permanently — checkbox UX model incompatible with inline move/copy/delete (DEFR-01)
 - Inline button slot convention confirmed: edit@0, move@1, copy@2, delete@3 — applied across all entity types
 - [Phase 27]: Hook identity is (eventType, matcherPattern, hookIndex) — positional within matcher, not content-based
+- [Phase 28-action-parity]: removeSettingKeyValue leaves parent as {} when last child key removed — consistent with existing empty-parent-retention UX decision
+- [Phase 28-action-parity]: settingKeyValue branch guard: keyPath.length === 2 && !DEDICATED_SECTION_KEYS.has(rootKey) used in edit/delete dispatch chains
 
 ## Blockers/Concerns
 
@@ -67,4 +69,4 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 ---
 
 *State initialized: 2026-02-20*
-*Last updated: 2026-03-12 — Completed Phase 27 (27-01): hook overlap detection*
+*Last updated: 2026-03-13 — Completed Phase 28 (28-01): SettingKeyValue edit/delete + EnvVar copy-to-scope*
