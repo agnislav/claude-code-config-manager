@@ -378,36 +378,34 @@ export function computePermissionOverlapMap(
   );
 
   for (const bucket of toolIndex.values()) {
-    for (const entry of bucket) {
+    // Sort entire bucket by precedence once (ascending = highest precedence first)
+    bucket.sort(
+      (a, b) =>
+        (scopePrecMap.get(a.scope) ?? precedenceOf(a.scope)) -
+        (scopePrecMap.get(b.scope) ?? precedenceOf(b.scope)),
+    );
+
+    for (let idx = 0; idx < bucket.length; idx++) {
+      const entry = bucket[idx];
       const { scope, category, rule } = entry;
       const currentPrecedence = scopePrecMap.get(scope) ?? precedenceOf(scope);
       const overlap: OverlapInfo & { overriddenByCategory?: string } = {};
 
-      // ── Higher-precedence entries (lower precedence index) ──
-      // Sorted from closest (highest) to furthest (lowest) from currentPrecedence
-      const higherEntries = bucket
-        .filter((e) => (scopePrecMap.get(e.scope) ?? precedenceOf(e.scope)) < currentPrecedence)
-        .sort(
-          (a, b) =>
-            (scopePrecMap.get(b.scope) ?? precedenceOf(b.scope)) -
-            (scopePrecMap.get(a.scope) ?? precedenceOf(a.scope)),
-        );
-
-      // Find the nearest (closest in precedence) higher-scope group
-      // Cross-category conflict takes priority over same-category duplicate
+      // ── Higher-precedence entries (lower index in sorted bucket) ──
+      // Walk backwards from idx-1 to find nearest higher-precedence scope
       let nearestHigherPrec: number | undefined;
       let foundCrossCategoryAbove = false;
 
-      for (const higher of higherEntries) {
+      for (let i = idx - 1; i >= 0; i--) {
+        const higher = bucket[i];
         const higherPrec = scopePrecMap.get(higher.scope) ?? precedenceOf(higher.scope);
+        if (higherPrec >= currentPrecedence) continue;
 
-        // Once we've moved past the nearest scope group, stop if we found something
         if (nearestHigherPrec !== undefined && higherPrec !== nearestHigherPrec) {
           if (overlap.isOverriddenBy || overlap.isDuplicatedBy) break;
         }
         nearestHigherPrec = higherPrec;
 
-        // Cross-category conflict (takes priority)
         if (higher.category !== category && rulesOverlap(higher.rule, rule)) {
           overlap.isOverriddenBy = { scope: higher.scope, value: higher.category };
           overlap.overriddenByCategory = higher.category;
@@ -417,10 +415,11 @@ export function computePermissionOverlapMap(
       }
 
       if (!foundCrossCategoryAbove) {
-        // Same-category duplicate check (exact string match within nearest higher scope)
         nearestHigherPrec = undefined;
-        for (const higher of higherEntries) {
+        for (let i = idx - 1; i >= 0; i--) {
+          const higher = bucket[i];
           const higherPrec = scopePrecMap.get(higher.scope) ?? precedenceOf(higher.scope);
+          if (higherPrec >= currentPrecedence) continue;
           if (nearestHigherPrec !== undefined && higherPrec !== nearestHigherPrec) break;
           nearestHigherPrec = higherPrec;
 
@@ -431,27 +430,20 @@ export function computePermissionOverlapMap(
         }
       }
 
-      // ── Lower-precedence entries (higher precedence index) ──
-      // Sorted from closest (lowest) to furthest from currentPrecedence
-      const lowerEntries = bucket
-        .filter((e) => (scopePrecMap.get(e.scope) ?? precedenceOf(e.scope)) > currentPrecedence)
-        .sort(
-          (a, b) =>
-            (scopePrecMap.get(a.scope) ?? precedenceOf(a.scope)) -
-            (scopePrecMap.get(b.scope) ?? precedenceOf(b.scope)),
-        );
-
+      // ── Lower-precedence entries (higher index in sorted bucket) ──
       let nearestLowerPrec: number | undefined;
       let foundCrossCategoryBelow = false;
 
-      for (const lower of lowerEntries) {
+      for (let i = idx + 1; i < bucket.length; i++) {
+        const lower = bucket[i];
         const lowerPrec = scopePrecMap.get(lower.scope) ?? precedenceOf(lower.scope);
+        if (lowerPrec <= currentPrecedence) continue;
+
         if (nearestLowerPrec !== undefined && lowerPrec !== nearestLowerPrec) {
           if (overlap.overrides || overlap.duplicates) break;
         }
         nearestLowerPrec = lowerPrec;
 
-        // Cross-category: this rule overrides a different-category rule below
         if (lower.category !== category && rulesOverlap(rule, lower.rule)) {
           overlap.overrides = { scope: lower.scope, value: lower.category };
           foundCrossCategoryBelow = true;
@@ -461,8 +453,10 @@ export function computePermissionOverlapMap(
 
       if (!foundCrossCategoryBelow) {
         nearestLowerPrec = undefined;
-        for (const lower of lowerEntries) {
+        for (let i = idx + 1; i < bucket.length; i++) {
+          const lower = bucket[i];
           const lowerPrec = scopePrecMap.get(lower.scope) ?? precedenceOf(lower.scope);
+          if (lowerPrec <= currentPrecedence) continue;
           if (nearestLowerPrec !== undefined && lowerPrec !== nearestLowerPrec) break;
           nearestLowerPrec = lowerPrec;
 

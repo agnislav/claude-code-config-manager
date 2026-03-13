@@ -10,7 +10,6 @@ export class ConfigFileWatcher implements vscode.Disposable {
   private reloadTimeout: ReturnType<typeof setTimeout> | undefined;
   private maxWaitTimeout: ReturnType<typeof setTimeout> | undefined;
   private outputChannel: vscode.OutputChannel | undefined;
-
   constructor(private readonly configStore: ConfigStore) {}
 
   setOutputChannel(channel: vscode.OutputChannel): void {

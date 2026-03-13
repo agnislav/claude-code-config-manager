@@ -16,7 +16,6 @@ export class ConfigStore implements vscode.Disposable {
 
   reload(workspaceFolderUri?: string): void {
     PluginMetadataService.getInstance().invalidate();
-    console.log('[Claude Config] Plugin metadata cache invalidated on reload');
 
     const allDiscovered = discoverConfigPaths();
 
