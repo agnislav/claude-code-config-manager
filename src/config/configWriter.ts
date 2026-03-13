@@ -338,6 +338,49 @@ export function removeScalarSetting(filePath: string, key: string): void {
   trackedWrite(filePath, () => writeJsonFile(filePath, config));
 }
 
+/**
+ * Sets a child key within a top-level object setting (e.g. config[parentKey][childKey] = value).
+ * Preserves all sibling keys in the parent object.
+ * Creates the parent object if it does not exist.
+ */
+export function setSettingKeyValue(
+  filePath: string,
+  parentKey: string,
+  childKey: string,
+  value: unknown,
+): void {
+  ensureDir(filePath);
+  const config = loadOrCreate<ClaudeCodeConfig>(filePath);
+
+  if (typeof config[parentKey] !== 'object' || config[parentKey] === null || Array.isArray(config[parentKey])) {
+    config[parentKey] = {};
+  }
+
+  (config[parentKey] as Record<string, unknown>)[childKey] = value;
+  trackedWrite(filePath, () => writeJsonFile(filePath, config));
+}
+
+/**
+ * Removes a child key from a top-level object setting (e.g. deletes config[parentKey][childKey]).
+ * Leaves the parent object in place even if it becomes empty (per UX decision).
+ * Is a no-op if parentKey or childKey do not exist.
+ */
+export function removeSettingKeyValue(
+  filePath: string,
+  parentKey: string,
+  childKey: string,
+): void {
+  const config = loadOrCreate<ClaudeCodeConfig>(filePath);
+
+  const parent = config[parentKey];
+  if (typeof parent !== 'object' || parent === null || Array.isArray(parent)) {
+    return;
+  }
+
+  delete (parent as Record<string, unknown>)[childKey];
+  trackedWrite(filePath, () => writeJsonFile(filePath, config));
+}
+
 // ── Hooks ───────────────────────────────────────────────────────
 
 export function addHookEntry(

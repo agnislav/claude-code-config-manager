@@ -1,6 +1,5 @@
 /**
  * TDD tests for setSettingKeyValue and removeSettingKeyValue writer functions.
- * RED phase: these tests will fail until the functions are implemented.
  */
 
 import * as assert from 'assert';
@@ -8,9 +7,27 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-// We import the specific functions we are testing. They do not exist yet.
+// Patch getAllowedWritePaths before importing configWriter so temp paths pass validation.
+// We monkey-patch the constants module's export at the module level.
+const constants = require('../../../src/constants');
+const _originalGetAllowedWritePaths = constants.getAllowedWritePaths;
+
+const _tempPaths = new Set<string>();
+
+constants.getAllowedWritePaths = function () {
+  const original: Set<string> = _originalGetAllowedWritePaths();
+  for (const p of _tempPaths) {
+    original.add(p);
+  }
+  return original;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { setSettingKeyValue, removeSettingKeyValue } = require('../../../src/config/configWriter');
+const configWriterModule = require('../../../src/config/configWriter');
+const setSettingKeyValue: (filePath: string, parentKey: string, childKey: string, value: unknown) => void =
+  configWriterModule.setSettingKeyValue;
+const removeSettingKeyValue: (filePath: string, parentKey: string, childKey: string) => void =
+  configWriterModule.removeSettingKeyValue;
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -18,6 +35,7 @@ function makeTempFile(initialContent: object = {}): string {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-test-'));
   const filePath = path.join(tmpDir, 'settings.json');
   fs.writeFileSync(filePath, JSON.stringify(initialContent, null, 2), 'utf-8');
+  _tempPaths.add(filePath);
   return filePath;
 }
 

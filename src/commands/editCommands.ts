@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import {
   setEnvVar,
   setScalarSetting,
+  setSettingKeyValue,
   setSandboxProperty,
   addPermissionRule,
   removePermissionRule,
@@ -10,7 +11,7 @@ import {
 import { ConfigScope, PermissionCategory } from '../types';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { validateKeyPath } from '../utils/validation';
-import { MESSAGES, PERMISSION_CATEGORY_LABELS } from '../constants';
+import { MESSAGES, PERMISSION_CATEGORY_LABELS, DEDICATED_SECTION_KEYS } from '../constants';
 
 export function registerEditCommands(
   context: vscode.ExtensionContext,
@@ -33,7 +34,9 @@ export function registerEditCommands(
 
         if (!validateKeyPath(keyPath, 1, 'editValue')) return;
 
-        const currentDesc = node.description?.toString() ?? '';
+        const rawDesc = node.description?.toString() ?? '';
+        // Strip override suffix (e.g. " (overridden by Project (Shared))") for pre-fill
+        const currentDesc = rawDesc.replace(/ \(overridden by .*\)$/, '');
 
         const newValue = await vscode.window.showInputBox({
           value: currentDesc,
@@ -51,6 +54,10 @@ export function registerEditCommands(
             const sandboxKey = keyPath.slice(1).join('.');
             const parsed = parseInputValue(newValue);
             setSandboxProperty(filePath, sandboxKey, parsed);
+          } else if (keyPath.length === 2 && !DEDICATED_SECTION_KEYS.has(rootKey)) {
+            // SettingKeyValue: child key of an object setting
+            const parsed = parseInputValue(newValue);
+            setSettingKeyValue(filePath, rootKey, keyPath[1], parsed);
           } else {
             // Scalar setting
             const parsed = parseInputValue(newValue);
@@ -64,6 +71,9 @@ export function registerEditCommands(
               const sandboxKey = keyPath.slice(1).join('.');
               const parsed = parseInputValue(newValue);
               setSandboxProperty(filePath, sandboxKey, parsed);
+            } else if (keyPath.length === 2 && !DEDICATED_SECTION_KEYS.has(rootKey)) {
+              const parsed = parseInputValue(newValue);
+              setSettingKeyValue(filePath, rootKey, keyPath[1], parsed);
             } else {
               const parsed = parseInputValue(newValue);
               setScalarSetting(filePath, rootKey, parsed);

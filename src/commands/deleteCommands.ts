@@ -6,12 +6,13 @@ import {
   removeMcpServer,
   removePlugin,
   removeScalarSetting,
+  removeSettingKeyValue,
   showWriteError,
 } from '../config/configWriter';
 import { HookEventType, PermissionCategory, ConfigScope } from '../types';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { validateKeyPath } from '../utils/validation';
-import { MESSAGES, SCOPE_LABELS } from '../constants';
+import { MESSAGES, SCOPE_LABELS, DEDICATED_SECTION_KEYS } from '../constants';
 
 export function registerDeleteCommands(
   context: vscode.ExtensionContext,
@@ -60,6 +61,9 @@ export function registerDeleteCommands(
             removeMcpServer(filePath, keyPath[1]);
           } else if (rootKey === 'enabledPlugins' && keyPath.length === 2) {
             removePlugin(filePath, keyPath[1]);
+          } else if (keyPath.length === 2 && !DEDICATED_SECTION_KEYS.has(rootKey)) {
+            // SettingKeyValue: child key of an object setting
+            removeSettingKeyValue(filePath, rootKey, keyPath[1]);
           } else {
             removeScalarSetting(filePath, rootKey);
           }
@@ -80,6 +84,8 @@ export function registerDeleteCommands(
               removeMcpServer(filePath, keyPath[1]);
             } else if (rootKey === 'enabledPlugins' && keyPath.length === 2) {
               removePlugin(filePath, keyPath[1]);
+            } else if (keyPath.length === 2 && !DEDICATED_SECTION_KEYS.has(rootKey)) {
+              removeSettingKeyValue(filePath, rootKey, keyPath[1]);
             } else {
               removeScalarSetting(filePath, rootKey);
             }
