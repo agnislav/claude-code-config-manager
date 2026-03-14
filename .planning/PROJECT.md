@@ -70,7 +70,22 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 
 ### Active
 
-(No active requirements — planning next milestone)
+<!-- Current scope for v0.10.0: Simplify & Power Features -->
+
+- [ ] Code simplification — extract duplicated patterns into shared helpers
+- [ ] Settings "Add" button — inline button on Settings section to add from schema or free-text
+- [ ] Drag-and-drop between scopes — move/copy items by dragging with Alt modifier for copy
+- [ ] Accessibility labels — TreeItem.accessibilityInformation on all node types
+
+## Current Milestone: v0.10.0 Simplify & Power Features
+
+**Goal:** Clean up ~270+ lines of duplicated command code, then add Settings "Add" button, drag-and-drop between scopes, and accessibility labels.
+
+**Target features:**
+- Code simplification (try/catch, read-only guards, scope pickers, timestamp formatting)
+- Settings section "Add" button with schema-aware QuickPick
+- Drag-and-drop between scopes (move default, Alt to copy)
+- Accessibility labels on all tree nodes
 
 ### Out of Scope
 
@@ -154,4 +169,4 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 | Tool-name bucket isolation in batch overlap algorithm | Structurally prevents cross-tool comparisons; correct by construction | ✓ Good |
 
 ---
-*Last updated: 2026-03-14 after v0.9.0 milestone*
+*Last updated: 2026-03-14 after v0.10.0 milestone started*
