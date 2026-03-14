@@ -123,6 +123,53 @@
 
 ---
 
+## Milestone: v0.9.0 — UX Audit
+
+**Shipped:** 2026-03-14
+**Phases:** 5 | **Plans:** 7 | **Commits:** 58
+
+### What Was Built
+- Complete audit matrix documenting all 12 NodeKind types across 5 audit vectors with gap tracking
+- Trivial display fixes: sandbox section count, hook type descriptions, envvar base tooltips
+- Uniform inline button slot ordering (edit@0, move@1, copy@2, delete@3) across all entity types
+- Hook overlap detection completing coverage for all 7 entity types with color-coded decorations
+- Action parity: SettingKeyValue edit/delete, EnvVar copy-to-scope, MCP multi-scope discovery + move/copy
+- Permission overlap batch algorithm replacing O(R²) with indexed O(R×G) and RegExp/parse caching
+
+### What Worked
+- Audit-first approach (Phase 25) created a comprehensive gap inventory that directly drove Phases 26-29 scope
+- TDD pattern matured — 9 feat commits each had preceding test commits; zero behavioral regressions
+- Milestone audit caught 4 real tech debt items (sandbox count bug, stale audit prose, test failures, missing requirements) — all resolved before shipping
+- Re-audit pattern: first audit found issues, fixes applied, re-audit confirmed clean — two-pass verification
+- MCP multi-scope discovery (Phase 28-02) reused established patterns (scope-aware dispatch, Record<string,unknown> preservation)
+
+### What Was Inefficient
+- ROADMAP.md progress table had formatting drift (Phases 26-29 missing milestone column, swapped columns)
+- Nyquist validation for Phases 25-29 remained in draft status (5 non-compliant phases)
+- Phase 29 post-merge revealed UI hang — debounce, overlap map hoisting, and sandbox rendering fix needed as hotfix (fix commit 8c291f8)
+
+### Patterns Established
+- Audit matrix → gap tracking → phase creation pipeline for systematic UX improvement
+- Hook overlap identity: (eventType, matcherPattern, hookIndex) — positional within matcher
+- Inline button slot convention: edit@0, move@1, copy@2, delete@3 — applied uniformly
+- Module-level Map caches for RegExp and ParsedPermissionRule objects
+- Tool-name bucket isolation for batch overlap computation (prevents cross-tool comparisons by construction)
+- dispatchMcpWrite/dispatchMcpRemove pattern for scope-based MCP writer dispatch
+
+### Key Lessons
+1. Systematic audit before UX work is highly effective — gap inventory drives precise phase scope
+2. Batch algorithms with pre-indexing solve performance problems more cleanly than incremental optimization
+3. Post-merge visual testing is essential — Phase 29 batch algorithm introduced a UI hang only visible with real data
+4. Record<string,unknown> for partial file reads (e.g., ~/.claude.json) prevents data loss when writing back
+5. && false guards in package.json are ambiguous — distinguish dead artifacts from intentional feature suppression
+
+### Cost Observations
+- Model mix: ~55% sonnet, ~45% opus (balanced profile)
+- Sessions: ~10 across 5 phases + audit + re-audit
+- Notable: Phase 28 was heaviest (2 plans, MCP multi-scope discovery required 4 new test files)
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -132,6 +179,7 @@
 | v0.6.0 | 10 | 3 | ViewModel layer introduced; first milestone with unit tests |
 | v0.7.0 | ~30 | 4 | Overlap system replacing override; milestone audit → gap closure pattern |
 | v0.8.0 | 14 | 2 | Flat permission list; checkbox-only plugin pattern; inline type switching |
+| v0.9.0 | 58 | 5 | Audit-driven UX fixes; action parity; batch overlap algorithm; MCP multi-scope |
 
 ### Cumulative Quality
 
@@ -140,6 +188,7 @@
 | v0.6.0 | 23 | 6,247 | First test infrastructure; ViewModel decoupling |
 | v0.7.0 | 56 | 5,672 | Overlap resolver tests (+25), lock tests (+3); legacy code removed (-575 LOC) |
 | v0.8.0 | 56 | 5,672 | Net +20 LOC source; PermissionGroup dead code removed; inline buttons restored |
+| v0.9.0 | 132 | 6,466 | +76 tests; overlap complete for all 7 types; batch algorithm; MCP multi-scope |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -149,3 +198,6 @@
 4. Visual verification as final step catches UI issues invisible to unit tests
 5. When removing a TreeItem icon, also clear resourceUri to prevent VS Code fallback rendering
 6. Synchronous remove+add is preferable to two async writes when changing entity categories
+7. Audit-first approach (systematic gap inventory) directly drives precise phase scope and prevents missed requirements
+8. Batch algorithms with pre-indexing solve performance problems more cleanly than incremental optimization
+9. Post-merge visual testing catches issues invisible to unit tests — especially with real-world data volumes

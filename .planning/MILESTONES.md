@@ -1,5 +1,25 @@
 # Milestones: Claude Code Config Manager
 
+## v0.9.0 — UX Audit (Complete)
+
+**Completed:** 2026-03-14
+**Phases:** 25–29 (5 phases, 7 plans, 9 tasks)
+**Requirements:** 16/16 satisfied
+**Git range:** feat(25-02)..fix(29-01) (58 commits)
+**LOC:** 6,466 TypeScript (+12,060 / -1,314 changes)
+
+Systematically audited every entity type's tree structure, node behavior, and inline buttons — found inconsistencies and UX gaps, then fixed them all. Completed overlap coverage for all 7 entity types and added action parity across the board.
+
+**Key accomplishments:**
+- Complete audit matrix documenting all 12 NodeKind types across 5 audit vectors with gap tracking
+- Trivial display fixes: sandbox section count, hook type descriptions, envvar base tooltips
+- Uniform inline button slot ordering (edit@0, move@1, copy@2, delete@3) across all entity types
+- Hook overlap detection completing coverage for all 7 entity types with color-coded decorations
+- Action parity: SettingKeyValue edit/delete, EnvVar copy-to-scope, MCP multi-scope discovery + move/copy
+- Permission overlap batch algorithm replacing O(R²) with indexed O(R×G) and RegExp/parse caching
+
+---
+
 ## v0.8.0 — Tree Display Polish (Complete)
 
 **Completed:** 2026-03-11

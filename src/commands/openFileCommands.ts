@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { findKeyLine } from '../utils/jsonLocation';
-import { getUserSettingsPath, getManagedSettingsPath } from '../utils/platform';
+import { getUserSettingsPath, getManagedSettingsPath, getUserClaudeJsonPath } from '../utils/platform';
 import { PROJECT_CLAUDE_DIR, PROJECT_SHARED_FILE, PROJECT_LOCAL_FILE, MCP_CONFIG_FILE, MAX_KEYPATH_DEPTH, MESSAGES } from '../constants';
 
 function logRevealInFile(outputChannel: vscode.OutputChannel | undefined, message: string): void {
@@ -24,6 +24,9 @@ function buildKnownConfigPaths(): Set<string> {
 
   // Add managed settings path
   paths.add(getManagedSettingsPath());
+
+  // Add ~/.claude.json (MCP server definitions for User and Local scopes)
+  paths.add(getUserClaudeJsonPath());
 
   // Add project-level paths from all workspace folders
   const workspaceFolders = vscode.workspace.workspaceFolders;

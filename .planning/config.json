@@ -10,5 +10,6 @@
     "verifier": true,
     "_auto_chain_active": false
   },
-  "granularity": "coarse"
+  "granularity": "coarse",
+  "milestone_branch_template": "release/{milestone}-{slug}"
 }

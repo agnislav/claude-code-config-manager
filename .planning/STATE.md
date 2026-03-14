@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.3
-milestone_name: milestone
+milestone: v0.9.0
+milestone_name: UX Audit
 status: completed
-last_updated: "2026-03-11T13:09:19.713Z"
-last_activity: 2026-03-11 — Phase 24 Plan 02 completed
+last_updated: "2026-03-14T12:00:00.000Z"
+last_activity: 2026-03-14 — v0.9.0 milestone completed and archived
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 7
+  completed_plans: 7
   percent: 100
 ---
 
@@ -17,23 +17,23 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-11)
+See: .planning/PROJECT.md (updated 2026-03-14)
 
-**Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place — so you never have to hand-edit JSON config files or wonder which scope is winning.
+**Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place
 **Current focus:** Planning next milestone
 
 ## Current Position
 
-Milestone: v0.8.0 Tree Display Polish — SHIPPED 2026-03-11
-Status: Complete
-Last activity: 2026-03-11 — v0.8.0 milestone archived
+Milestone v0.9.0 UX Audit — SHIPPED 2026-03-14
+All 5 phases (25-29) complete, 7 plans done, 16/16 requirements satisfied.
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 ✓
 
 ## Pending Todos
 
 - Add "go to (scope/entity)" to the command palette (ui)
 - Multiselect for batch copy and move operations (ui)
+- Automatic CPU and memory profiling for tree builder (ui)
 
 ### Quick Tasks Completed
 
@@ -44,4 +44,4 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 ---
 
 *State initialized: 2026-02-20*
-*Last updated: 2026-03-11 — v0.8.0 milestone archived*
+*Last updated: 2026-03-14 — v0.9.0 milestone completed and archived*

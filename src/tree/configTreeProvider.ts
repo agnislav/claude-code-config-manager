@@ -6,6 +6,9 @@ import { TreeViewModelBuilder } from '../viewmodel/builder';
 import { ConfigTreeNode } from './nodes/baseNode';
 import { vmToNode } from './vmToNode';
 
+/** Debounce delay for tree refresh after config store change events (ms). */
+const TREE_REFRESH_DEBOUNCE_MS = 50;
+
 export class ConfigTreeProvider implements vscode.TreeDataProvider<ConfigTreeNode>, vscode.Disposable {
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<
     ConfigTreeNode | undefined | void
@@ -18,12 +21,13 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<ConfigTreeNod
   private readonly _sectionFilter = new Set<SectionType>();
   private readonly builder: TreeViewModelBuilder;
   private cachedRootVMs: BaseVM[] = [];
+  private refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private readonly configStore: ConfigStore) {
     this.builder = new TreeViewModelBuilder(configStore);
     ConfigTreeNode.mapVM = vmToNode;
     this.cachedRootVMs = this.builder.build(this._sectionFilter);
-    configStore.onDidChange(() => this.refresh());
+    configStore.onDidChange(() => this.debouncedRefresh());
     this.updateFilterUI();
   }
 
@@ -45,6 +49,17 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<ConfigTreeNod
     vscode.commands.executeCommand('setContext', 'claudeConfig_filterActive', isFiltered);
   }
 
+  /** Schedule a debounced refresh. Coalesces rapid-fire config change events. */
+  private debouncedRefresh(): void {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+    }
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = undefined;
+      this.refresh();
+    }, TREE_REFRESH_DEBOUNCE_MS);
+  }
+
   refresh(): void {
     this.parentMap.clear();
     this.childrenCache.clear();
@@ -53,6 +68,9 @@ export class ConfigTreeProvider implements vscode.TreeDataProvider<ConfigTreeNod
   }
 
   dispose(): void {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+    }
     this._onDidChangeTreeData.dispose();
   }
 

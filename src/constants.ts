@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ConfigScope, HookEventType, SectionType } from './types';
-import { getUserSettingsPath } from './utils/platform';
+import { getUserSettingsPath, getUserClaudeJsonPath } from './utils/platform';
 
 export const SCOPE_LABELS: Record<ConfigScope, string> = {
   [ConfigScope.Managed]: 'Managed (Enterprise)',
@@ -173,6 +173,9 @@ export const MESSAGES = {
   copiedSetting: (settingKey: string, targetScopeLabel: string) => `Claude Config: Copied "${settingKey}" to ${targetScopeLabel}`,
   copiedPermission: (rule: string, categoryLabel: string, scopeLabel: string) => `Claude Config: Copied "${rule}" to ${categoryLabel} in ${scopeLabel}`,
   copiedPlugin: (itemName: string, targetScopeLabel: string, stateLabel: string) => `Claude Config: Copied "${itemName}" to ${targetScopeLabel} as ${stateLabel}`,
+  copiedEnvVar: (key: string, scopeLabel: string) => `Claude Config: Copied env var "${key}" to ${scopeLabel}`,
+  copiedMcpServer: (name: string, scope: string) => `Claude Config: Copied MCP server "${name}" to ${scope}`,
+  movedMcpServer: (name: string, scope: string) => `Claude Config: Moved MCP server "${name}" to ${scope}`,
 
   // Permission-specific
   permissionAlreadyExists: (rule: string, categoryLabel: string, scopeLabel: string) => `Claude Config: "${rule}" already exists in ${categoryLabel} in ${scopeLabel}.`,
@@ -198,6 +201,7 @@ export function getAllowedWritePaths(): Set<string> {
 
   // User scope
   paths.add(getUserSettingsPath());
+  paths.add(getUserClaudeJsonPath());
 
   // Project scopes (per workspace folder)
   const workspaceFolders = vscode.workspace.workspaceFolders;

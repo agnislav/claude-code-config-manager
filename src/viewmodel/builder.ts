@@ -6,14 +6,14 @@ import {
   resolvePluginOverlap,
   resolveMcpOverlap,
   resolveSandboxOverlap,
-  resolvePermissionOverlap,
+  resolveHookOverlap,
+  computePermissionOverlapMap,
   getOverlapColor,
 } from '../config/overlapResolver';
 import { OVERLAP_URI_SCHEME } from '../tree/overlapDecorations';
 import {
   DEDICATED_SECTION_KEYS,
   PERMISSION_CATEGORY_ICONS,
-  PERMISSION_CATEGORY_LABELS,
   SCOPE_DESCRIPTIONS,
   SCOPE_ICONS,
   SCOPE_LABELS,
@@ -191,10 +191,9 @@ export class TreeViewModelBuilder {
   constructor(private readonly configStore: ConfigStore) {}
 
   build(sectionFilter?: ReadonlySet<SectionType>): BaseVM[] {
-    if (this.configStore.isMultiRoot()) {
-      return this.buildMultiRoot(sectionFilter);
-    }
-    return this.buildSingleRoot(sectionFilter);
+    return this.configStore.isMultiRoot()
+      ? this.buildMultiRoot(sectionFilter)
+      : this.buildSingleRoot(sectionFilter);
   }
 
   // ── Root builders ────────────────────────────────────────────
@@ -205,6 +204,7 @@ export class TreeViewModelBuilder {
 
     const key = keys[0];
     const allScopes = this.configStore.getAllScopes(key);
+    const permOverlapMap = computePermissionOverlapMap(allScopes);
 
     return allScopes
       .filter((s) => s.scope !== ConfigScope.Managed)
@@ -212,7 +212,7 @@ export class TreeViewModelBuilder {
         const locked = this.configStore.isScopeLocked(sc.scope);
         const effective: ScopedConfig =
           locked && !sc.isReadOnly ? { ...sc, isReadOnly: true } : sc;
-        return this.buildScopeVM(effective, allScopes, key, sectionFilter);
+        return this.buildScopeVM(effective, allScopes, key, sectionFilter, permOverlapMap);
       });
   }
 
@@ -223,6 +223,7 @@ export class TreeViewModelBuilder {
       const allScopes = this.configStore.getAllScopes(key);
       const discovered = this.configStore.getDiscoveredPaths(key);
       const folderName = discovered?.workspaceFolder?.name ?? key;
+      const permOverlapMap = computePermissionOverlapMap(allScopes);
 
       const ctx: NodeContext = {
         scope: ConfigScope.User, // placeholder
@@ -238,7 +239,7 @@ export class TreeViewModelBuilder {
           const locked = this.configStore.isScopeLocked(sc.scope);
           const effective: ScopedConfig =
             locked && !sc.isReadOnly ? { ...sc, isReadOnly: true } : sc;
-          return this.buildScopeVM(effective, allScopes, key, sectionFilter);
+          return this.buildScopeVM(effective, allScopes, key, sectionFilter, permOverlapMap);
         });
 
       result.push({
@@ -265,6 +266,7 @@ export class TreeViewModelBuilder {
     allScopes: ScopedConfig[],
     workspaceFolderUri: string,
     sectionFilter?: ReadonlySet<SectionType>,
+    permOverlapMap?: Map<string, OverlapInfo & { overriddenByCategory?: string }>,
   ): ScopeVM {
     const { scope, filePath, fileExists, isReadOnly } = scopedConfig;
 
@@ -303,7 +305,7 @@ export class TreeViewModelBuilder {
 
     const children =
       fileExists || scope === ConfigScope.Managed
-        ? this.buildSections(scopedConfig, allScopes, sectionFilter)
+        ? this.buildSections(scopedConfig, allScopes, sectionFilter, permOverlapMap)
         : [];
 
     return {
@@ -327,13 +329,14 @@ export class TreeViewModelBuilder {
     scopedConfig: ScopedConfig,
     allScopes: ScopedConfig[],
     sectionFilter?: ReadonlySet<SectionType>,
+    permOverlapMap?: Map<string, OverlapInfo & { overriddenByCategory?: string }>,
   ): SectionVM[] {
     const config = scopedConfig.config;
     const isFiltered = sectionFilter && sectionFilter.size > 0;
     const sections: SectionVM[] = [];
 
     if (config.permissions && (!isFiltered || sectionFilter!.has(SectionType.Permissions))) {
-      sections.push(this.buildSectionVM(SectionType.Permissions, scopedConfig, allScopes));
+      sections.push(this.buildSectionVM(SectionType.Permissions, scopedConfig, allScopes, permOverlapMap));
     }
     if (config.sandbox && (!isFiltered || sectionFilter!.has(SectionType.Sandbox))) {
       sections.push(this.buildSectionVM(SectionType.Sandbox, scopedConfig, allScopes));
@@ -378,6 +381,7 @@ export class TreeViewModelBuilder {
     sectionType: SectionType,
     scopedConfig: ScopedConfig,
     allScopes: ScopedConfig[],
+    permOverlapMap?: Map<string, OverlapInfo & { overriddenByCategory?: string }>,
   ): SectionVM {
     const jsonKey = sectionType === SectionType.Plugins ? 'enabledPlugins' : sectionType;
     const ctx: NodeContext = {
@@ -389,7 +393,7 @@ export class TreeViewModelBuilder {
       filePath: scopedConfig.filePath,
     };
 
-    const children = this.buildSectionChildren(sectionType, scopedConfig, allScopes);
+    const children = this.buildSectionChildren(sectionType, scopedConfig, allScopes, permOverlapMap);
     const description = this.getSectionItemCount(sectionType, scopedConfig);
 
     return {
@@ -411,14 +415,15 @@ export class TreeViewModelBuilder {
     sectionType: SectionType,
     scopedConfig: ScopedConfig,
     allScopes: ScopedConfig[],
+    permOverlapMap?: Map<string, OverlapInfo & { overriddenByCategory?: string }>,
   ): BaseVM[] {
     switch (sectionType) {
       case SectionType.Permissions:
-        return this.buildPermissionRules(scopedConfig, allScopes);
+        return this.buildPermissionRules(scopedConfig, permOverlapMap ?? computePermissionOverlapMap(allScopes));
       case SectionType.Sandbox:
         return this.buildSandboxProperties(scopedConfig, allScopes);
       case SectionType.Hooks:
-        return this.buildHookEvents(scopedConfig);
+        return this.buildHookEvents(scopedConfig, allScopes);
       case SectionType.McpServers:
         return this.buildMcpServers(scopedConfig, allScopes);
       case SectionType.Environment:
@@ -436,7 +441,7 @@ export class TreeViewModelBuilder {
 
   private buildPermissionRules(
     scopedConfig: ScopedConfig,
-    allScopes: ScopedConfig[],
+    overlapMap: Map<string, OverlapInfo & { overriddenByCategory?: string }>,
   ): PermissionRuleVM[] {
     const perms = scopedConfig.config.permissions;
     if (!perms) return [];
@@ -449,7 +454,7 @@ export class TreeViewModelBuilder {
         if (seen.has(rule)) continue;
         seen.add(rule);
         result.push(
-          this.buildPermissionRule(rule, category as PermissionCategory, scopedConfig, allScopes),
+          this.buildPermissionRule(rule, category as PermissionCategory, scopedConfig, overlapMap),
         );
       }
     }
@@ -460,9 +465,10 @@ export class TreeViewModelBuilder {
     rule: string,
     category: PermissionCategory,
     scopedConfig: ScopedConfig,
-    allScopes: ScopedConfig[],
+    overlapMap: Map<string, OverlapInfo & { overriddenByCategory?: string }>,
   ): PermissionRuleVM {
-    const overlap = resolvePermissionOverlap(category, rule, scopedConfig.scope, allScopes);
+    const key = `${scopedConfig.scope}/${category}/${rule}`;
+    const overlap = overlapMap.get(key) ?? {};
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
       keyPath: ['permissions', category, rule],
@@ -654,7 +660,15 @@ export class TreeViewModelBuilder {
           : new vscode.ThemeIcon('terminal'),
         collapsibleState,
         contextValue: computeStandardContextValue('envVar', scopedConfig.isReadOnly, overlap),
-        tooltip: buildOverlapTooltip(undefined, overlap),
+        tooltip: (() => {
+          const truncatedValue = value.length > 80 ? value.substring(0, 80) + '...' : value;
+          const scopeLabel = SCOPE_LABELS[scopedConfig.scope];
+          const shortPath = getShortPath(scopedConfig.filePath);
+          const baseTooltipMd = new vscode.MarkdownString(
+            `**${key}** = \`${truncatedValue}\`\n\nDefined in: ${scopeLabel} (${shortPath})`,
+          );
+          return buildOverlapTooltip(baseTooltipMd, overlap);
+        })(),
         nodeContext: ctx,
         children: [],
         id: computeId(ctx),
@@ -753,19 +767,9 @@ export class TreeViewModelBuilder {
     const sandbox = scopedConfig.config.sandbox;
     if (!sandbox) return [];
 
-    const result: SandboxPropertyVM[] = [];
-    for (const [key, value] of Object.entries(sandbox)) {
-      if (key === 'network' && typeof value === 'object' && value !== null) {
-        for (const [netKey, netValue] of Object.entries(value as Record<string, unknown>)) {
-          result.push(
-            this.buildSandboxPropertyVM(`network.${netKey}`, netValue, scopedConfig, allScopes),
-          );
-        }
-      } else {
-        result.push(this.buildSandboxPropertyVM(key, value, scopedConfig, allScopes));
-      }
-    }
-    return result;
+    return Object.entries(sandbox).map(([key, value]) =>
+      this.buildSandboxPropertyVM(key, value, scopedConfig, allScopes),
+    );
   }
 
   private buildSandboxPropertyVM(
@@ -775,24 +779,35 @@ export class TreeViewModelBuilder {
     allScopes: ScopedConfig[],
   ): SandboxPropertyVM {
     const overlap = resolveSandboxOverlap(key, scopedConfig.scope, allScopes);
+
+    const isExpandableObject =
+      typeof value === 'object' && value !== null && !Array.isArray(value);
+    const collapsibleState = isExpandableObject
+      ? vscode.TreeItemCollapsibleState.Collapsed
+      : vscode.TreeItemCollapsibleState.None;
+
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
-      keyPath: ['sandbox', ...key.split('.')],
+      keyPath: ['sandbox', key],
       isReadOnly: scopedConfig.isReadOnly,
       overlap,
       filePath: scopedConfig.filePath,
     };
 
-    const rawDescription = formatSandboxValue(value);
+    const rawDescription = isExpandableObject ? '' : formatSandboxValue(value);
     const description = applyOverrideSuffix(rawDescription, overlap);
 
     let tooltip: string | vscode.MarkdownString | undefined;
-    if (Array.isArray(value)) {
-      tooltip = new vscode.MarkdownString(value.map((v) => `- \`${v}\``).join('\n'));
+    if (typeof value === 'object' && value !== null) {
+      tooltip = new vscode.MarkdownString('```json\n' + JSON.stringify(value, null, 2) + '\n```');
     }
     tooltip = buildOverlapTooltip(tooltip, overlap);
 
-    const collapsibleState = vscode.TreeItemCollapsibleState.None;
+    const children = isExpandableObject
+      ? Object.entries(value as Record<string, unknown>).map(([childKey, childValue]) =>
+          this.buildSandboxChildVM(key, childKey, childValue, scopedConfig, allScopes),
+        )
+      : [];
 
     return {
       kind: NodeKind.SandboxProperty,
@@ -807,10 +822,58 @@ export class TreeViewModelBuilder {
       contextValue: computeStandardContextValue('sandboxProperty', scopedConfig.isReadOnly, overlap),
       tooltip,
       nodeContext: ctx,
-      children: [],
+      children,
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'sandbox', key, overlap),
+    };
+  }
+
+  private buildSandboxChildVM(
+    parentKey: string,
+    childKey: string,
+    value: unknown,
+    scopedConfig: ScopedConfig,
+    allScopes: ScopedConfig[],
+  ): SandboxPropertyVM {
+    const overlap = resolveSandboxOverlap(`${parentKey}.${childKey}`, scopedConfig.scope, allScopes);
+    const ctx: NodeContext = {
+      scope: scopedConfig.scope,
+      keyPath: ['sandbox', parentKey, childKey],
+      isReadOnly: scopedConfig.isReadOnly,
+      overlap,
+      filePath: scopedConfig.filePath,
+    };
+
+    const rawDescription = formatSandboxValue(value);
+    const description = applyOverrideSuffix(rawDescription, overlap);
+
+    let tooltip: string | vscode.MarkdownString | undefined;
+    if (typeof value === 'object' && value !== null) {
+      tooltip = new vscode.MarkdownString('```json\n' + JSON.stringify(value, null, 2) + '\n```');
+    }
+    tooltip = buildOverlapTooltip(tooltip, overlap);
+
+    const collapsibleState = vscode.TreeItemCollapsibleState.None;
+
+    return {
+      kind: NodeKind.SandboxProperty,
+      propertyKey: `${parentKey}.${childKey}`,
+      propertyValue: value,
+      label: childKey,
+      description,
+      icon: new vscode.ThemeIcon(
+        'symbol-field',
+        new vscode.ThemeColor(overlap.isOverriddenBy ? 'disabledForeground' : 'icon.foreground'),
+      ),
+      collapsibleState,
+      contextValue: computeStandardContextValue('sandboxProperty', scopedConfig.isReadOnly, overlap),
+      tooltip,
+      nodeContext: ctx,
+      children: [],
+      id: computeId(ctx),
+      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'sandbox', `${parentKey}.${childKey}`, overlap),
     };
   }
 
@@ -844,6 +907,13 @@ export class TreeViewModelBuilder {
         baseTooltip = new vscode.MarkdownString(`**Stdio Server**\n\nCommand: \`${cmd}\``);
       }
 
+      // Append scope info line — use mcpFilePath if available (User/Local use ~/.claude.json)
+      const mcpShortPath = getShortPath(scopedConfig.mcpFilePath ?? scopedConfig.filePath);
+      baseTooltip = new vscode.MarkdownString(
+        baseTooltip.value +
+          `\n\nDefined in: ${SCOPE_LABELS[scopedConfig.scope]} (${mcpShortPath})`,
+      );
+
       description = applyOverrideSuffix(description, overlap);
       const tooltip = buildOverlapTooltip(baseTooltip, overlap);
 
@@ -871,7 +941,7 @@ export class TreeViewModelBuilder {
 
   // ── Hooks ────────────────────────────────────────────────────
 
-  private buildHookEvents(scopedConfig: ScopedConfig): HookEventVM[] {
+  private buildHookEvents(scopedConfig: ScopedConfig, allScopes: ScopedConfig[]): HookEventVM[] {
     const hooks = scopedConfig.config.hooks;
     if (!hooks) return [];
 
@@ -879,7 +949,7 @@ export class TreeViewModelBuilder {
     for (const eventType of Object.values(HookEventType)) {
       const matchers = hooks[eventType];
       if (matchers && matchers.length > 0) {
-        result.push(this.buildHookEventVM(eventType, matchers, scopedConfig));
+        result.push(this.buildHookEventVM(eventType, matchers, scopedConfig, allScopes));
       }
     }
     return result;
@@ -889,6 +959,7 @@ export class TreeViewModelBuilder {
     eventType: HookEventType,
     matchers: HookMatcher[],
     scopedConfig: ScopedConfig,
+    allScopes: ScopedConfig[],
   ): HookEventVM {
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
@@ -908,7 +979,7 @@ export class TreeViewModelBuilder {
         const label = matcher.matcher
           ? `[${matcher.matcher}] ${hook.command ?? hook.prompt ?? hook.type}`
           : hook.command ?? hook.prompt ?? hook.type;
-        entryChildren.push(this.buildHookEntryVM(label, eventType, i, j, hook, scopedConfig));
+        entryChildren.push(this.buildHookEntryVM(label, eventType, matcher.matcher, i, j, hook, scopedConfig, allScopes));
       }
     }
 
@@ -930,16 +1001,20 @@ export class TreeViewModelBuilder {
   private buildHookEntryVM(
     label: string,
     eventType: HookEventType,
+    matcherPattern: string | undefined,
     matcherIndex: number,
     hookIndex: number,
     hook: HookCommand,
     scopedConfig: ScopedConfig,
+    allScopes: ScopedConfig[],
   ): HookEntryVM {
+    const overlap = resolveHookOverlap(eventType, matcherPattern, hook, hookIndex, scopedConfig.scope, allScopes);
+
     const ctx: NodeContext = {
       scope: scopedConfig.scope,
       keyPath: ['hooks', eventType, String(matcherIndex), 'hooks', String(hookIndex)],
       isReadOnly: scopedConfig.isReadOnly,
-      overlap: {},
+      overlap,
       filePath: scopedConfig.filePath,
     };
 
@@ -949,9 +1024,14 @@ export class TreeViewModelBuilder {
       agent: 'hubot',
     };
 
-    const tooltip = hook.command
+    const hookDetail = hook.command ?? hook.prompt ?? hook.type;
+    const rawDescription = `${hook.type}: ${hookDetail}`;
+    const description = applyOverrideSuffix(rawDescription, overlap);
+
+    const baseTooltip: vscode.MarkdownString | undefined = hook.command
       ? new vscode.MarkdownString(`\`${hook.command}\``)
       : undefined;
+    const tooltip = buildOverlapTooltip(baseTooltip, overlap);
 
     const collapsibleState = vscode.TreeItemCollapsibleState.None;
 
@@ -961,15 +1041,18 @@ export class TreeViewModelBuilder {
       matcherIndex,
       hookIndex,
       label,
-      description: '',
-      icon: new vscode.ThemeIcon(iconMap[hook.type] ?? 'terminal'),
+      description,
+      icon: overlap.isOverriddenBy
+        ? new vscode.ThemeIcon(iconMap[hook.type] ?? 'terminal', new vscode.ThemeColor('disabledForeground'))
+        : new vscode.ThemeIcon(iconMap[hook.type] ?? 'terminal'),
       collapsibleState,
-      contextValue: computeStandardContextValue('hookEntry', scopedConfig.isReadOnly, {}),
+      contextValue: computeStandardContextValue('hookEntry', scopedConfig.isReadOnly, overlap),
       tooltip,
       nodeContext: ctx,
       children: [],
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'hook', `${eventType}/${matcherIndex}/${hookIndex}`, overlap),
     };
   }
 
@@ -1003,8 +1086,19 @@ export class TreeViewModelBuilder {
         const count = p ? Object.keys(p).length : 0;
         return `${count} plugin${count !== 1 ? 's' : ''}`;
       }
-      case SectionType.Sandbox:
-        return '';
+      case SectionType.Sandbox: {
+        const s = scopedConfig.config.sandbox;
+        if (!s) return '0 properties';
+        let count = 0;
+        for (const value of Object.values(s)) {
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            count += Object.keys(value).length;
+          } else {
+            count++;
+          }
+        }
+        return `${count} ${count !== 1 ? 'properties' : 'property'}`;
+      }
       case SectionType.Settings: {
         const count = Object.keys(scopedConfig.config).filter(
           (k) => !DEDICATED_SECTION_KEYS.has(k),

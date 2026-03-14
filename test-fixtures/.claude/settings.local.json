@@ -1,0 +1,201 @@
+{
+  "env": {
+    "NODE_ENV": "test",
+    "DEBUG_LEVEL": "verbose"
+  },
+  "sandbox": {
+    "enabled": true,
+    "network": {
+      "allowedDomains": ["api.example.com", "cdn.example.com", "staging.example.com"],
+      "allowLocalBinding": false
+    },
+    "filesystem": {
+      "allowWrite": ["/tmp"]
+    }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(TZ=UTC yarn jest:*)",
+      "Bash(TZ=UTC yarn test:*)",
+      "Bash(adb -s emulator-5554 emu avd:*)",
+      "Bash(adb -s emulator-5554 shell input keyevent:*)",
+      "Bash(adb shell pm list packages:*)",
+      "Bash(adb shell:*)",
+      "Bash(adb wait-for-device:*)",
+      "Bash(awk:*)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(emulator:*)",
+      "Bash(find:*)",
+      "Bash(gh api:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh repo view:*)",
+      "Bash(git fetch:*)",
+      "Bash(git log:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git merge origin/main)",
+      "Bash(git merge-base:*)",
+      "Bash(git mv:*)",
+      "Bash(git pull:*)",
+      "Bash(git rebase origin/main)",
+      "Bash(git stash:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(maestro test:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm outdated:*)",
+      "Bash(npm view:*)",
+      "Bash(npx knip:*)",
+      "Bash(npx react-native log-ios:*)",
+      "Bash(npx repomix:*)",
+      "Bash(npx tsc:*)",
+      "Bash(perl -i -pe:*)",
+      "Bash(sort:*)",
+      "Bash(tee:*)",
+      "Bash(test:*)",
+      "Bash(tree:*)",
+      "Bash(xargs sed:*)",
+      "Bash(xargs:*)",
+      "Bash(yarn --version)",
+      "Bash(yarn eslint:*)",
+      "Bash(yarn format:check:*)",
+      "Bash(yarn gen:bundle:*)",
+      "Bash(yarn gen:repomix)",
+      "Bash(yarn install)",
+      "Bash(yarn jest:*)",
+      "Bash(yarn knip)",
+      "Bash(yarn knip:*)",
+      "Bash(yarn lint:check:*)",
+      "Bash(yarn lint:fix:*)",
+      "Bash(yarn list:*)",
+      "Bash(yarn test:*)",
+      "Bash(yarn test:coverage:*)",
+      "Bash(yarn test:unit)",
+      "Bash(yarn test:unit:*)",
+      "Bash(yarn typecheck:*)",
+      "Bash(yarn why:*)",
+      "SlashCommand(/check-ios-simulator)",
+      "SlashCommand(/check-unit-tests)",
+      "SlashCommand(/new-branch:*)",
+      "SlashCommand(/slack-pr-review:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:react-native-cloud-storage.oss.kuatsu.de)",
+      "WebSearch",
+      "mcp__FigmaMCP__get_design_context",
+      "mcp__FigmaMCP__get_metadata",
+      "mcp__FigmaMCP__get_screenshot",
+      "mcp__asana__asana_get_project",
+      "mcp__asana__asana_get_project_sections",
+      "mcp__asana__asana_get_projects",
+      "mcp__asana__asana_get_task",
+      "mcp__asana__asana_get_tasks",
+      "mcp__asana__asana_get_user",
+      "mcp__asana__asana_list_workspaces",
+      "mcp__asana__asana_search_tasks",
+      "mcp__asana__asana_typeahead_search",
+      "mcp__context7__get-library-docs",
+      "mcp__context7__resolve-library-id",
+      "mcp__figma__get_design_context",
+      "mcp__figma__get_metadata",
+      "mcp__figma__get_screenshot",
+      "mcp__mcp-sequentialthinking-tools__sequentialthinking_tools",
+      "mcp__mcpm_figma__get_figma_data",
+      "mcp__mobile-mcp__mobile_click_on_screen_at_coordinates",
+      "mcp__mobile-mcp__mobile_launch_app",
+      "mcp__mobile-mcp__mobile_list_apps",
+      "mcp__mobile-mcp__mobile_list_available_devices",
+      "mcp__mobile-mcp__mobile_list_elements_on_screen",
+      "mcp__mobile-mcp__mobile_press_button",
+      "mcp__mobile-mcp__mobile_swipe_on_screen",
+      "mcp__mobile-mcp__mobile_take_screenshot",
+      "mcp__mobile-mcp__mobile_terminate_app",
+      "mcp__mobile-mcp__mobile_type_keys",
+      "mcp__repomix__attach_packed_output",
+      "mcp__repomix__grep_repomix_output",
+      "mcp__repomix__pack_remote_repository",
+      "mcp__repomix__read_repomix_output",
+      "Bash(maestro:*)",
+      "mcp__mobile-mcp__mobile_get_screen_size",
+      "Bash(gh pr list:*)",
+      "Bash(yarn prebuild:dev:*)",
+      "WebFetch(domain:docs.wallet.tether.io)",
+      "Skill(beads:ready)",
+      "Bash(bd ready:*)",
+      "Bash(bd create:*)",
+      "Skill(beads:list)",
+      "Bash(bd list:*)",
+      "Bash(bd show:*)",
+      "Skill(beads:comments)",
+      "mcp__asana__asana_get_projects_for_workspace",
+      "mcp__ios-simulator__screenshot",
+      "mcp__context7__query-docs",
+      "Skill(update-branch)",
+      "Skill(review-code)",
+      "Bash(yarn tsc:*)",
+      "Bash($ANDROID_HOME/emulator/emulator -list-avds)",
+      "Bash(adb:*)",
+      "mcp__mobile-mcp__mobile_take_screenshot",
+      "mcp__mobile-mcp__mobile_launch_app",
+      "mcp__mobile-mcp__mobile_list_elements_on_screen",
+      "mcp__mobile-mcp__mobile_click_on_screen_at_coordinates",
+      "mcp__mobile-mcp__mobile_double_tap_on_screen",
+      "Read(~/.maestro/*)",
+      "Read(~/.maestro/**)",
+      "Read(~/.maestro/**/*)",
+      "Read(/Users/agnislav/.maestro/**)",
+      "Bash(yarn e2e:send:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(lsof:*)",
+      "Bash(xcrun simctl spawn:*)",
+      "Bash(/Users/agnislav/Projects/Noxtton/rumble-1/e2e-maestro/ios/run-e2e.sh:*)",
+      "Bash(yarn e2e:send:ios:*)",
+      "Bash(LC_ALL=C find:*)"
+    ],
+    "deny": [
+      "Bash(git checkout:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Local pre-bash check'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash(git pull:*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && yarn gen:repomix > /tmp/repomix-update.log 2>&1 &"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(git merge:*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && yarn gen:repomix > /tmp/repomix-update.log 2>&1 &"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(git rebase:*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && yarn gen:repomix > /tmp/repomix-update.log 2>&1 &"
+          }
+        ]
+      }
+    ]
+  }
+}

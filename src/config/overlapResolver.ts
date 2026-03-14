@@ -1,12 +1,14 @@
 import {
   ConfigScope,
+  HookCommand,
+  HookEventType,
   OverlapInfo,
   OverlapItem,
   PermissionCategory,
   SCOPE_PRECEDENCE,
   ScopedConfig,
 } from '../types';
-import { rulesOverlap } from '../utils/permissions';
+import { getCachedParse, ParsedPermissionRule, rulesOverlap } from '../utils/permissions';
 
 export type { OverlapInfo, OverlapItem };
 
@@ -197,6 +199,26 @@ export function resolveSandboxOverlap(
   });
 }
 
+export function resolveHookOverlap(
+  eventType: HookEventType,
+  matcherPattern: string | undefined,
+  hook: HookCommand,
+  hookIndex: number,
+  currentScope: ConfigScope,
+  allScopes: ScopedConfig[],
+): OverlapInfo {
+  return resolveOverlapGeneric(currentScope, allScopes, (sc) => {
+    const matchers = sc.config.hooks?.[eventType];
+    if (!matchers) return undefined;
+    for (const matcher of matchers) {
+      if ((matcher.matcher ?? '') !== (matcherPattern ?? '')) continue;
+      const h = matcher.hooks[hookIndex];
+      return h !== undefined ? h : undefined;
+    }
+    return undefined;
+  });
+}
+
 /**
  * Permission overlap resolver. Special-cased: uses glob matching instead of
  * exact key equality. Only checks isOverriddenBy direction (higher-precedence
@@ -288,6 +310,164 @@ export function resolvePermissionOverlap(
         }
       }
       if (result.duplicates) break;
+    }
+  }
+
+  return result;
+}
+
+// ── Batch permission overlap map ─────────────────────────────────
+
+type RuleEntry = {
+  scope: ConfigScope;
+  category: PermissionCategory;
+  rule: string;
+  parsed: ParsedPermissionRule;
+};
+
+/**
+ * Builds an index of all permission rules grouped by tool name.
+ * This eliminates cross-tool comparisons by pre-grouping entries.
+ */
+function buildToolIndex(allScopes: ScopedConfig[]): Map<string, RuleEntry[]> {
+  const index = new Map<string, RuleEntry[]>();
+  const categories: PermissionCategory[] = [
+    PermissionCategory.Allow,
+    PermissionCategory.Ask,
+    PermissionCategory.Deny,
+  ];
+  for (const sc of allScopes) {
+    if (!sc.config.permissions) continue;
+    for (const category of categories) {
+      const rules = sc.config.permissions[category];
+      if (!rules) continue;
+      for (const rule of rules) {
+        const parsed = getCachedParse(rule);
+        const bucket = index.get(parsed.tool);
+        const entry: RuleEntry = { scope: sc.scope, category, rule, parsed };
+        if (bucket) {
+          bucket.push(entry);
+        } else {
+          index.set(parsed.tool, [entry]);
+        }
+      }
+    }
+  }
+  return index;
+}
+
+/**
+ * Computes overlap info for every (scope, category, rule) triple in a single
+ * batched pass. Uses tool-name indexing so only rules with the same tool are
+ * ever compared — eliminating the O(R²) cross-tool scan of the per-rule resolver.
+ *
+ * The returned Map is keyed by `${scope}/${category}/${rule}`. Each value
+ * matches what `resolvePermissionOverlap` would return for the same inputs.
+ *
+ * `resolvePermissionOverlap` is preserved unchanged for backward compatibility.
+ */
+export function computePermissionOverlapMap(
+  allScopes: ScopedConfig[],
+): Map<string, OverlapInfo & { overriddenByCategory?: string }> {
+  const result = new Map<string, OverlapInfo & { overriddenByCategory?: string }>();
+  const toolIndex = buildToolIndex(allScopes);
+
+  // Pre-compute precedence for all scopes once
+  const scopePrecMap = new Map<ConfigScope, number>(
+    allScopes.map((sc) => [sc.scope, precedenceOf(sc.scope)]),
+  );
+
+  for (const bucket of toolIndex.values()) {
+    // Sort entire bucket by precedence once (ascending = highest precedence first)
+    bucket.sort(
+      (a, b) =>
+        (scopePrecMap.get(a.scope) ?? precedenceOf(a.scope)) -
+        (scopePrecMap.get(b.scope) ?? precedenceOf(b.scope)),
+    );
+
+    for (let idx = 0; idx < bucket.length; idx++) {
+      const entry = bucket[idx];
+      const { scope, category, rule } = entry;
+      const currentPrecedence = scopePrecMap.get(scope) ?? precedenceOf(scope);
+      const overlap: OverlapInfo & { overriddenByCategory?: string } = {};
+
+      // ── Higher-precedence entries (lower index in sorted bucket) ──
+      // Walk backwards from idx-1 to find nearest higher-precedence scope
+      let nearestHigherPrec: number | undefined;
+      let foundCrossCategoryAbove = false;
+
+      for (let i = idx - 1; i >= 0; i--) {
+        const higher = bucket[i];
+        const higherPrec = scopePrecMap.get(higher.scope) ?? precedenceOf(higher.scope);
+        if (higherPrec >= currentPrecedence) continue;
+
+        if (nearestHigherPrec !== undefined && higherPrec !== nearestHigherPrec) {
+          if (overlap.isOverriddenBy || overlap.isDuplicatedBy) break;
+        }
+        nearestHigherPrec = higherPrec;
+
+        if (higher.category !== category && rulesOverlap(higher.rule, rule)) {
+          overlap.isOverriddenBy = { scope: higher.scope, value: higher.category };
+          overlap.overriddenByCategory = higher.category;
+          foundCrossCategoryAbove = true;
+          break;
+        }
+      }
+
+      if (!foundCrossCategoryAbove) {
+        nearestHigherPrec = undefined;
+        for (let i = idx - 1; i >= 0; i--) {
+          const higher = bucket[i];
+          const higherPrec = scopePrecMap.get(higher.scope) ?? precedenceOf(higher.scope);
+          if (higherPrec >= currentPrecedence) continue;
+          if (nearestHigherPrec !== undefined && higherPrec !== nearestHigherPrec) break;
+          nearestHigherPrec = higherPrec;
+
+          if (higher.category === category && higher.rule === rule) {
+            overlap.isDuplicatedBy = { scope: higher.scope, value: category };
+            break;
+          }
+        }
+      }
+
+      // ── Lower-precedence entries (higher index in sorted bucket) ──
+      let nearestLowerPrec: number | undefined;
+      let foundCrossCategoryBelow = false;
+
+      for (let i = idx + 1; i < bucket.length; i++) {
+        const lower = bucket[i];
+        const lowerPrec = scopePrecMap.get(lower.scope) ?? precedenceOf(lower.scope);
+        if (lowerPrec <= currentPrecedence) continue;
+
+        if (nearestLowerPrec !== undefined && lowerPrec !== nearestLowerPrec) {
+          if (overlap.overrides || overlap.duplicates) break;
+        }
+        nearestLowerPrec = lowerPrec;
+
+        if (lower.category !== category && rulesOverlap(rule, lower.rule)) {
+          overlap.overrides = { scope: lower.scope, value: lower.category };
+          foundCrossCategoryBelow = true;
+          break;
+        }
+      }
+
+      if (!foundCrossCategoryBelow) {
+        nearestLowerPrec = undefined;
+        for (let i = idx + 1; i < bucket.length; i++) {
+          const lower = bucket[i];
+          const lowerPrec = scopePrecMap.get(lower.scope) ?? precedenceOf(lower.scope);
+          if (lowerPrec <= currentPrecedence) continue;
+          if (nearestLowerPrec !== undefined && lowerPrec !== nearestLowerPrec) break;
+          nearestLowerPrec = lowerPrec;
+
+          if (lower.category === category && lower.rule === rule) {
+            overlap.duplicates = { scope: lower.scope, value: category };
+            break;
+          }
+        }
+      }
+
+      result.set(`${scope}/${category}/${rule}`, overlap);
     }
   }
 

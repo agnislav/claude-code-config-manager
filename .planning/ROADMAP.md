@@ -1,8 +1,8 @@
 # Roadmap: Claude Code Config Manager
 
 **Created:** 2026-02-18
-**Updated:** 2026-03-11
-**Status:** v0.3.x-v0.8.0 complete (Phases 1-24)
+**Updated:** 2026-03-14
+**Status:** v0.3.x-v0.9.0 complete (Phases 1-29)
 
 ---
 
@@ -15,6 +15,7 @@
 - ✅ **v0.6.0 Decouple State from Tree** — Phases 16-18 (shipped 2026-03-08)
 - ✅ **v0.7.0 Visual Fidelity** — Phases 19-22 (shipped 2026-03-09)
 - ✅ **v0.8.0 Tree Display Polish** — Phases 23-24 (shipped 2026-03-11)
+- ✅ **v0.9.0 UX Audit** — Phases 25-29 (shipped 2026-03-14)
 
 ---
 
@@ -76,8 +77,6 @@
 
 </details>
 
----
-
 <details>
 <summary>✅ v0.8.0 Tree Display Polish (Phases 23-24) — SHIPPED 2026-03-11</summary>
 
@@ -86,7 +85,16 @@
 
 </details>
 
----
+<details>
+<summary>✅ v0.9.0 UX Audit (Phases 25-29) — SHIPPED 2026-03-14</summary>
+
+- [x] Phase 25: Audit Catalog + Trivial Fixes (2/2 plans) — completed 2026-03-12
+- [x] Phase 26: Inline Button Cleanup (1/1 plan) — completed 2026-03-12
+- [x] Phase 27: Hook Overlap Detection (1/1 plan) — completed 2026-03-12
+- [x] Phase 28: Action Parity (2/2 plans) — completed 2026-03-13
+- [x] Phase 29: Permission Overlap Performance (1/1 plan) — completed 2026-03-13
+
+</details>
 
 ## Progress
 
@@ -116,8 +124,13 @@
 | 22. Lock Test Coverage & Doc Cleanup | v0.7.0 | 1/1 | Complete | 2026-03-09 |
 | 23. Plugin Checkbox-Only Display | v0.8.0 | 1/1 | Complete | 2026-03-10 |
 | 24. Flatten Permissions | v0.8.0 | 2/2 | Complete | 2026-03-11 |
+| 25. Audit Catalog + Trivial Fixes | v0.9.0 | 2/2 | Complete | 2026-03-12 |
+| 26. Inline Button Cleanup | v0.9.0 | 1/1 | Complete | 2026-03-12 |
+| 27. Hook Overlap Detection | v0.9.0 | 1/1 | Complete | 2026-03-12 |
+| 28. Action Parity | v0.9.0 | 2/2 | Complete | 2026-03-13 |
+| 29. Permission Overlap Performance | v0.9.0 | 1/1 | Complete | 2026-03-13 |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-11 — v0.8.0 shipped*
+*Last updated: 2026-03-14 — v0.9.0 UX Audit milestone shipped*

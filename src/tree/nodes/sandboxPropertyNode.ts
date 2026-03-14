@@ -9,6 +9,6 @@ export class SandboxPropertyNode extends ConfigTreeNode {
   }
 
   getChildren(): ConfigTreeNode[] {
-    return [];
+    return this.vm.children.map(ConfigTreeNode.mapVM);
   }
 }

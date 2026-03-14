@@ -4,3 +4,6 @@ out/
 *.vsix
 .DS_Store
 .vscode-test
+
+# Override global gitignore for test fixtures
+!test-fixtures/.claude/settings.local.json

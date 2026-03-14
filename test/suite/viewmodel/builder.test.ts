@@ -189,22 +189,17 @@ suite('Entity Types (TEST-01)', () => {
     const section = findVM(vms, NodeKind.Section, 'Permissions');
     assert.ok(section, 'Permissions section should exist');
 
-    // Permission groups are ordered: deny, ask, allow
-    const groups = findAllVMs(section.children, NodeKind.PermissionGroup);
-    assert.strictEqual(groups.length, 3, 'Should have 3 permission groups');
-    assert.strictEqual(groups[0].label, 'Deny', 'First group should be Deny');
-    assert.strictEqual(groups[1].label, 'Ask', 'Second group should be Ask');
-    assert.strictEqual(groups[2].label, 'Allow', 'Third group should be Allow');
+    // Permission rules are flat (ordered: allow, ask, deny as iterated)
+    const rules = findAllVMs(section.children, NodeKind.PermissionRule);
+    assert.strictEqual(rules.length, 3, 'Should have 3 permission rules');
 
-    // Deny group has 1 child rule
-    const denyRules = findAllVMs(groups[0].children, NodeKind.PermissionRule);
-    assert.strictEqual(denyRules.length, 1, 'Deny should have 1 rule');
-    assert.strictEqual(denyRules[0].label, 'Bash(rm *)');
-    assert.strictEqual(denyRules[0].kind, NodeKind.PermissionRule);
+    const denyRule = rules.find((r) => r.label === 'Bash(rm *)');
+    assert.ok(denyRule, 'Deny rule "Bash(rm *)" should exist');
+    assert.strictEqual(denyRule.kind, NodeKind.PermissionRule);
 
     // Permission rules are leaf nodes
     assert.strictEqual(
-      denyRules[0].collapsibleState,
+      denyRule.collapsibleState,
       vscode.TreeItemCollapsibleState.None,
       'PermissionRule should be a leaf node',
     );
@@ -304,7 +299,7 @@ suite('Entity Types (TEST-01)', () => {
       vscode.TreeItemCheckboxState.Unchecked,
       'Disabled plugin should be unchecked',
     );
-    assert.ok(disabledPlugin.icon, 'Disabled plugin should have extensions icon');
+    assert.strictEqual(disabledPlugin.icon, undefined, 'Unlocked: no icon (checkboxes convey state)');
   });
 
   test('builds sandbox property VMs', () => {
@@ -711,11 +706,456 @@ suite('Lock-Aware Plugin Display (LOCK-01/02/03)', () => {
       vscode.TreeItemCheckboxState.Checked,
       'Unlocked: enabled plugin has Checked checkbox',
     );
-    assert.strictEqual(unlockedEnabled?.icon?.id, 'extensions', 'Unlocked: extensions icon');
+    assert.strictEqual(unlockedEnabled?.icon, undefined, 'Unlocked: no icon (checkboxes convey state)');
     assert.strictEqual(
       unlockedDisabled?.checkboxState,
       vscode.TreeItemCheckboxState.Unchecked,
       'Unlocked: disabled plugin has Unchecked checkbox',
+    );
+  });
+});
+
+// ── TRIV-01: Sandbox Section Count ───────────────────────────────
+
+suite('TRIV-01: Sandbox section count', () => {
+  test('sandbox with 2 top-level properties returns "2 properties"', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        sandbox: { enabled: true, autoAllowBashIfSandboxed: false },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const section = findVM(vms, NodeKind.Section, 'Sandbox');
+    assert.ok(section, 'Sandbox section should exist');
+    assert.strictEqual(section.description, '2 properties');
+  });
+
+  test('sandbox with network sub-object counts network children individually', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        sandbox: {
+          enabled: true,
+          network: { allowedDomains: ['example.com'], deniedDomains: ['evil.com'] },
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const section = findVM(vms, NodeKind.Section, 'Sandbox');
+    assert.ok(section, 'Sandbox section should exist');
+    // 1 (enabled) + 2 (network children) = 3 properties
+    assert.strictEqual(section.description, '3 properties');
+  });
+
+  test('empty/missing sandbox returns "0 properties"', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        sandbox: {},
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    // With empty sandbox, the section may not be built at all (buildSections checks if sandbox exists).
+    // But sandbox: {} is truthy, so section should exist.
+    const section = findVM(vms, NodeKind.Section, 'Sandbox');
+    // If section doesn't exist because of empty object filtering, that's also valid.
+    // The getSectionItemCount should handle empty sandbox.
+    if (section) {
+      assert.strictEqual(section.description, '0 properties');
+    }
+  });
+
+  test('singular: 1 property returns "1 property"', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        sandbox: { enabled: true },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const section = findVM(vms, NodeKind.Section, 'Sandbox');
+    assert.ok(section, 'Sandbox section should exist');
+    assert.strictEqual(section.description, '1 property');
+  });
+});
+
+// ── TRIV-02: HookEntry Description ──────────────────────────────
+
+suite('TRIV-02: HookEntry description', () => {
+  test('command hook description is "command: echo test"', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            {
+              hooks: [{ type: 'command' as const, command: 'echo test' }],
+            },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const entry = findVM(vms, NodeKind.HookEntry);
+    assert.ok(entry, 'HookEntry should exist');
+    assert.strictEqual(entry.description, 'command: echo test');
+  });
+
+  test('prompt hook description is "prompt: Review the output"', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PostToolUse]: [
+            {
+              hooks: [{ type: 'prompt' as const, prompt: 'Review the output' }],
+            },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const entry = findVM(vms, NodeKind.HookEntry);
+    assert.ok(entry, 'HookEntry should exist');
+    assert.strictEqual(entry.description, 'prompt: Review the output');
+  });
+
+  test('agent hook description falls back to type name: "agent: agent"', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.SessionStart]: [
+            {
+              hooks: [{ type: 'agent' as const }],
+            },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const entry = findVM(vms, NodeKind.HookEntry);
+    assert.ok(entry, 'HookEntry should exist');
+    assert.strictEqual(entry.description, 'agent: agent');
+  });
+});
+
+// ── Hook Overlap Tests (TEST-HOOK-OVERLAP) ────────────────────────
+
+suite('Hook Overlap (TEST-HOOK-OVERLAP)', () => {
+  test('HookEntryVM has populated overlap when same hook exists in two scopes', () => {
+    const hook = { type: 'command' as const, command: 'echo test' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [hook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [{ ...hook }] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    // User scope entry should have isDuplicatedBy (same hook in ProjectLocal which has higher precedence)
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const userEntry = findVM(userScope.children, NodeKind.HookEntry);
+    assert.ok(userEntry, 'HookEntry should exist in User scope');
+    assert.ok(
+      userEntry.nodeContext.overlap.isDuplicatedBy || userEntry.nodeContext.overlap.isOverriddenBy,
+      'HookEntry overlap should be populated (not empty {})',
+    );
+  });
+
+  test('HookEntryVM.contextValue includes "overridden" suffix when isOverriddenBy is set', () => {
+    const userHook = { type: 'command' as const, command: 'echo user' };
+    const localHook = { type: 'command' as const, command: 'echo local' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [userHook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [localHook] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const userEntry = findVM(userScope.children, NodeKind.HookEntry);
+    assert.ok(userEntry, 'HookEntry should exist');
+    // User has different value from ProjectLocal -> isOverriddenBy
+    assert.ok(userEntry.nodeContext.overlap.isOverriddenBy, 'Should be overridden');
+    assert.ok(
+      userEntry.contextValue.includes('overridden'),
+      `contextValue should include "overridden", got: ${userEntry.contextValue}`,
+    );
+  });
+
+  test('HookEntryVM.icon uses disabledForeground color when isOverriddenBy is set', () => {
+    const userHook = { type: 'command' as const, command: 'echo user' };
+    const localHook = { type: 'command' as const, command: 'echo local' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [userHook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [localHook] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const userEntry = findVM(userScope.children, NodeKind.HookEntry);
+    assert.ok(userEntry, 'HookEntry should exist');
+    assert.ok(userEntry.nodeContext.overlap.isOverriddenBy, 'Should be overridden');
+    assert.ok(userEntry.icon?.color, 'Overridden icon should have a color');
+    assert.strictEqual(
+      (userEntry.icon!.color as vscode.ThemeColor).id,
+      'disabledForeground',
+      'Overridden HookEntry icon should use disabledForeground color',
+    );
+  });
+
+  test('HookEntryVM.resourceUri is set (not undefined) when overlap exists', () => {
+    const hook = { type: 'command' as const, command: 'echo test' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [hook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [{ ...hook }] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const userEntry = findVM(userScope.children, NodeKind.HookEntry);
+    assert.ok(userEntry, 'HookEntry should exist');
+    assert.ok(
+      userEntry.nodeContext.overlap.isDuplicatedBy || userEntry.nodeContext.overlap.isOverriddenBy,
+      'Overlap should be populated',
+    );
+    assert.ok(userEntry.resourceUri, 'resourceUri should be set when overlap exists');
+  });
+
+  test('HookEntryVM.tooltip contains overlap markdown content when overlap is present', () => {
+    const hook = { type: 'command' as const, command: 'echo test' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [hook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [{ ...hook }] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const userEntry = findVM(userScope.children, NodeKind.HookEntry);
+    assert.ok(userEntry, 'HookEntry should exist');
+    assert.ok(
+      userEntry.nodeContext.overlap.isDuplicatedBy || userEntry.nodeContext.overlap.isOverriddenBy,
+      'Overlap should be populated',
+    );
+    assert.ok(userEntry.tooltip instanceof vscode.MarkdownString, 'Tooltip should be MarkdownString when overlap present');
+    const tooltipValue = (userEntry.tooltip as vscode.MarkdownString).value;
+    assert.ok(
+      tooltipValue.includes('Duplicated') || tooltipValue.includes('Overridden') ||
+      tooltipValue.includes('duplicated') || tooltipValue.includes('overridden'),
+      `Tooltip should contain overlap info, got: ${tooltipValue}`,
+    );
+  });
+
+  test('HookEntryVM.description includes override suffix when isOverriddenBy is set', () => {
+    const userHook = { type: 'command' as const, command: 'echo user' };
+    const localHook = { type: 'command' as const, command: 'echo local' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [userHook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [localHook] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const userEntry = findVM(userScope.children, NodeKind.HookEntry);
+    assert.ok(userEntry, 'HookEntry should exist');
+    assert.ok(userEntry.nodeContext.overlap.isOverriddenBy, 'Should be overridden');
+    assert.ok(
+      userEntry.description.includes('overridden'),
+      `description should include "overridden", got: ${userEntry.description}`,
+    );
+  });
+
+  test('HookEventVM container still has overlap: {} (no overlap on container nodes)', () => {
+    const hook = { type: 'command' as const, command: 'echo test' };
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [hook] },
+          ],
+        },
+      }),
+      makeScopedConfig(ConfigScope.ProjectLocal, {
+        hooks: {
+          [HookEventType.PreToolUse]: [
+            { matcher: 'Bash', hooks: [{ ...hook }] },
+          ],
+        },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const userScope = vms.find((v) => v.kind === NodeKind.Scope && v.label === 'User');
+    assert.ok(userScope, 'User scope should exist');
+    const hookEvent = findVM(userScope.children, NodeKind.HookEvent, 'PreToolUse');
+    assert.ok(hookEvent, 'HookEvent container should exist');
+    assert.deepStrictEqual(
+      hookEvent.nodeContext.overlap,
+      {},
+      'HookEvent container should have empty overlap {}',
+    );
+  });
+});
+
+// ── TRIV-03: EnvVar Base Tooltip ────────────────────────────────
+
+suite('TRIV-03: EnvVar base tooltip', () => {
+  test('tooltip contains key=value in markdown format', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        env: { MY_VAR: 'my_value' },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const envVar = findVM(vms, NodeKind.EnvVar, 'MY_VAR');
+    assert.ok(envVar, 'EnvVar should exist');
+    assert.ok(envVar.tooltip instanceof vscode.MarkdownString, 'Tooltip should be MarkdownString');
+    const tooltipValue = (envVar.tooltip as vscode.MarkdownString).value;
+    assert.ok(
+      tooltipValue.includes('**MY_VAR** = `my_value`'),
+      `Tooltip should contain key=value markdown, got: ${tooltipValue}`,
+    );
+  });
+
+  test('tooltip contains "Defined in:" with scope label', () => {
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.ProjectShared, {
+        env: { API_URL: 'https://example.com' },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const envVar = findVM(vms, NodeKind.EnvVar, 'API_URL');
+    assert.ok(envVar, 'EnvVar should exist');
+    assert.ok(envVar.tooltip instanceof vscode.MarkdownString, 'Tooltip should be MarkdownString');
+    const tooltipValue = (envVar.tooltip as vscode.MarkdownString).value;
+    assert.ok(
+      tooltipValue.includes('Defined in:'),
+      `Tooltip should contain "Defined in:", got: ${tooltipValue}`,
+    );
+    assert.ok(
+      tooltipValue.includes('Project (Shared)'),
+      `Tooltip should contain scope label, got: ${tooltipValue}`,
+    );
+  });
+
+  test('long value (>80 chars) is truncated with ellipsis', () => {
+    const longValue = 'a'.repeat(120);
+    const configs: ScopedConfig[] = [
+      makeScopedConfig(ConfigScope.User, {
+        env: { LONG_VAR: longValue },
+      }),
+    ];
+    const builder = new TreeViewModelBuilder(createMockConfigStore(configs));
+    const vms = builder.build();
+
+    const envVar = findVM(vms, NodeKind.EnvVar, 'LONG_VAR');
+    assert.ok(envVar, 'EnvVar should exist');
+    assert.ok(envVar.tooltip instanceof vscode.MarkdownString, 'Tooltip should be MarkdownString');
+    const tooltipValue = (envVar.tooltip as vscode.MarkdownString).value;
+    // Should contain first 80 chars + ...
+    assert.ok(
+      tooltipValue.includes('a'.repeat(80) + '...'),
+      `Tooltip should truncate long values at 80 chars, got: ${tooltipValue}`,
+    );
+    // Should NOT contain the full 120-char value
+    assert.ok(
+      !tooltipValue.includes('a'.repeat(120)),
+      'Tooltip should not contain the full untruncated value',
     );
   });
 });

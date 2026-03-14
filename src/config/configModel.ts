@@ -16,7 +16,6 @@ export class ConfigStore implements vscode.Disposable {
 
   reload(workspaceFolderUri?: string): void {
     PluginMetadataService.getInstance().invalidate();
-    console.log('[Claude Config] Plugin metadata cache invalidated on reload');
 
     const allDiscovered = discoverConfigPaths();
 
@@ -138,6 +137,8 @@ export class ConfigStore implements vscode.Disposable {
       filePath: discovered.user.path,
       fileExists: discovered.user.exists,
       config: userResult.data,
+      mcpConfig: discovered.userMcpConfig,
+      mcpFilePath: discovered.userMcpConfig ? discovered.claudeJsonPath : undefined,
       isReadOnly: false,
     });
 
@@ -173,6 +174,8 @@ export class ConfigStore implements vscode.Disposable {
         filePath: discovered.projectLocal.path,
         fileExists: discovered.projectLocal.exists,
         config: localResult.data,
+        mcpConfig: discovered.localMcpConfig,
+        mcpFilePath: discovered.localMcpConfig ? discovered.claudeJsonPath : undefined,
         isReadOnly: false,
       });
     }

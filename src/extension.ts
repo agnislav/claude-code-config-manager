@@ -43,12 +43,17 @@ export function activate(context: vscode.ExtensionContext): void {
     treeDataProvider: treeProvider,
   });
 
-  // 4. Set up validation diagnostics
+  // 4. Set up validation diagnostics (debounced — file I/O is synchronous)
   const diagnostics = new ConfigDiagnostics();
   runDiagnostics(configStore, diagnostics);
 
+  let diagnosticsTimer: ReturnType<typeof setTimeout> | undefined;
   configStore.onDidChange(() => {
-    runDiagnostics(configStore, diagnostics);
+    if (diagnosticsTimer) clearTimeout(diagnosticsTimer);
+    diagnosticsTimer = setTimeout(() => {
+      diagnosticsTimer = undefined;
+      runDiagnostics(configStore, diagnostics);
+    }, 500);
   });
 
   // 5. Register commands
@@ -261,6 +266,7 @@ export function activate(context: vscode.ExtensionContext): void {
     treeView, treeProvider, configStore, fileWatcher, diagnostics, refreshCmd, filterCmd, filterActiveCmd,
     toggleLockCmd, lockCmd, unlockCmd, collapseAllCmd, expandAllCmd,
     togglePluginCmd, outputChannel,
+    { dispose: () => { if (diagnosticsTimer) clearTimeout(diagnosticsTimer); } },
     vscode.window.registerFileDecorationProvider(pluginDecorations),
     vscode.window.registerFileDecorationProvider(lockDecorations),
     vscode.window.registerFileDecorationProvider(overlapDecorations),
