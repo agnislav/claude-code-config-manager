@@ -112,7 +112,7 @@ export async function copyItemToScope(
   node: ConfigTreeNode,
   targetSc: ScopedConfig,
 ): Promise<boolean> {
-  const { filePath: _sourceFilePath, keyPath, scope } = node.nodeContext;
+  const { keyPath, scope } = node.nodeContext;
   const targetFilePath = targetSc.filePath;
   if (!targetFilePath) return false;
 

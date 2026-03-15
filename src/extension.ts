@@ -17,6 +17,7 @@ import { SectionType, ConfigScope } from './types';
 import { SECTION_LABELS, SECTION_ICONS, EDITOR_SYNC_SUPPRESS_MS, TREE_SYNC_SUPPRESS_MS, EDITOR_TREE_SYNC_DEBOUNCE_MS, DEACTIVATION_POLL_INTERVAL_MS, DEACTIVATION_MAX_WAIT_MS } from './constants';
 import { LockDecorationProvider } from './tree/lockDecorations';
 import { OverlapDecorationProvider } from './tree/overlapDecorations';
+import { ConfigDragAndDropController } from './dnd/dndController';
 
 // Module-scope map for tracking editor-tree sync timeouts
 const syncTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
@@ -38,9 +39,11 @@ export function activate(context: vscode.ExtensionContext): void {
   // 2. Create the tree data provider
   const treeProvider = new ConfigTreeProvider(configStore);
 
-  // 3. Register the tree view
+  // 3. Create the drag-and-drop controller and register the tree view
+  const dndController = new ConfigDragAndDropController(configStore);
   const treeView = vscode.window.createTreeView('claudeConfigTree', {
     treeDataProvider: treeProvider,
+    dragAndDropController: dndController,
   });
 
   // 4. Set up validation diagnostics (debounced — file I/O is synchronous)
