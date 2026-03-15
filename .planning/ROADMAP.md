@@ -197,7 +197,7 @@ Plans:
 | 28. Action Parity | v0.9.0 | 2/2 | Complete | 2026-03-13 |
 | 29. Permission Overlap Performance | v0.9.0 | 1/1 | Complete | 2026-03-13 |
 | 30. Code Simplification | 2/2 | Complete    | 2026-03-15 | - |
-| 31. Settings Add Button | 1/1 | Complete   | 2026-03-15 | - |
+| 31. Settings Add Button | 1/1 | Complete    | 2026-03-15 | - |
 | 32. Drag and Drop Between Scopes | v0.10.0 | 0/TBD | Not started | - |
 | 33. Accessibility Labels | v0.10.0 | 0/TBD | Not started | - |
 
