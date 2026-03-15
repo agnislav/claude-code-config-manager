@@ -99,7 +99,7 @@
 
 ---
 
-### 🚧 v0.10.0 Simplify & Power Features (In Progress)
+### v0.10.0 Simplify & Power Features (In Progress)
 
 **Milestone Goal:** Clean up ~270+ lines of duplicated command code, then add Settings "Add" button, drag-and-drop between scopes, and accessibility labels.
 
@@ -122,7 +122,10 @@
   3. Every target-scope picker calls `pickEditableTargetScope()` — the 5 call sites share one implementation
   4. `formatValue()` handles both regular and sandbox values via a style parameter — `formatSandboxValue()` no longer exists as a separate function
   5. Plugin checkbox registration and toggle handler share `togglePluginEnabled()` — no duplicated enable/disable logic remains
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 30-01-PLAN.md — Extract 6 shared helpers and apply across command files
+- [ ] 30-02-PLAN.md — Deduplicate plugin toggle handlers
 
 ### Phase 31: Settings Add Button
 **Goal**: Users can add new settings directly from the tree without hand-editing JSON
@@ -191,7 +194,7 @@
 | 27. Hook Overlap Detection | v0.9.0 | 1/1 | Complete | 2026-03-12 |
 | 28. Action Parity | v0.9.0 | 2/2 | Complete | 2026-03-13 |
 | 29. Permission Overlap Performance | v0.9.0 | 1/1 | Complete | 2026-03-13 |
-| 30. Code Simplification | v0.10.0 | 0/TBD | Not started | - |
+| 30. Code Simplification | v0.10.0 | 0/2 | Not started | - |
 | 31. Settings Add Button | v0.10.0 | 0/TBD | Not started | - |
 | 32. Drag and Drop Between Scopes | v0.10.0 | 0/TBD | Not started | - |
 | 33. Accessibility Labels | v0.10.0 | 0/TBD | Not started | - |
@@ -199,4 +202,4 @@
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-15 — v0.10.0 Simplify & Power Features roadmap added (Phases 30-33)*
+*Last updated: 2026-03-15 — Phase 30 planned (2 plans)*
