@@ -1,7 +1,7 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.3
-milestone_name: milestone
+milestone: v0.10.0
+milestone_name: Simplify & Power Features
 status: planning
 stopped_at: Completed 31-01-PLAN.md (Settings Add Button)
 last_updated: "2026-03-15T10:20:36.769Z"
