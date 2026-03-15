@@ -82,6 +82,12 @@
         "icon": "$(add)"
       },
       {
+        "command": "claudeConfig.addSetting",
+        "title": "Add Setting",
+        "category": "Claude Config",
+        "icon": "$(add)"
+      },
+      {
         "command": "claudeConfig.changePermissionType",
         "title": "Change Permission Type",
         "category": "Claude Config",
@@ -290,6 +296,16 @@
           "group": "3_add"
         },
         {
+          "command": "claudeConfig.addSetting",
+          "when": "view == claudeConfigTree && viewItem =~ /^section\\.settings\\.editable/",
+          "group": "3_add"
+        },
+        {
+          "command": "claudeConfig.addSetting",
+          "when": "view == claudeConfigTree && viewItem =~ /^section\\.settings\\.editable/",
+          "group": "inline@0"
+        },
+        {
           "command": "claudeConfig.togglePlugin",
           "when": "view == claudeConfigTree && viewItem =~ /^plugin\\.editable/",
           "group": "1_edit"
@@ -455,6 +471,10 @@
         },
         {
           "command": "claudeConfig.expandAll",
+          "when": "false"
+        },
+        {
+          "command": "claudeConfig.addSetting",
           "when": "false"
         }
       ]
