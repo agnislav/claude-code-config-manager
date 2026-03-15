@@ -106,7 +106,7 @@
 ## Phases
 
 - [x] **Phase 30: Code Simplification** - Extract duplicated patterns into shared helpers across command handlers (completed 2026-03-15)
-- [ ] **Phase 31: Settings Add Button** - Inline "+" button on Settings section with schema-aware QuickPick and type-appropriate input
+- [x] **Phase 31: Settings Add Button** - Inline "+" button on Settings section with schema-aware QuickPick and type-appropriate input (completed 2026-03-15)
 - [ ] **Phase 32: Drag and Drop Between Scopes** - Move/copy tree items across scopes by dragging, with lock awareness
 - [ ] **Phase 33: Accessibility Labels** - Populate accessibilityInformation on all tree node types
 
@@ -137,7 +137,7 @@ Plans:
   3. A free-text entry option in the QuickPick lets the user type any custom setting key not in the schema
   4. After selecting a key, the input prompt matches the expected type — boolean keys show a toggle QuickPick, string keys show a text input box
   5. The new setting appears in the tree and is persisted to the correct config file immediately after confirmation
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
 - [ ] 31-01-PLAN.md — Add Setting command with schema-aware QuickPick and type-appropriate input
 
@@ -197,7 +197,7 @@ Plans:
 | 28. Action Parity | v0.9.0 | 2/2 | Complete | 2026-03-13 |
 | 29. Permission Overlap Performance | v0.9.0 | 1/1 | Complete | 2026-03-13 |
 | 30. Code Simplification | 2/2 | Complete    | 2026-03-15 | - |
-| 31. Settings Add Button | v0.10.0 | 0/1 | Not started | - |
+| 31. Settings Add Button | 1/1 | Complete   | 2026-03-15 | - |
 | 32. Drag and Drop Between Scopes | v0.10.0 | 0/TBD | Not started | - |
 | 33. Accessibility Labels | v0.10.0 | 0/TBD | Not started | - |
 

@@ -19,10 +19,10 @@ Requirements for v0.10.0 Simplify & Power Features. Each maps to roadmap phases.
 
 ### Settings Add
 
-- [ ] **SETT-01**: Inline "+" button on editable Settings section headers
-- [ ] **SETT-02**: QuickPick showing known settings from schema, filtered by already-set keys
-- [ ] **SETT-03**: Free-text fallback option for custom setting keys
-- [ ] **SETT-04**: Type-appropriate value input (boolean toggle, string input, etc.)
+- [x] **SETT-01**: Inline "+" button on editable Settings section headers
+- [x] **SETT-02**: QuickPick showing known settings from schema, filtered by already-set keys
+- [x] **SETT-03**: Free-text fallback option for custom setting keys
+- [x] **SETT-04**: Type-appropriate value input (boolean toggle, string input, etc.)
 
 ### Drag and Drop
 
@@ -73,10 +73,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SIMP-05 | Phase 30 | Complete |
 | SIMP-06 | Phase 30 | Complete |
 | SIMP-07 | Phase 30 | Complete |
-| SETT-01 | Phase 31 | Pending |
-| SETT-02 | Phase 31 | Pending |
-| SETT-03 | Phase 31 | Pending |
-| SETT-04 | Phase 31 | Pending |
+| SETT-01 | Phase 31 | Complete |
+| SETT-02 | Phase 31 | Complete |
+| SETT-03 | Phase 31 | Complete |
+| SETT-04 | Phase 31 | Complete |
 | DND-01 | Phase 32 | Pending |
 | DND-02 | Phase 32 | Pending |
 | DND-03 | Phase 32 | Pending |

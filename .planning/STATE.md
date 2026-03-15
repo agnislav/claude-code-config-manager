@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.3
 milestone_name: milestone
 status: planning
-stopped_at: Completed 30-02-PLAN.md (Deduplicate Plugin Toggle Logic)
-last_updated: "2026-03-15T00:37:48.022Z"
+stopped_at: Completed 31-01-PLAN.md (Settings Add Button)
+last_updated: "2026-03-15T10:17:55.950Z"
 last_activity: 2026-03-15 — Roadmap created for v0.10.0 (Phases 30-33)
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
   percent: 0
 ---
 
@@ -49,6 +49,7 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 | 33. Accessibility Labels | - | - | - |
 | Phase 30 P01 | 15min | 2 tasks | 11 files |
 | Phase 30-code-simplification P02 | 8min | 1 tasks | 2 files |
+| Phase 31-settings-add-button P01 | 5min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,8 @@ Recent decisions affecting current work:
 - v0.10.0 planning: DND between scopes and accessibility labels moved from DEFR list into active milestone scope
 - [Phase 30]: withWriteRetry passes action directly as retryFn to showWriteError, guardReadOnly uses allowLockedUser option for copy commands, formatValue gains style parameter replacing formatSandboxValue
 - [Phase 30-02]: togglePluginEnabled uses inline try/catch (not withWriteRetry) to preserve exact original behavior: refresh tree after showWriteError, not just on initial write failure
+- [Phase 31-01]: Inline button and context menu group 3_add both target section.settings.editable contextValue regex to match editable scopes only
+- [Phase 31-01]: SETTING_TYPE_MAP lookup dispatches boolean/number/string[]/object/string input widgets for type-appropriate value entry
 
 ### Pending Todos
 
@@ -74,8 +77,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T00:35:14.571Z
-Stopped at: Completed 30-02-PLAN.md (Deduplicate Plugin Toggle Logic)
+Last session: 2026-03-15T10:17:55.947Z
+Stopped at: Completed 31-01-PLAN.md (Settings Add Button)
 Resume file: None
 
 ---
