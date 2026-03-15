@@ -11,5 +11,5 @@
     "_auto_chain_active": false
   },
   "granularity": "coarse",
-  "milestone_branch_template": "release/{milestone}-{slug}"
+  "milestone_branch_template": "milestone/{milestone}"
 }
