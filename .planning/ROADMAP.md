@@ -1,7 +1,7 @@
 # Roadmap: Claude Code Config Manager
 
 **Created:** 2026-02-18
-**Updated:** 2026-03-15
+**Updated:** 2026-03-16
 **Status:** v0.3.x-v0.9.0 complete (Phases 1-29), v0.10.0 in progress (Phases 30-33)
 
 ---
@@ -163,7 +163,9 @@ Plans:
   1. Every leaf node (PermissionRule, EnvVar, McpServer, Plugin, Setting, SandboxProperty, SettingKeyValue, HookEntry) has `accessibilityInformation` set with a label that includes the item's scope, value, and override status
   2. Every container node (ScopeNode, SectionNode) has `accessibilityInformation` set with a label that includes scope name, section name, and item count where applicable
   3. Overlapping items include overlap status in their accessibility label (e.g., "overrides User scope value", "duplicated in Project Shared")
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 33-01-PLAN.md — Add accessibilityInformation to all tree node types via ViewModel layer
 
 ## Progress
 
@@ -201,9 +203,9 @@ Plans:
 | 30. Code Simplification | v0.10.0 | 2/2 | Complete | 2026-03-15 |
 | 31. Settings Add Button | v0.10.0 | 1/1 | Complete | 2026-03-15 |
 | 32. Drag and Drop Between Scopes | v0.10.0 | 0/1 | Not started | - |
-| 33. Accessibility Labels | v0.10.0 | 0/TBD | Not started | - |
+| 33. Accessibility Labels | v0.10.0 | 0/1 | Not started | - |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-15 — Phase 32 planned (1 plan)*
+*Last updated: 2026-03-16 — Phase 33 planned (1 plan)*
