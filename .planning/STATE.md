@@ -1,15 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.10.0
-milestone_name: Simplify & Power Features
-status: active
-last_updated: "2026-03-15T00:00:00.000Z"
+milestone: v0.3
+milestone_name: milestone
+status: planning
+stopped_at: Completed 30-01-PLAN.md (Extract Shared Command Helpers)
+last_updated: "2026-03-15T00:30:54.777Z"
 last_activity: 2026-03-15 — Roadmap created for v0.10.0 (Phases 30-33)
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -46,6 +47,7 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 | 31. Settings Add Button | - | - | - |
 | 32. Drag and Drop | - | - | - |
 | 33. Accessibility Labels | - | - | - |
+| Phase 30 P01 | 15min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -56,6 +58,7 @@ Recent decisions affecting current work:
 
 - Phase 29: Permission overlap batch algorithm replacing O(R²) with indexed O(R×G)
 - v0.10.0 planning: DND between scopes and accessibility labels moved from DEFR list into active milestone scope
+- [Phase 30]: withWriteRetry passes action directly as retryFn to showWriteError, guardReadOnly uses allowLockedUser option for copy commands, formatValue gains style parameter replacing formatSandboxValue
 
 ### Pending Todos
 
@@ -69,8 +72,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15
-Stopped at: Roadmap created — Phase 30 ready to plan
+Last session: 2026-03-15T00:30:54.775Z
+Stopped at: Completed 30-01-PLAN.md (Extract Shared Command Helpers)
 Resume file: None
 
 ---

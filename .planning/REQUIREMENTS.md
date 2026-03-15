@@ -9,12 +9,12 @@ Requirements for v0.10.0 Simplify & Power Features. Each maps to roadmap phases.
 
 ### Simplification
 
-- [ ] **SIMP-01**: Try/catch retry dispatch blocks extracted into named closures (5 locations)
-- [ ] **SIMP-02**: Read-only guard extracted into `guardReadOnly()` helper (8 locations)
-- [ ] **SIMP-03**: Target scope selection extracted into `pickEditableTargetScope()` helper (5 locations)
-- [ ] **SIMP-04**: Overwrite confirmation extracted into `confirmOverwrite()` helper (3 locations)
-- [ ] **SIMP-05**: `formatSandboxValue()` merged into `formatValue()` with style parameter
-- [ ] **SIMP-06**: Timestamp formatting extracted into `formatTimestamp()` helper (3 locations)
+- [x] **SIMP-01**: Try/catch retry dispatch blocks extracted into named closures (5 locations)
+- [x] **SIMP-02**: Read-only guard extracted into `guardReadOnly()` helper (8 locations)
+- [x] **SIMP-03**: Target scope selection extracted into `pickEditableTargetScope()` helper (5 locations)
+- [x] **SIMP-04**: Overwrite confirmation extracted into `confirmOverwrite()` helper (3 locations)
+- [x] **SIMP-05**: `formatSandboxValue()` merged into `formatValue()` with style parameter
+- [x] **SIMP-06**: Timestamp formatting extracted into `formatTimestamp()` helper (3 locations)
 - [ ] **SIMP-07**: Plugin checkbox + toggle handlers deduplicated via `togglePluginEnabled()`
 
 ### Settings Add
@@ -66,12 +66,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SIMP-01 | Phase 30 | Pending |
-| SIMP-02 | Phase 30 | Pending |
-| SIMP-03 | Phase 30 | Pending |
-| SIMP-04 | Phase 30 | Pending |
-| SIMP-05 | Phase 30 | Pending |
-| SIMP-06 | Phase 30 | Pending |
+| SIMP-01 | Phase 30 | Complete |
+| SIMP-02 | Phase 30 | Complete |
+| SIMP-03 | Phase 30 | Complete |
+| SIMP-04 | Phase 30 | Complete |
+| SIMP-05 | Phase 30 | Complete |
+| SIMP-06 | Phase 30 | Complete |
 | SIMP-07 | Phase 30 | Pending |
 | SETT-01 | Phase 31 | Pending |
 | SETT-02 | Phase 31 | Pending |
