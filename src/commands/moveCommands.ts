@@ -15,14 +15,215 @@ import {
   removeScalarSetting,
   setPluginEnabled,
   removePlugin,
+  setSandboxProperty,
+  removeSandboxProperty,
 } from '../config/configWriter';
 import { PERMISSION_CATEGORY_LABELS, SCOPE_LABELS, MESSAGES } from '../constants';
-import { ClaudeCodeConfig, ConfigScope, McpServerConfig, PermissionCategory } from '../types';
+import { ClaudeCodeConfig, ConfigScope, McpServerConfig, PermissionCategory, ScopedConfig } from '../types';
 import { readJsonFile } from '../utils/json';
 import { getUserClaudeJsonPath } from '../utils/platform';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { validateKeyPath } from '../utils/validation';
 import { guardReadOnly, pickEditableTargetScope, confirmOverwrite, withWriteRetry } from '../utils/commandHelpers';
+
+/**
+ * Moves a config item from its source scope to the given target ScopedConfig.
+ * Writes to target then removes from source.
+ * Returns true if the operation completed, false if it was skipped (item not found).
+ */
+export async function moveItemToScope(
+  configStore: ConfigStore,
+  node: ConfigTreeNode,
+  targetSc: ScopedConfig,
+): Promise<boolean> {
+  const { filePath, keyPath, scope } = node.nodeContext;
+  const targetFilePath = targetSc.filePath;
+  if (!targetFilePath) return false;
+
+  const key = node.nodeContext.workspaceFolderUri ?? configStore.getWorkspaceFolderKeys()[0];
+  const allScopes = configStore.getAllScopes(key);
+  const rootKey = keyPath[0];
+
+  const workspacePath = node.nodeContext.workspaceFolderUri
+    ? vscode.workspace.getWorkspaceFolder(vscode.Uri.parse(node.nodeContext.workspaceFolderUri))?.uri.fsPath
+    : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const claudeJsonPath = getUserClaudeJsonPath();
+
+  await withWriteRetry(targetFilePath, () => {
+    if (rootKey === 'permissions' && keyPath.length === 3) {
+      const category = keyPath[1] as PermissionCategory;
+      const rule = keyPath[2];
+      addPermissionRule(targetFilePath, category, rule);
+      removePermissionRule(filePath!, category, rule);
+    } else if (rootKey === 'env' && keyPath.length === 2) {
+      const envKey = keyPath[1];
+      const currentSc = allScopes.find((s) => s.scope === scope);
+      const currentValue = currentSc?.config.env?.[envKey] ?? '';
+      setEnvVar(targetFilePath, envKey, currentValue);
+      removeEnvVar(filePath!, envKey);
+    } else if (rootKey === 'enabledPlugins' && keyPath.length === 2) {
+      const pluginId = keyPath[1];
+      const currentSc = allScopes.find((s) => s.scope === scope);
+      const enabled = currentSc?.config.enabledPlugins?.[pluginId] ?? true;
+      setPluginEnabled(targetFilePath, pluginId, enabled);
+      removePlugin(filePath!, pluginId);
+    } else if (rootKey === 'mcpServers' && keyPath.length === 2) {
+      const serverName = keyPath[1];
+      const currentSc = allScopes.find((s) => s.scope === scope);
+      const serverConfig = currentSc?.mcpConfig?.mcpServers?.[serverName];
+      if (!serverConfig) {
+        vscode.window.showWarningMessage(`Claude Config: Could not find MCP server "${serverName}" in source scope.`);
+        return;
+      }
+      dispatchMcpWrite(targetSc.scope, targetFilePath, serverName, serverConfig, workspacePath, claudeJsonPath);
+      dispatchMcpRemove(scope, filePath!, serverName, workspacePath, claudeJsonPath);
+    } else if (rootKey === 'sandbox' && keyPath.length === 2) {
+      const sandboxKey = keyPath[1];
+      const currentSc = allScopes.find((s) => s.scope === scope);
+      const value = (currentSc?.config.sandbox as Record<string, unknown>)?.[sandboxKey];
+      if (value !== undefined) {
+        setSandboxProperty(targetFilePath, sandboxKey, value);
+        removeSandboxProperty(filePath!, sandboxKey);
+      }
+    } else {
+      const currentSc = allScopes.find((s) => s.scope === scope);
+      const value = currentSc?.config[rootKey];
+      if (value !== undefined) {
+        setScalarSetting(targetFilePath, rootKey, value);
+        removeScalarSetting(filePath!, rootKey);
+      }
+    }
+  });
+
+  const itemName = node.label?.toString() ?? '';
+  vscode.window.showInformationMessage(
+    MESSAGES.movedItem(itemName, SCOPE_LABELS[targetSc.scope]),
+  );
+  return true;
+}
+
+/**
+ * Copies a config item from its source scope to the given target ScopedConfig.
+ * Writes to target only, does not remove from source.
+ * Returns true if the operation completed, false if the user cancelled overwrite or item not found.
+ */
+export async function copyItemToScope(
+  configStore: ConfigStore,
+  node: ConfigTreeNode,
+  targetSc: ScopedConfig,
+): Promise<boolean> {
+  const { filePath: _sourceFilePath, keyPath, scope } = node.nodeContext;
+  const targetFilePath = targetSc.filePath;
+  if (!targetFilePath) return false;
+
+  const key = node.nodeContext.workspaceFolderUri ?? configStore.getWorkspaceFolderKeys()[0];
+  const allScopes = configStore.getAllScopes(key);
+  const rootKey = keyPath[0];
+
+  const workspacePath = node.nodeContext.workspaceFolderUri
+    ? vscode.workspace.getWorkspaceFolder(vscode.Uri.parse(node.nodeContext.workspaceFolderUri))?.uri.fsPath
+    : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const claudeJsonPath = getUserClaudeJsonPath();
+
+  if (rootKey === 'permissions' && keyPath.length === 3) {
+    const category = keyPath[1] as PermissionCategory;
+    const rule = keyPath[2];
+    // Check if rule already exists in any category in target
+    const targetSc_ = allScopes.find((s) => s.scope === targetSc.scope);
+    const allCategories = [PermissionCategory.Allow, PermissionCategory.Deny, PermissionCategory.Ask];
+    for (const cat of allCategories) {
+      const rules = targetSc_?.config.permissions?.[cat];
+      if (!rules?.includes(rule)) continue;
+      if (cat === category) {
+        vscode.window.showInformationMessage(
+          MESSAGES.permissionAlreadyExists(rule, PERMISSION_CATEGORY_LABELS[cat] ?? cat, SCOPE_LABELS[targetSc.scope]),
+        );
+        return false;
+      }
+      const existingLabel = PERMISSION_CATEGORY_LABELS[cat] ?? cat;
+      const categoryLabel = PERMISSION_CATEGORY_LABELS[category] ?? category;
+      const choice = await vscode.window.showWarningMessage(
+        `Claude Config: "${rule}" already exists as ${existingLabel} in ${SCOPE_LABELS[targetSc.scope]}. Change to ${categoryLabel}?`,
+        { modal: true },
+        'Change permission',
+        'Keep existing',
+      );
+      if (choice !== 'Change permission') return false;
+      removePermissionRule(targetFilePath, cat, rule);
+      break;
+    }
+    await withWriteRetry(targetFilePath, () => {
+      addPermissionRule(targetFilePath, category, rule);
+    });
+  } else if (rootKey === 'env' && keyPath.length === 2) {
+    const envKey = keyPath[1];
+    const targetConfig = allScopes.find((s) => s.scope === targetSc.scope)?.config;
+    if (targetConfig?.env && envKey in targetConfig.env) {
+      const confirmed = await confirmOverwrite(envKey, SCOPE_LABELS[targetSc.scope]);
+      if (!confirmed) return false;
+    }
+    const currentSc = allScopes.find((s) => s.scope === scope);
+    const value = currentSc?.config.env?.[envKey] ?? '';
+    await withWriteRetry(targetFilePath, () => {
+      setEnvVar(targetFilePath, envKey, value);
+    });
+  } else if (rootKey === 'enabledPlugins' && keyPath.length === 2) {
+    const pluginId = keyPath[1];
+    const targetConfig = allScopes.find((s) => s.scope === targetSc.scope)?.config;
+    if (targetConfig?.enabledPlugins && pluginId in targetConfig.enabledPlugins) {
+      const confirmed = await confirmOverwrite(pluginId, SCOPE_LABELS[targetSc.scope]);
+      if (!confirmed) return false;
+    }
+    const currentSc = allScopes.find((s) => s.scope === scope);
+    const enabled = currentSc?.config.enabledPlugins?.[pluginId] ?? true;
+    await withWriteRetry(targetFilePath, () => {
+      setPluginEnabled(targetFilePath, pluginId, enabled);
+    });
+  } else if (rootKey === 'mcpServers' && keyPath.length === 2) {
+    const serverName = keyPath[1];
+    const currentSc = allScopes.find((s) => s.scope === scope);
+    const serverConfig = currentSc?.mcpConfig?.mcpServers?.[serverName];
+    if (!serverConfig) {
+      vscode.window.showWarningMessage(`Claude Config: Could not find MCP server "${serverName}" in source scope.`);
+      return false;
+    }
+    const existingTargetSc = allScopes.find((s) => s.scope === targetSc.scope);
+    if (existingTargetSc?.mcpConfig?.mcpServers?.[serverName]) {
+      const confirmed = await confirmOverwrite(serverName, SCOPE_LABELS[targetSc.scope]);
+      if (!confirmed) return false;
+    }
+    await withWriteRetry(targetFilePath, () => {
+      dispatchMcpWrite(targetSc.scope, targetFilePath, serverName, serverConfig, workspacePath, claudeJsonPath);
+    });
+  } else if (rootKey === 'sandbox' && keyPath.length === 2) {
+    const sandboxKey = keyPath[1];
+    const currentSc = allScopes.find((s) => s.scope === scope);
+    const value = (currentSc?.config.sandbox as Record<string, unknown>)?.[sandboxKey];
+    if (value !== undefined) {
+      await withWriteRetry(targetFilePath, () => {
+        setSandboxProperty(targetFilePath, sandboxKey, value);
+      });
+    }
+  } else {
+    const currentSc = allScopes.find((s) => s.scope === scope);
+    const value = currentSc?.config[rootKey];
+    if (value === undefined) return false;
+    const targetConfig = allScopes.find((s) => s.scope === targetSc.scope)?.config;
+    if (targetConfig && rootKey in targetConfig) {
+      const confirmed = await confirmOverwrite(rootKey, SCOPE_LABELS[targetSc.scope]);
+      if (!confirmed) return false;
+    }
+    await withWriteRetry(targetFilePath, () => {
+      setScalarSetting(targetFilePath, rootKey, value);
+    });
+  }
+
+  const itemName = node.label?.toString() ?? '';
+  vscode.window.showInformationMessage(
+    MESSAGES.copiedSetting(itemName, SCOPE_LABELS[targetSc.scope]),
+  );
+  return true;
+}
 
 export function registerMoveCommands(
   context: vscode.ExtensionContext,

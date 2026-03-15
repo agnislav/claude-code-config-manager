@@ -595,3 +595,27 @@ export function setSandboxProperty(filePath: string, key: string, value: unknown
 
   trackedWrite(filePath, () => writeJsonFile(filePath, config));
 }
+
+export function removeSandboxProperty(filePath: string, key: string): void {
+  const config = loadOrCreate<ClaudeCodeConfig>(filePath);
+  if (!config.sandbox) return;
+
+  const keys = key.split('.');
+  if (keys.length === 1) {
+    delete (config.sandbox as Record<string, unknown>)[key];
+  } else if (keys.length === 2 && keys[0] === 'network') {
+    if (!config.sandbox.network) return;
+    delete (config.sandbox.network as Record<string, unknown>)[keys[1]];
+    // Clean up empty network object
+    if (Object.keys(config.sandbox.network).length === 0) {
+      delete config.sandbox.network;
+    }
+  }
+
+  // Clean up empty sandbox object
+  if (Object.keys(config.sandbox).length === 0) {
+    delete config.sandbox;
+  }
+
+  trackedWrite(filePath, () => writeJsonFile(filePath, config));
+}
