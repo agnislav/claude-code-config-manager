@@ -154,22 +154,15 @@ function buildOverlapResourceUri(
   });
 }
 
-function formatValue(value: unknown): string {
+function formatValue(value: unknown, style?: 'summary' | 'raw'): string {
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (Array.isArray(value)) return `[${value.length} items]`;
-  if (typeof value === 'object') return `{${Object.keys(value).length} keys}`;
+  if (typeof value === 'object') {
+    return style === 'raw' ? JSON.stringify(value) : `{${Object.keys(value).length} keys}`;
+  }
   return String(value);
-}
-
-function formatSandboxValue(value: unknown): string {
-  if (value === null || value === undefined) return 'null';
-  if (typeof value === 'boolean') return value ? 'true' : 'false';
-  if (typeof value === 'number') return String(value);
-  if (typeof value === 'string') return value;
-  if (Array.isArray(value)) return `[${value.length} items]`;
-  return JSON.stringify(value);
 }
 
 function getShortPath(filePath: string | undefined): string {
@@ -794,7 +787,7 @@ export class TreeViewModelBuilder {
       filePath: scopedConfig.filePath,
     };
 
-    const rawDescription = isExpandableObject ? '' : formatSandboxValue(value);
+    const rawDescription = isExpandableObject ? '' : formatValue(value, 'raw');
     const description = applyOverrideSuffix(rawDescription, overlap);
 
     let tooltip: string | vscode.MarkdownString | undefined;
@@ -845,7 +838,7 @@ export class TreeViewModelBuilder {
       filePath: scopedConfig.filePath,
     };
 
-    const rawDescription = formatSandboxValue(value);
+    const rawDescription = formatValue(value, 'raw');
     const description = applyOverrideSuffix(rawDescription, overlap);
 
     let tooltip: string | vscode.MarkdownString | undefined;
