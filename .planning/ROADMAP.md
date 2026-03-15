@@ -151,7 +151,9 @@ Plans:
   3. Dropping onto a locked or Managed (read-only) scope shows an error notification and leaves the tree unchanged
   4. Dropping an item onto a section of a different entity type is rejected — only same-entity-type drops are accepted
   5. The move and copy operations are executed via the existing moveCommands.ts logic — no parallel write path is introduced
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 32-01-PLAN.md — DnD controller with move/copy, lock awareness, and entity type validation
 
 ### Phase 33: Accessibility Labels
 **Goal**: All tree nodes expose meaningful accessibility information so screen reader users can navigate the config tree fully
@@ -196,12 +198,12 @@ Plans:
 | 27. Hook Overlap Detection | v0.9.0 | 1/1 | Complete | 2026-03-12 |
 | 28. Action Parity | v0.9.0 | 2/2 | Complete | 2026-03-13 |
 | 29. Permission Overlap Performance | v0.9.0 | 1/1 | Complete | 2026-03-13 |
-| 30. Code Simplification | 2/2 | Complete    | 2026-03-15 | - |
-| 31. Settings Add Button | 1/1 | Complete    | 2026-03-15 | - |
-| 32. Drag and Drop Between Scopes | v0.10.0 | 0/TBD | Not started | - |
+| 30. Code Simplification | v0.10.0 | 2/2 | Complete | 2026-03-15 |
+| 31. Settings Add Button | v0.10.0 | 1/1 | Complete | 2026-03-15 |
+| 32. Drag and Drop Between Scopes | v0.10.0 | 0/1 | Not started | - |
 | 33. Accessibility Labels | v0.10.0 | 0/TBD | Not started | - |
 
 ---
 
 *Roadmap created: 2026-02-18*
-*Last updated: 2026-03-15 — Phase 31 planned (1 plan)*
+*Last updated: 2026-03-15 — Phase 32 planned (1 plan)*
