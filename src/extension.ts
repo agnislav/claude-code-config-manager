@@ -8,13 +8,13 @@ import { registerEditCommands } from './commands/editCommands';
 import { registerDeleteCommands } from './commands/deleteCommands';
 import { registerMoveCommands } from './commands/moveCommands';
 import { registerOpenFileCommands } from './commands/openFileCommands';
-import { registerPluginCommands } from './commands/pluginCommands';
+import { registerPluginCommands, togglePluginEnabled } from './commands/pluginCommands';
 import { PluginDecorationProvider } from './tree/nodes/pluginNode';
-import { setPluginEnabled, showWriteError, initWriteTracker, isWriteInFlight, getInFlightWriteCount } from './config/configWriter';
+import { initWriteTracker, getInFlightWriteCount } from './config/configWriter';
 import { ConfigTreeNode } from './tree/nodes/baseNode';
 import { findKeyPathAtLine } from './utils/jsonLocation';
 import { SectionType, ConfigScope } from './types';
-import { SECTION_LABELS, SECTION_ICONS, EDITOR_SYNC_SUPPRESS_MS, TREE_SYNC_SUPPRESS_MS, EDITOR_TREE_SYNC_DEBOUNCE_MS, DEACTIVATION_POLL_INTERVAL_MS, DEACTIVATION_MAX_WAIT_MS, MESSAGES } from './constants';
+import { SECTION_LABELS, SECTION_ICONS, EDITOR_SYNC_SUPPRESS_MS, TREE_SYNC_SUPPRESS_MS, EDITOR_TREE_SYNC_DEBOUNCE_MS, DEACTIVATION_POLL_INTERVAL_MS, DEACTIVATION_MAX_WAIT_MS } from './constants';
 import { LockDecorationProvider } from './tree/lockDecorations';
 import { OverlapDecorationProvider } from './tree/overlapDecorations';
 
@@ -133,63 +133,18 @@ export function activate(context: vscode.ExtensionContext): void {
   // 7. Handle plugin checkbox toggles
   treeView.onDidChangeCheckboxState(async (e) => {
     for (const [item, state] of e.items) {
-      const node = item as ConfigTreeNode;
-      if (node.nodeType !== 'plugin') continue;
-      const { filePath, keyPath, isReadOnly } = node.nodeContext;
-      if (isReadOnly || !filePath || keyPath.length < 2) {
-        if (isReadOnly && node.nodeContext.scope === ConfigScope.User) {
-          vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
-        }
-        treeProvider.refresh();
-        continue;
-      }
-
-      // Block concurrent writes to the same file
-      if (isWriteInFlight(filePath)) {
-        vscode.window.showInformationMessage(MESSAGES.writeInProgress);
-        continue;
-      }
-
       const enabled = state === vscode.TreeItemCheckboxState.Checked;
-      try {
-        setPluginEnabled(filePath, keyPath[1], enabled);
-      } catch (error) {
-        await showWriteError(filePath, error, () => {
-          setPluginEnabled(filePath, keyPath[1], enabled);
-        });
-        treeProvider.refresh();
-      }
+      await togglePluginEnabled(item as ConfigTreeNode, enabled, () => treeProvider.refresh());
     }
   });
 
-  // Context menu "Toggle Plugin" — delegates to checkbox toggle
+  // Context menu "Toggle Plugin" — delegates to shared toggle helper
   const togglePluginCmd = vscode.commands.registerCommand(
     'claudeConfig.togglePlugin',
     async (node?: ConfigTreeNode) => {
       if (!node || node.nodeType !== 'plugin') return;
-      const { filePath, keyPath, isReadOnly } = node.nodeContext;
-      if (isReadOnly || !filePath || keyPath.length < 2) {
-        if (isReadOnly && node.nodeContext.scope === ConfigScope.User) {
-          vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
-        }
-        return;
-      }
-
-      // Block concurrent writes to the same file
-      if (isWriteInFlight(filePath)) {
-        vscode.window.showInformationMessage(MESSAGES.writeInProgress);
-        return;
-      }
-
       const currentEnabled = node.checkboxState === vscode.TreeItemCheckboxState.Checked;
-      try {
-        setPluginEnabled(filePath, keyPath[1], !currentEnabled);
-      } catch (error) {
-        await showWriteError(filePath, error, () => {
-          setPluginEnabled(filePath, keyPath[1], !currentEnabled);
-        });
-        treeProvider.refresh();
-      }
+      await togglePluginEnabled(node, !currentEnabled, () => treeProvider.refresh());
     },
   );
 

@@ -1,12 +1,53 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ConfigStore } from '../config/configModel';
-import { removePlugin, setPluginEnabled } from '../config/configWriter';
-import { SCOPE_LABELS, MESSAGES } from '../constants';
+import { removePlugin, setPluginEnabled, isWriteInFlight, showWriteError } from '../config/configWriter';
+import { MESSAGES, SCOPE_LABELS } from '../constants';
+import { ConfigScope } from '../types';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { PluginMetadataService } from '../utils/pluginMetadata';
 import { validateKeyPath } from '../utils/validation';
 import { guardReadOnly, pickEditableTargetScope, withWriteRetry } from '../utils/commandHelpers';
+
+/**
+ * Toggles a plugin's enabled state. Used by both the checkbox handler and the
+ * context menu "Toggle Plugin" command, eliminating duplicated guard + write + error logic.
+ *
+ * @param node       - The plugin tree node to toggle.
+ * @param enabled    - The desired enabled state.
+ * @param refreshTree - Optional callback to refresh the tree view (called on error or guard hit).
+ */
+export async function togglePluginEnabled(
+  node: ConfigTreeNode,
+  enabled: boolean,
+  refreshTree?: () => void,
+): Promise<void> {
+  if (node.nodeType !== 'plugin') return;
+
+  const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
+
+  if (isReadOnly || !filePath || keyPath.length < 2) {
+    if (isReadOnly && scope === ConfigScope.User) {
+      vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
+    }
+    refreshTree?.();
+    return;
+  }
+
+  if (isWriteInFlight(filePath)) {
+    vscode.window.showInformationMessage(MESSAGES.writeInProgress);
+    return;
+  }
+
+  try {
+    setPluginEnabled(filePath, keyPath[1], enabled);
+  } catch (error) {
+    await showWriteError(filePath, error, () => {
+      setPluginEnabled(filePath, keyPath[1], enabled);
+    });
+    refreshTree?.();
+  }
+}
 
 export function registerPluginCommands(
   context: vscode.ExtensionContext,
