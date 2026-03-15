@@ -15,7 +15,7 @@ Requirements for v0.10.0 Simplify & Power Features. Each maps to roadmap phases.
 - [x] **SIMP-04**: Overwrite confirmation extracted into `confirmOverwrite()` helper (3 locations)
 - [x] **SIMP-05**: `formatSandboxValue()` merged into `formatValue()` with style parameter
 - [x] **SIMP-06**: Timestamp formatting extracted into `formatTimestamp()` helper (3 locations)
-- [ ] **SIMP-07**: Plugin checkbox + toggle handlers deduplicated via `togglePluginEnabled()`
+- [x] **SIMP-07**: Plugin checkbox + toggle handlers deduplicated via `togglePluginEnabled()`
 
 ### Settings Add
 
@@ -72,7 +72,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SIMP-04 | Phase 30 | Complete |
 | SIMP-05 | Phase 30 | Complete |
 | SIMP-06 | Phase 30 | Complete |
-| SIMP-07 | Phase 30 | Pending |
+| SIMP-07 | Phase 30 | Complete |
 | SETT-01 | Phase 31 | Pending |
 | SETT-02 | Phase 31 | Pending |
 | SETT-03 | Phase 31 | Pending |
