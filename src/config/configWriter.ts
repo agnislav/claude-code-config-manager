@@ -12,6 +12,7 @@ import {
 } from '../types';
 import { readJsonFile, writeJsonFile } from '../utils/json';
 import { getAllowedWritePaths } from '../constants';
+import { formatTimestamp } from '../utils/timestamp';
 
 function ensureDir(filePath: string): void {
   const dir = path.dirname(filePath);
@@ -64,12 +65,7 @@ export function getInFlightWriteCount(): number {
  */
 function logWrite(message: string): void {
   if (!outputChannel) return;
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  const ss = String(now.getSeconds()).padStart(2, '0');
-  const mmm = String(now.getMilliseconds()).padStart(3, '0');
-  outputChannel.appendLine(`[${hh}:${mm}:${ss}.${mmm}] [write] ${message}`);
+  outputChannel.appendLine(`${formatTimestamp()} [write] ${message}`);
 }
 
 /**

@@ -15,7 +15,6 @@ import {
   removeScalarSetting,
   setPluginEnabled,
   removePlugin,
-  showWriteError,
 } from '../config/configWriter';
 import { PERMISSION_CATEGORY_LABELS, SCOPE_LABELS, MESSAGES } from '../constants';
 import { ClaudeCodeConfig, ConfigScope, McpServerConfig, PermissionCategory } from '../types';
@@ -23,6 +22,7 @@ import { readJsonFile } from '../utils/json';
 import { getUserClaudeJsonPath } from '../utils/platform';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { validateKeyPath } from '../utils/validation';
+import { guardReadOnly, pickEditableTargetScope, confirmOverwrite, withWriteRetry } from '../utils/commandHelpers';
 
 export function registerMoveCommands(
   context: vscode.ExtensionContext,
@@ -33,48 +33,22 @@ export function registerMoveCommands(
       'claudeConfig.moveToScope',
       async (node?: ConfigTreeNode) => {
         if (!node?.nodeContext) return;
-        const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
+        const { filePath, keyPath, scope } = node.nodeContext;
 
-        if (isReadOnly || !filePath) {
-          if (isReadOnly && scope === ConfigScope.User) {
-            vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
-          } else {
-            vscode.window.showWarningMessage(MESSAGES.readOnlyMove);
-          }
-          return;
-        }
+        if (guardReadOnly(node, MESSAGES.readOnlyMove)) return;
 
-        // Get available target scopes (exclude current scope and Managed)
-        const keys = configStore.getWorkspaceFolderKeys();
-        if (keys.length === 0) {
-          vscode.window.showInformationMessage(MESSAGES.noWorkspaceFolders);
-          return;
-        }
-
-        const key = node.nodeContext.workspaceFolderUri ?? keys[0];
+        const key = node.nodeContext.workspaceFolderUri ?? configStore.getWorkspaceFolderKeys()[0];
         const allScopes = configStore.getAllScopes(key);
 
-        const targetScopes = allScopes.filter(
-          (s) => s.scope !== scope && !s.isReadOnly && s.scope !== ConfigScope.Managed && !configStore.isScopeLocked(s.scope),
+        const target = await pickEditableTargetScope(
+          configStore,
+          scope,
+          node.nodeContext.workspaceFolderUri,
+          'Move to which scope?',
         );
+        if (!target) return;
 
-        if (targetScopes.length === 0) {
-          vscode.window.showInformationMessage(MESSAGES.noEditableScopes);
-          return;
-        }
-
-        const movePick = await vscode.window.showQuickPick(
-          targetScopes.map((s) => ({
-            label: SCOPE_LABELS[s.scope],
-            description: s.filePath ?? '',
-            value: s,
-          })),
-          { placeHolder: 'Move to which scope?' },
-        );
-        if (!movePick) return;
-
-        const pick = movePick;
-        const targetFilePath = pick.value.filePath;
+        const targetFilePath = target.filePath;
         if (!targetFilePath) {
           vscode.window.showWarningMessage(MESSAGES.noTargetFileMove);
           return;
@@ -84,25 +58,25 @@ export function registerMoveCommands(
 
         const rootKey = keyPath[0];
 
-        try {
+        await withWriteRetry(targetFilePath, () => {
           // Write to target first, then remove from source
           if (rootKey === 'permissions' && keyPath.length === 3) {
             const category = keyPath[1] as PermissionCategory;
             const rule = keyPath[2];
             addPermissionRule(targetFilePath, category, rule);
-            removePermissionRule(filePath, category, rule);
+            removePermissionRule(filePath!, category, rule);
           } else if (rootKey === 'env' && keyPath.length === 2) {
             const envKey = keyPath[1];
             const currentSc = allScopes.find((s) => s.scope === scope);
             const currentValue = currentSc?.config.env?.[envKey] ?? '';
             setEnvVar(targetFilePath, envKey, currentValue);
-            removeEnvVar(filePath, envKey);
+            removeEnvVar(filePath!, envKey);
           } else if (rootKey === 'enabledPlugins' && keyPath.length === 2) {
             const pluginId = keyPath[1];
             const currentSc = allScopes.find((s) => s.scope === scope);
             const enabled = currentSc?.config.enabledPlugins?.[pluginId] ?? true;
             setPluginEnabled(targetFilePath, pluginId, enabled);
-            removePlugin(filePath, pluginId);
+            removePlugin(filePath!, pluginId);
           } else if (rootKey === 'mcpServers' && keyPath.length === 2) {
             const serverName = keyPath[1];
             const currentSc = allScopes.find((s) => s.scope === scope);
@@ -116,52 +90,23 @@ export function registerMoveCommands(
               : vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             const claudeJsonPath = getUserClaudeJsonPath();
             // Write to target
-            dispatchMcpWrite(pick.value.scope, targetFilePath, serverName, serverConfig, workspacePath, claudeJsonPath);
+            dispatchMcpWrite(target.scope, targetFilePath, serverName, serverConfig, workspacePath, claudeJsonPath);
             // Remove from source
-            dispatchMcpRemove(scope, filePath, serverName, workspacePath, claudeJsonPath);
+            dispatchMcpRemove(scope, filePath!, serverName, workspacePath, claudeJsonPath);
           } else {
             // Scalar setting
             const currentSc = allScopes.find((s) => s.scope === scope);
             const value = currentSc?.config[rootKey];
             if (value !== undefined) {
               setScalarSetting(targetFilePath, rootKey, value);
-              removeScalarSetting(filePath, rootKey);
+              removeScalarSetting(filePath!, rootKey);
             }
           }
-        } catch (error) {
-          await showWriteError(targetFilePath, error, () => {
-            if (rootKey === 'permissions' && keyPath.length === 3) {
-              const category = keyPath[1] as PermissionCategory;
-              const rule = keyPath[2];
-              addPermissionRule(targetFilePath, category, rule);
-              removePermissionRule(filePath, category, rule);
-            } else if (rootKey === 'env' && keyPath.length === 2) {
-              const envKey = keyPath[1];
-              const currentSc = allScopes.find((s) => s.scope === scope);
-              const currentValue = currentSc?.config.env?.[envKey] ?? '';
-              setEnvVar(targetFilePath, envKey, currentValue);
-              removeEnvVar(filePath, envKey);
-            } else if (rootKey === 'enabledPlugins' && keyPath.length === 2) {
-              const pluginId = keyPath[1];
-              const currentSc = allScopes.find((s) => s.scope === scope);
-              const enabled = currentSc?.config.enabledPlugins?.[pluginId] ?? true;
-              setPluginEnabled(targetFilePath, pluginId, enabled);
-              removePlugin(filePath, pluginId);
-            } else {
-              const currentSc = allScopes.find((s) => s.scope === scope);
-              const value = currentSc?.config[rootKey];
-              if (value !== undefined) {
-                setScalarSetting(targetFilePath, rootKey, value);
-                removeScalarSetting(filePath, rootKey);
-              }
-            }
-          });
-          return;
-        }
+        });
 
         const itemName = node.label?.toString() ?? '';
         vscode.window.showInformationMessage(
-          MESSAGES.movedItem(itemName, SCOPE_LABELS[pick.value.scope]),
+          MESSAGES.movedItem(itemName, SCOPE_LABELS[target.scope]),
         );
       },
     ),
@@ -173,51 +118,24 @@ export function registerMoveCommands(
       'claudeConfig.copySettingToScope',
       async (node?: ConfigTreeNode) => {
         if (!node?.nodeContext) return;
-        const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
+        const { keyPath, scope } = node.nodeContext;
 
-        if (!filePath) {
-          return;
-        }
-        // Allow copy from locked User scope (non-destructive).
-        // Block copy from truly read-only scopes (Managed).
-        if (isReadOnly && scope !== ConfigScope.User) {
-          vscode.window.showWarningMessage(MESSAGES.readOnlyCopy);
-          return;
-        }
+        if (guardReadOnly(node, MESSAGES.readOnlyCopy, { allowLockedUser: true })) return;
 
         if (!validateKeyPath(keyPath, 1, 'copySettingToScope')) return;
 
         const settingKey = keyPath[0];
 
-        const keys = configStore.getWorkspaceFolderKeys();
-        if (keys.length === 0) {
-          vscode.window.showInformationMessage(MESSAGES.noWorkspaceFolders);
-          return;
-        }
-        const key = node.nodeContext.workspaceFolderUri ?? keys[0];
-        const allScopes = configStore.getAllScopes(key);
-
-        const copySettingTargetScopes = allScopes.filter(
-          (s) => s.scope !== scope && !s.isReadOnly && s.scope !== ConfigScope.Managed && !configStore.isScopeLocked(s.scope),
+        const target = await pickEditableTargetScope(
+          configStore,
+          scope,
+          node.nodeContext.workspaceFolderUri,
+          'Copy setting to which scope?',
+          'Copy to ',
         );
+        if (!target) return;
 
-        if (copySettingTargetScopes.length === 0) {
-          vscode.window.showInformationMessage(MESSAGES.noEditableScopes);
-          return;
-        }
-
-        const copySettingPick = await vscode.window.showQuickPick(
-          copySettingTargetScopes.map((s) => ({
-            label: `Copy to ${SCOPE_LABELS[s.scope]}`,
-            description: s.filePath ?? '',
-            value: s,
-          })),
-          { placeHolder: 'Copy setting to which scope?' },
-        );
-        if (!copySettingPick) return;
-
-        const pick = copySettingPick;
-        const targetFilePath = pick.value.filePath;
+        const targetFilePath = target.filePath;
         if (!targetFilePath) {
           vscode.window.showWarningMessage(MESSAGES.noTargetFile);
           return;
@@ -226,27 +144,21 @@ export function registerMoveCommands(
         // Check if the setting already exists in the target
         const targetConfig = readJsonFile<ClaudeCodeConfig>(targetFilePath).data ?? {};
         if (settingKey in targetConfig) {
-          const overwrite = await vscode.window.showWarningMessage(
-            `Claude Config: "${settingKey}" already exists in ${SCOPE_LABELS[pick.value.scope]}. Overwrite?`,
-            { modal: true },
-            'Overwrite',
-          );
-          if (overwrite !== 'Overwrite') return;
+          const confirmed = await confirmOverwrite(settingKey, SCOPE_LABELS[target.scope]);
+          if (!confirmed) return;
         }
 
+        const key = node.nodeContext.workspaceFolderUri ?? configStore.getWorkspaceFolderKeys()[0];
+        const allScopes = configStore.getAllScopes(key);
         const currentSc = allScopes.find((s) => s.scope === scope);
         const value = currentSc?.config[settingKey];
         if (value !== undefined) {
-          try {
+          await withWriteRetry(targetFilePath, () => {
             setScalarSetting(targetFilePath, settingKey, value);
-            vscode.window.showInformationMessage(
-              MESSAGES.copiedSetting(settingKey, SCOPE_LABELS[pick.value.scope]),
-            );
-          } catch (error) {
-            await showWriteError(targetFilePath, error, () => {
-              setScalarSetting(targetFilePath, settingKey, value);
-            });
-          }
+          });
+          vscode.window.showInformationMessage(
+            MESSAGES.copiedSetting(settingKey, SCOPE_LABELS[target.scope]),
+          );
         } else {
           vscode.window.showWarningMessage(MESSAGES.permissionValueNotFound(settingKey));
         }
@@ -260,17 +172,9 @@ export function registerMoveCommands(
       'claudeConfig.copyEnvVarToScope',
       async (node?: ConfigTreeNode) => {
         if (!node?.nodeContext) return;
-        const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
+        const { keyPath, scope } = node.nodeContext;
 
-        if (!filePath) {
-          return;
-        }
-        // Allow copy from locked User scope (non-destructive).
-        // Block copy from truly read-only scopes (Managed).
-        if (isReadOnly && scope !== ConfigScope.User) {
-          vscode.window.showWarningMessage(MESSAGES.readOnlyCopy);
-          return;
-        }
+        if (guardReadOnly(node, MESSAGES.readOnlyCopy, { allowLockedUser: true })) return;
 
         if (!validateKeyPath(keyPath, 1, 'copyEnvVarToScope')) return;
 
@@ -278,35 +182,16 @@ export function registerMoveCommands(
 
         const envKey = keyPath[1];
 
-        const keys = configStore.getWorkspaceFolderKeys();
-        if (keys.length === 0) {
-          vscode.window.showInformationMessage(MESSAGES.noWorkspaceFolders);
-          return;
-        }
-        const key = node.nodeContext.workspaceFolderUri ?? keys[0];
-        const allScopes = configStore.getAllScopes(key);
-
-        const copyEnvTargetScopes = allScopes.filter(
-          (s) => s.scope !== scope && !s.isReadOnly && s.scope !== ConfigScope.Managed && !configStore.isScopeLocked(s.scope),
+        const target = await pickEditableTargetScope(
+          configStore,
+          scope,
+          node.nodeContext.workspaceFolderUri,
+          'Copy env var to which scope?',
+          'Copy to ',
         );
+        if (!target) return;
 
-        if (copyEnvTargetScopes.length === 0) {
-          vscode.window.showInformationMessage(MESSAGES.noEditableScopes);
-          return;
-        }
-
-        const copyEnvPick = await vscode.window.showQuickPick(
-          copyEnvTargetScopes.map((s) => ({
-            label: `Copy to ${SCOPE_LABELS[s.scope]}`,
-            description: s.filePath ?? '',
-            value: s,
-          })),
-          { placeHolder: 'Copy env var to which scope?' },
-        );
-        if (!copyEnvPick) return;
-
-        const pick = copyEnvPick;
-        const targetFilePath = pick.value.filePath;
+        const targetFilePath = target.filePath;
         if (!targetFilePath) {
           vscode.window.showWarningMessage(MESSAGES.noTargetFile);
           return;
@@ -315,26 +200,20 @@ export function registerMoveCommands(
         // Check if the env var already exists in the target
         const targetConfig = readJsonFile<ClaudeCodeConfig>(targetFilePath).data ?? {};
         if (targetConfig.env && envKey in targetConfig.env) {
-          const overwrite = await vscode.window.showWarningMessage(
-            `Claude Config: "${envKey}" already exists in ${SCOPE_LABELS[pick.value.scope]}. Overwrite?`,
-            { modal: true },
-            'Overwrite',
-          );
-          if (overwrite !== 'Overwrite') return;
+          const confirmed = await confirmOverwrite(envKey, SCOPE_LABELS[target.scope]);
+          if (!confirmed) return;
         }
 
+        const key = node.nodeContext.workspaceFolderUri ?? configStore.getWorkspaceFolderKeys()[0];
+        const allScopes = configStore.getAllScopes(key);
         const currentSc = allScopes.find((s) => s.scope === scope);
         const value = currentSc?.config.env?.[envKey] ?? '';
-        try {
+        await withWriteRetry(targetFilePath, () => {
           setEnvVar(targetFilePath, envKey, value);
-          vscode.window.showInformationMessage(
-            MESSAGES.copiedEnvVar(envKey, SCOPE_LABELS[pick.value.scope]),
-          );
-        } catch (error) {
-          await showWriteError(targetFilePath, error, () => {
-            setEnvVar(targetFilePath, envKey, value);
-          });
-        }
+        });
+        vscode.window.showInformationMessage(
+          MESSAGES.copiedEnvVar(envKey, SCOPE_LABELS[target.scope]),
+        );
       },
     ),
   );
@@ -345,14 +224,11 @@ export function registerMoveCommands(
       'claudeConfig.copyPermissionToScope',
       async (node?: ConfigTreeNode) => {
         if (!node?.nodeContext) return;
-        const { keyPath, isReadOnly, scope } = node.nodeContext;
+        const { keyPath, scope } = node.nodeContext;
 
         // Allow copy from locked User scope (non-destructive).
         // Block copy from truly read-only scopes (Managed).
-        if (isReadOnly && scope !== ConfigScope.User) {
-          vscode.window.showWarningMessage(MESSAGES.readOnlyCopy);
-          return;
-        }
+        if (guardReadOnly(node, MESSAGES.readOnlyCopy, { allowLockedUser: true })) return;
 
         if (!validateKeyPath(keyPath, 1, 'copyPermissionToScope')) return;
 
@@ -362,41 +238,22 @@ export function registerMoveCommands(
         const rule = keyPath[2];
         const categoryLabel = PERMISSION_CATEGORY_LABELS[category] ?? category;
 
-        const keys = configStore.getWorkspaceFolderKeys();
-        if (keys.length === 0) {
-          vscode.window.showInformationMessage(MESSAGES.noWorkspaceFolders);
-          return;
-        }
-        const key = node.nodeContext.workspaceFolderUri ?? keys[0];
-        const allScopes = configStore.getAllScopes(key);
-
-        const copyPermTargetScopes = allScopes.filter(
-          (s) => s.scope !== scope && !s.isReadOnly && s.scope !== ConfigScope.Managed && !configStore.isScopeLocked(s.scope),
+        const target = await pickEditableTargetScope(
+          configStore,
+          scope,
+          node.nodeContext.workspaceFolderUri,
+          'Copy permission to which scope?',
+          'Copy to ',
         );
+        if (!target) return;
 
-        if (copyPermTargetScopes.length === 0) {
-          vscode.window.showInformationMessage(MESSAGES.noEditableScopes);
-          return;
-        }
-
-        const permScopePick = await vscode.window.showQuickPick(
-          copyPermTargetScopes.map((s) => ({
-            label: `Copy to ${SCOPE_LABELS[s.scope]}`,
-            description: s.filePath ?? '',
-            value: s,
-          })),
-          { placeHolder: 'Copy permission to which scope?' },
-        );
-        if (!permScopePick) return;
-
-        const scopePick = permScopePick;
-        const targetFilePath = scopePick.value.filePath;
+        const targetFilePath = target.filePath;
         if (!targetFilePath) {
           vscode.window.showWarningMessage(MESSAGES.noTargetFile);
           return;
         }
 
-        const scopeLabel = SCOPE_LABELS[scopePick.value.scope];
+        const scopeLabel = SCOPE_LABELS[target.scope];
 
         // Check if the rule already exists in any category in the target
         const targetConfig = readJsonFile<ClaudeCodeConfig>(targetFilePath).data ?? {};
@@ -429,16 +286,12 @@ export function registerMoveCommands(
           break;
         }
 
-        try {
+        await withWriteRetry(targetFilePath, () => {
           addPermissionRule(targetFilePath, category, rule);
-          vscode.window.showInformationMessage(
-            MESSAGES.copiedPermission(rule, categoryLabel, scopeLabel),
-          );
-        } catch (error) {
-          await showWriteError(targetFilePath, error, () => {
-            addPermissionRule(targetFilePath, category, rule);
-          });
-        }
+        });
+        vscode.window.showInformationMessage(
+          MESSAGES.copiedPermission(rule, categoryLabel, scopeLabel),
+        );
       },
     ),
   );
@@ -449,14 +302,11 @@ export function registerMoveCommands(
       'claudeConfig.copyMcpServerToScope',
       async (node?: ConfigTreeNode) => {
         if (!node?.nodeContext) return;
-        const { keyPath, isReadOnly, scope } = node.nodeContext;
+        const { keyPath, scope } = node.nodeContext;
 
         // Block copy from truly read-only scopes (Managed).
         // Allow copy from locked User scope (non-destructive).
-        if (isReadOnly && scope !== ConfigScope.User) {
-          vscode.window.showWarningMessage(MESSAGES.readOnlyCopy);
-          return;
-        }
+        if (guardReadOnly(node, MESSAGES.readOnlyCopy, { allowLockedUser: true })) return;
 
         // Block Managed scope as source
         if (scope === ConfigScope.Managed) {
@@ -470,12 +320,7 @@ export function registerMoveCommands(
 
         const serverName = keyPath[1];
 
-        const keys = configStore.getWorkspaceFolderKeys();
-        if (keys.length === 0) {
-          vscode.window.showInformationMessage(MESSAGES.noWorkspaceFolders);
-          return;
-        }
-        const key = node.nodeContext.workspaceFolderUri ?? keys[0];
+        const key = node.nodeContext.workspaceFolderUri ?? configStore.getWorkspaceFolderKeys()[0];
         const allScopes = configStore.getAllScopes(key);
 
         // Get source server config from mcpConfig (not settings config)
@@ -486,41 +331,22 @@ export function registerMoveCommands(
           return;
         }
 
-        const targetScopes = allScopes.filter(
-          (s) =>
-            s.scope !== scope &&
-            !s.isReadOnly &&
-            s.scope !== ConfigScope.Managed &&
-            !configStore.isScopeLocked(s.scope),
+        const target = await pickEditableTargetScope(
+          configStore,
+          scope,
+          node.nodeContext.workspaceFolderUri,
+          'Copy MCP server to which scope?',
+          'Copy to ',
         );
+        if (!target) return;
 
-        if (targetScopes.length === 0) {
-          vscode.window.showInformationMessage(MESSAGES.noEditableScopes);
-          return;
-        }
-
-        const copyMcpPick = await vscode.window.showQuickPick(
-          targetScopes.map((s) => ({
-            label: `Copy to ${SCOPE_LABELS[s.scope]}`,
-            description: s.mcpFilePath ?? s.filePath ?? '',
-            value: s,
-          })),
-          { placeHolder: 'Copy MCP server to which scope?' },
-        );
-        if (!copyMcpPick) return;
-
-        const pick = copyMcpPick;
-        const targetScopeLabel = SCOPE_LABELS[pick.value.scope];
+        const targetScopeLabel = SCOPE_LABELS[target.scope];
 
         // Check if server already exists in target
-        const existingServer = pick.value.mcpConfig?.mcpServers?.[serverName];
+        const existingServer = target.mcpConfig?.mcpServers?.[serverName];
         if (existingServer) {
-          const overwrite = await vscode.window.showWarningMessage(
-            `Claude Config: "${serverName}" already exists in ${targetScopeLabel}. Overwrite?`,
-            { modal: true },
-            'Overwrite',
-          );
-          if (overwrite !== 'Overwrite') return;
+          const confirmed = await confirmOverwrite(serverName, targetScopeLabel);
+          if (!confirmed) return;
         }
 
         const workspacePath = node.nodeContext.workspaceFolderUri
@@ -529,8 +355,8 @@ export function registerMoveCommands(
         const claudeJsonPath = getUserClaudeJsonPath();
 
         // targetFilePath for ProjectShared is the .mcp.json file
-        const targetFilePath = pick.value.scope === ConfigScope.ProjectShared
-          ? (pick.value.mcpFilePath ?? pick.value.filePath)
+        const targetFilePath = target.scope === ConfigScope.ProjectShared
+          ? (target.mcpFilePath ?? target.filePath)
           : claudeJsonPath;
 
         if (!targetFilePath) {
@@ -538,16 +364,12 @@ export function registerMoveCommands(
           return;
         }
 
-        try {
-          dispatchMcpWrite(pick.value.scope, targetFilePath, serverName, serverConfig, workspacePath, claudeJsonPath);
-          vscode.window.showInformationMessage(
-            MESSAGES.copiedMcpServer(serverName, targetScopeLabel),
-          );
-        } catch (error) {
-          await showWriteError(targetFilePath, error, () => {
-            dispatchMcpWrite(pick.value.scope, targetFilePath!, serverName, serverConfig, workspacePath, claudeJsonPath);
-          });
-        }
+        await withWriteRetry(targetFilePath, () => {
+          dispatchMcpWrite(target.scope, targetFilePath!, serverName, serverConfig, workspacePath, claudeJsonPath);
+        });
+        vscode.window.showInformationMessage(
+          MESSAGES.copiedMcpServer(serverName, targetScopeLabel),
+        );
       },
     ),
   );

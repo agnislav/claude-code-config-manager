@@ -6,12 +6,12 @@ import {
   setSandboxProperty,
   addPermissionRule,
   removePermissionRule,
-  showWriteError,
 } from '../config/configWriter';
-import { ConfigScope, PermissionCategory } from '../types';
+import { PermissionCategory } from '../types';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { validateKeyPath } from '../utils/validation';
 import { MESSAGES, PERMISSION_CATEGORY_LABELS, DEDICATED_SECTION_KEYS } from '../constants';
+import { guardReadOnly, withWriteRetry } from '../utils/commandHelpers';
 
 export function registerEditCommands(
   context: vscode.ExtensionContext,
@@ -21,16 +21,9 @@ export function registerEditCommands(
       'claudeConfig.editValue',
       async (node?: ConfigTreeNode) => {
         if (!node?.nodeContext) return;
-        const { filePath, keyPath, isReadOnly } = node.nodeContext;
+        const { filePath, keyPath } = node.nodeContext;
 
-        if (isReadOnly || !filePath) {
-          if (isReadOnly && node.nodeContext.scope === ConfigScope.User) {
-            vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
-          } else {
-            vscode.window.showWarningMessage(MESSAGES.readOnlySetting);
-          }
-          return;
-        }
+        if (guardReadOnly(node, MESSAGES.readOnlySetting)) return;
 
         if (!validateKeyPath(keyPath, 1, 'editValue')) return;
 
@@ -47,39 +40,25 @@ export function registerEditCommands(
         // Determine the type of edit based on keyPath
         const rootKey = keyPath[0];
 
-        try {
+        const doWrite = (): void => {
           if (rootKey === 'env' && keyPath.length === 2) {
-            setEnvVar(filePath, keyPath[1], newValue);
+            setEnvVar(filePath!, keyPath[1], newValue);
           } else if (rootKey === 'sandbox') {
             const sandboxKey = keyPath.slice(1).join('.');
             const parsed = parseInputValue(newValue);
-            setSandboxProperty(filePath, sandboxKey, parsed);
+            setSandboxProperty(filePath!, sandboxKey, parsed);
           } else if (keyPath.length === 2 && !DEDICATED_SECTION_KEYS.has(rootKey)) {
             // SettingKeyValue: child key of an object setting
             const parsed = parseInputValue(newValue);
-            setSettingKeyValue(filePath, rootKey, keyPath[1], parsed);
+            setSettingKeyValue(filePath!, rootKey, keyPath[1], parsed);
           } else {
             // Scalar setting
             const parsed = parseInputValue(newValue);
-            setScalarSetting(filePath, rootKey, parsed);
+            setScalarSetting(filePath!, rootKey, parsed);
           }
-        } catch (error) {
-          await showWriteError(filePath, error, () => {
-            if (rootKey === 'env' && keyPath.length === 2) {
-              setEnvVar(filePath, keyPath[1], newValue);
-            } else if (rootKey === 'sandbox') {
-              const sandboxKey = keyPath.slice(1).join('.');
-              const parsed = parseInputValue(newValue);
-              setSandboxProperty(filePath, sandboxKey, parsed);
-            } else if (keyPath.length === 2 && !DEDICATED_SECTION_KEYS.has(rootKey)) {
-              const parsed = parseInputValue(newValue);
-              setSettingKeyValue(filePath, rootKey, keyPath[1], parsed);
-            } else {
-              const parsed = parseInputValue(newValue);
-              setScalarSetting(filePath, rootKey, parsed);
-            }
-          });
-        }
+        };
+
+        await withWriteRetry(filePath!, doWrite);
       },
     ),
   );
@@ -89,16 +68,11 @@ export function registerEditCommands(
       'claudeConfig.changePermissionType',
       async (node?: ConfigTreeNode) => {
         if (!node?.nodeContext) return;
-        const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
+        const { filePath, keyPath } = node.nodeContext;
         if (!filePath) return;
-        if (isReadOnly) {
-          if (scope === ConfigScope.User) {
-            vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
-          } else {
-            vscode.window.showWarningMessage(MESSAGES.readOnlySetting);
-          }
-          return;
-        }
+
+        if (guardReadOnly(node, MESSAGES.readOnlySetting)) return;
+
         if (keyPath[0] !== 'permissions' || keyPath.length !== 3) return;
 
         const currentCategory = keyPath[1] as PermissionCategory;
@@ -115,15 +89,10 @@ export function registerEditCommands(
         });
         if (!pick || pick.value === currentCategory) return;
 
-        try {
+        await withWriteRetry(filePath, () => {
           removePermissionRule(filePath, currentCategory, rule);
           addPermissionRule(filePath, pick.value, rule);
-        } catch (error) {
-          await showWriteError(filePath, error, () => {
-            removePermissionRule(filePath, currentCategory, rule);
-            addPermissionRule(filePath, pick.value, rule);
-          });
-        }
+        });
       },
     ),
   );

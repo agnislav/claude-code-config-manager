@@ -4,6 +4,7 @@ import { ConfigStore } from '../config/configModel';
 import { MCP_CONFIG_FILE, PROJECT_CLAUDE_DIR, DEBOUNCE_RELOAD_MS, DEBOUNCE_MAX_WAIT_MS } from '../constants';
 import { getUserSettingsPath, getManagedSettingsPath, getUserClaudeJsonPath } from '../utils/platform';
 import { isWriteInFlight } from '../config/configWriter';
+import { formatTimestamp } from '../utils/timestamp';
 
 export class ConfigFileWatcher implements vscode.Disposable {
   private watchers: vscode.Disposable[] = [];
@@ -117,11 +118,6 @@ export class ConfigFileWatcher implements vscode.Disposable {
 
   private logWatcher(message: string): void {
     if (!this.outputChannel) return;
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, '0');
-    const mm = String(now.getMinutes()).padStart(2, '0');
-    const ss = String(now.getSeconds()).padStart(2, '0');
-    const mmm = String(now.getMilliseconds()).padStart(3, '0');
-    this.outputChannel.appendLine(`[${hh}:${mm}:${ss}.${mmm}] [watcher] ${message}`);
+    this.outputChannel.appendLine(`${formatTimestamp()} [watcher] ${message}`);
   }
 }

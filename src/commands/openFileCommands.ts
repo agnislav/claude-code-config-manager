@@ -5,15 +5,11 @@ import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { findKeyLine } from '../utils/jsonLocation';
 import { getUserSettingsPath, getManagedSettingsPath, getUserClaudeJsonPath } from '../utils/platform';
 import { PROJECT_CLAUDE_DIR, PROJECT_SHARED_FILE, PROJECT_LOCAL_FILE, MCP_CONFIG_FILE, MAX_KEYPATH_DEPTH, MESSAGES } from '../constants';
+import { formatTimestamp } from '../utils/timestamp';
 
 function logRevealInFile(outputChannel: vscode.OutputChannel | undefined, message: string): void {
   if (!outputChannel) return;
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  const ss = String(now.getSeconds()).padStart(2, '0');
-  const mmm = String(now.getMilliseconds()).padStart(3, '0');
-  outputChannel.appendLine(`[${hh}:${mm}:${ss}.${mmm}] [revealInFile] ${message}`);
+  outputChannel.appendLine(`${formatTimestamp()} [revealInFile] ${message}`);
 }
 
 function buildKnownConfigPaths(): Set<string> {

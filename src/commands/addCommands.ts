@@ -5,7 +5,6 @@ import {
   setEnvVar,
   setMcpServer,
   addHookEntry,
-  showWriteError,
 } from '../config/configWriter';
 import { SCOPE_LABELS, ALL_HOOK_EVENT_TYPES } from '../constants';
 import {
@@ -14,6 +13,7 @@ import {
   PermissionCategory,
 } from '../types';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
+import { withWriteRetry } from '../utils/commandHelpers';
 
 export function registerAddCommands(
   context: vscode.ExtensionContext,
@@ -43,13 +43,9 @@ export function registerAddCommands(
         });
         if (!rule) return;
 
-        try {
+        await withWriteRetry(filePath, () => {
           addPermissionRule(filePath, category.value, rule.trim());
-        } catch (error) {
-          await showWriteError(filePath, error, () => {
-            addPermissionRule(filePath, category.value, rule.trim());
-          });
-        }
+        });
       },
     ),
   );
@@ -74,13 +70,9 @@ export function registerAddCommands(
         });
         if (value === undefined) return;
 
-        try {
+        await withWriteRetry(filePath, () => {
           setEnvVar(filePath, key.trim(), value);
-        } catch (error) {
-          await showWriteError(filePath, error, () => {
-            setEnvVar(filePath, key.trim(), value);
-          });
-        }
+        });
       },
     ),
   );
@@ -136,13 +128,9 @@ export function registerAddCommands(
           config = { command: command.trim(), args };
         }
 
-        try {
+        await withWriteRetry(mcpFilePath, () => {
           setMcpServer(mcpFilePath, serverName.trim(), config);
-        } catch (error) {
-          await showWriteError(mcpFilePath, error, () => {
-            setMcpServer(mcpFilePath, serverName.trim(), config);
-          });
-        }
+        });
       },
     ),
   );
@@ -172,19 +160,12 @@ export function registerAddCommands(
         });
         if (!command) return;
 
-        try {
+        await withWriteRetry(filePath, () => {
           addHookEntry(filePath, eventType.value as HookEventType, {
             matcher: matcher?.trim() || undefined,
             hooks: [{ type: 'command', command: command.trim() }],
           });
-        } catch (error) {
-          await showWriteError(filePath, error, () => {
-            addHookEntry(filePath, eventType.value as HookEventType, {
-              matcher: matcher?.trim() || undefined,
-              hooks: [{ type: 'command', command: command.trim() }],
-            });
-          });
-        }
+        });
       },
     ),
   );
