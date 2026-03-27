@@ -108,7 +108,7 @@
 - [x] **Phase 30: Code Simplification** - Extract duplicated patterns into shared helpers across command handlers (completed 2026-03-15)
 - [x] **Phase 31: Settings Add Button** - Inline "+" button on Settings section with schema-aware QuickPick and type-appropriate input (completed 2026-03-15)
 - [x] **Phase 32: Drag and Drop Between Scopes** - Move/copy tree items across scopes by dragging, with lock awareness (completed 2026-03-27)
-- [ ] **Phase 33: Accessibility Labels** - Populate accessibilityInformation on all tree node types
+- [x] **Phase 33: Accessibility Labels** - Populate accessibilityInformation on all tree node types (completed 2026-03-27)
 
 ## Phase Details
 
@@ -163,9 +163,9 @@ Plans:
   1. Every leaf node (PermissionRule, EnvVar, McpServer, Plugin, Setting, SandboxProperty, SettingKeyValue, HookEntry) has `accessibilityInformation` set with a label that includes the item's scope, value, and override status
   2. Every container node (ScopeNode, SectionNode) has `accessibilityInformation` set with a label that includes scope name, section name, and item count where applicable
   3. Overlapping items include overlap status in their accessibility label (e.g., "overrides User scope value", "duplicated in Project Shared")
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 33-01-PLAN.md — Add accessibilityInformation to all tree node types via ViewModel layer
+- [x] 33-01-PLAN.md — Add accessibilityInformation to all tree node types via ViewModel layer
 
 ## Progress
 
@@ -203,7 +203,7 @@ Plans:
 | 30. Code Simplification | v0.10.0 | 2/2 | Complete | 2026-03-15 |
 | 31. Settings Add Button | v0.10.0 | 1/1 | Complete | 2026-03-15 |
 | 32. Drag and Drop Between Scopes | 1/1 | Complete   | 2026-03-27 | - |
-| 33. Accessibility Labels | v0.10.0 | 0/1 | Not started | - |
+| 33. Accessibility Labels | v0.10.0 | 1/1 | Complete   | 2026-03-27 |
 
 ---
 

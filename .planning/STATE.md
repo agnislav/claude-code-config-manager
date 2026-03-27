@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.3
-milestone_name: milestone
+milestone: v0.10.0
+milestone_name: Simplify & Power Features
 status: planning
-stopped_at: Completed 32-01-PLAN.md (Drag-and-Drop Between Scopes)
-last_updated: "2026-03-27T11:31:22.472Z"
+stopped_at: Completed 33-01-PLAN.md (Accessibility Labels)
+last_updated: "2026-03-27T12:14:31.559Z"
 last_activity: 2026-03-15 — Roadmap created for v0.10.0 (Phases 30-33)
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -35,6 +35,7 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed (v0.10.0): 0
 - Average duration: —
 - Total execution time: —
@@ -51,6 +52,7 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 | Phase 30-code-simplification P02 | 8min | 1 tasks | 2 files |
 | Phase 31-settings-add-button P01 | 5min | 2 tasks | 3 files |
 | Phase 32-drag-and-drop-between-scopes P01 | 60min | 3 tasks | 4 files |
+| Phase 33-accessibility-labels P01 | 27min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -67,6 +69,8 @@ Recent decisions affecting current work:
 - [Phase 31-01]: SETTING_TYPE_MAP lookup dispatches boolean/number/string[]/object/string input widgets for type-appropriate value entry
 - [Phase 32-drag-and-drop-between-scopes]: DnD defaults to Move-only (no QuickPick); Copy stays in context menu; leaf node drops resolve to parent scope
 - [Phase 32-drag-and-drop-between-scopes]: removeSandboxProperty mirrors setSandboxProperty pattern and cleans up empty sandbox/network objects
+- [Phase 33-accessibility-labels]: accessibilityInformation is optional on BaseVM; baseNode wires it conditionally so nodes without it remain unaffected
+- [Phase 33-accessibility-labels]: buildOverlapAccessibilityLabel appends overrides/isOverriddenBy/duplicates/isDuplicatedBy text to base label, keeping overlap semantics consistent with tooltip
 
 ### Pending Todos
 
@@ -80,8 +84,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T11:31:22.469Z
-Stopped at: Completed 32-01-PLAN.md (Drag-and-Drop Between Scopes)
+Last session: 2026-03-27T12:14:31.556Z
+Stopped at: Completed 33-01-PLAN.md (Accessibility Labels)
 Resume file: None
 
 ---

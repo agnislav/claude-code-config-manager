@@ -35,9 +35,9 @@ Requirements for v0.10.0 Simplify & Power Features. Each maps to roadmap phases.
 
 ### Accessibility
 
-- [ ] **A11Y-01**: accessibilityInformation on all leaf node types (scope, value, override status)
-- [ ] **A11Y-02**: accessibilityInformation on container nodes (scope name, section, item count)
-- [ ] **A11Y-03**: Overlap status conveyed in accessibility labels
+- [x] **A11Y-01**: accessibilityInformation on all leaf node types (scope, value, override status)
+- [x] **A11Y-02**: accessibilityInformation on container nodes (scope name, section, item count)
+- [x] **A11Y-03**: Overlap status conveyed in accessibility labels
 
 ## Future Requirements
 
@@ -83,9 +83,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DND-04 | Phase 32 | Complete |
 | DND-05 | Phase 32 | Complete |
 | DND-06 | Phase 32 | Complete |
-| A11Y-01 | Phase 33 | Pending |
-| A11Y-02 | Phase 33 | Pending |
-| A11Y-03 | Phase 33 | Pending |
+| A11Y-01 | Phase 33 | Complete |
+| A11Y-02 | Phase 33 | Complete |
+| A11Y-03 | Phase 33 | Complete |
 
 **Coverage:**
 - v0.10.0 requirements: 20 total
