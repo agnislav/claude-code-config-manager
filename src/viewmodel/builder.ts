@@ -132,6 +132,23 @@ function buildOverlapTooltip(
   return createMd(overlapSection);
 }
 
+function buildOverlapAccessibilityLabel(base: string, overlap: OverlapInfo): string {
+  const parts = [base];
+  if (overlap.overrides) {
+    parts.push(`overrides ${SCOPE_LABELS[overlap.overrides.scope]} scope value`);
+  }
+  if (overlap.isOverriddenBy) {
+    parts.push(`overridden by ${SCOPE_LABELS[overlap.isOverriddenBy.scope]} scope`);
+  }
+  if (overlap.duplicates) {
+    parts.push(`duplicates ${SCOPE_LABELS[overlap.duplicates.scope]} scope value`);
+  }
+  if (overlap.isDuplicatedBy) {
+    parts.push(`duplicated in ${SCOPE_LABELS[overlap.isDuplicatedBy.scope]} scope`);
+  }
+  return parts.join(', ');
+}
+
 function applyOverrideSuffix(description: string, overlap: OverlapInfo): string {
   if (overlap.isOverriddenBy) {
     return `${description} (overridden by ${SCOPE_LABELS[overlap.isOverriddenBy.scope]})`.trim();
@@ -502,6 +519,12 @@ export class TreeViewModelBuilder {
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'permission', `${category}/${rule}`, overlap),
+      accessibilityInformation: {
+        label: buildOverlapAccessibilityLabel(
+          `Permission rule: ${category} ${rule}, ${SCOPE_LABELS[scopedConfig.scope]} scope`,
+          overlap,
+        ),
+      },
     };
   }
 
@@ -571,6 +594,12 @@ export class TreeViewModelBuilder {
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'setting', key, overlap),
+      accessibilityInformation: {
+        label: buildOverlapAccessibilityLabel(
+          `Setting: ${key} equals ${formatValue(value)}, ${SCOPE_LABELS[scopedConfig.scope]} scope`,
+          overlap,
+        ),
+      },
     };
   }
 
@@ -620,6 +649,12 @@ export class TreeViewModelBuilder {
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'settingKeyValue', `${parentKey}.${childKey}`, overlap),
+      accessibilityInformation: {
+        label: buildOverlapAccessibilityLabel(
+          `Setting property: ${parentKey}.${childKey} equals ${formatValue(value)}, ${SCOPE_LABELS[scopedConfig.scope]} scope`,
+          overlap,
+        ),
+      },
     };
   }
 
@@ -667,6 +702,12 @@ export class TreeViewModelBuilder {
         id: computeId(ctx),
         command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
         resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'env', key, overlap),
+        accessibilityInformation: {
+          label: buildOverlapAccessibilityLabel(
+            `Environment variable: ${key} equals ${value.length > 50 ? value.substring(0, 50) + '...' : value}, ${SCOPE_LABELS[scopedConfig.scope]} scope`,
+            overlap,
+          ),
+        },
       };
     });
   }
@@ -747,6 +788,12 @@ export class TreeViewModelBuilder {
           : {}),
         resourceUri,
         command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+        accessibilityInformation: {
+          label: buildOverlapAccessibilityLabel(
+            `Plugin: ${pluginId}, ${enabled ? 'enabled' : 'disabled'}, ${SCOPE_LABELS[scopedConfig.scope]} scope`,
+            overlap,
+          ),
+        },
       };
     });
   }
@@ -819,6 +866,12 @@ export class TreeViewModelBuilder {
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'sandbox', key, overlap),
+      accessibilityInformation: {
+        label: buildOverlapAccessibilityLabel(
+          `Sandbox property: ${key}${isExpandableObject ? '' : ' equals ' + formatValue(value, 'raw')}, ${SCOPE_LABELS[scopedConfig.scope]} scope`,
+          overlap,
+        ),
+      },
     };
   }
 
@@ -867,6 +920,12 @@ export class TreeViewModelBuilder {
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'sandbox', `${parentKey}.${childKey}`, overlap),
+      accessibilityInformation: {
+        label: buildOverlapAccessibilityLabel(
+          `Sandbox property: ${parentKey}.${childKey} equals ${formatValue(value, 'raw')}, ${SCOPE_LABELS[scopedConfig.scope]} scope`,
+          overlap,
+        ),
+      },
     };
   }
 
@@ -928,6 +987,12 @@ export class TreeViewModelBuilder {
         id: computeId(ctx),
         command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
         resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'mcpServer', name, overlap),
+        accessibilityInformation: {
+          label: buildOverlapAccessibilityLabel(
+            `MCP server: ${name}, ${isSseConfig(config) ? 'sse' : 'stdio'} transport, ${SCOPE_LABELS[scopedConfig.scope]} scope`,
+            overlap,
+          ),
+        },
       };
     });
   }
@@ -1046,6 +1111,12 @@ export class TreeViewModelBuilder {
       id: computeId(ctx),
       command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'hook', `${eventType}/${matcherIndex}/${hookIndex}`, overlap),
+      accessibilityInformation: {
+        label: buildOverlapAccessibilityLabel(
+          `Hook: ${hook.type} for ${eventType}${matcherPattern ? ' matching ' + matcherPattern : ''}, ${SCOPE_LABELS[scopedConfig.scope]} scope`,
+          overlap,
+        ),
+      },
     };
   }
 

@@ -54,6 +54,8 @@ export interface BaseVM {
   checkboxState?: vscode.TreeItemCheckboxState;
   /** Click command for leaf nodes. */
   command?: vscode.Command;
+  /** Screen reader label for accessibility. */
+  accessibilityInformation?: { label: string; role?: string };
 }
 
 // ── Per-type ViewModel interfaces ─────────────────────────────
