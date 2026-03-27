@@ -26,12 +26,12 @@ Requirements for v0.10.0 Simplify & Power Features. Each maps to roadmap phases.
 
 ### Drag and Drop
 
-- [ ] **DND-01**: TreeDragAndDropController implementation on ConfigTreeProvider
-- [ ] **DND-02**: Draggable items: PermissionRule, EnvVar, McpServer, Plugin, Setting, SandboxProperty
-- [ ] **DND-03**: Drop targets: ScopeNode and SectionNode (same entity type only)
-- [ ] **DND-04**: Move by default, Alt/Option modifier copies
-- [ ] **DND-05**: Reuse existing move/copy logic from moveCommands.ts
-- [ ] **DND-06**: Lock-aware — reject drops onto locked or read-only scopes
+- [x] **DND-01**: TreeDragAndDropController implementation on ConfigTreeProvider
+- [x] **DND-02**: Draggable items: PermissionRule, EnvVar, McpServer, Plugin, Setting, SandboxProperty
+- [x] **DND-03**: Drop targets: ScopeNode and SectionNode (same entity type only)
+- [x] **DND-04**: Move by default, Alt/Option modifier copies
+- [x] **DND-05**: Reuse existing move/copy logic from moveCommands.ts
+- [x] **DND-06**: Lock-aware — reject drops onto locked or read-only scopes
 
 ### Accessibility
 
@@ -77,12 +77,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SETT-02 | Phase 31 | Complete |
 | SETT-03 | Phase 31 | Complete |
 | SETT-04 | Phase 31 | Complete |
-| DND-01 | Phase 32 | Pending |
-| DND-02 | Phase 32 | Pending |
-| DND-03 | Phase 32 | Pending |
-| DND-04 | Phase 32 | Pending |
-| DND-05 | Phase 32 | Pending |
-| DND-06 | Phase 32 | Pending |
+| DND-01 | Phase 32 | Complete |
+| DND-02 | Phase 32 | Complete |
+| DND-03 | Phase 32 | Complete |
+| DND-04 | Phase 32 | Complete |
+| DND-05 | Phase 32 | Complete |
+| DND-06 | Phase 32 | Complete |
 | A11Y-01 | Phase 33 | Pending |
 | A11Y-02 | Phase 33 | Pending |
 | A11Y-03 | Phase 33 | Pending |

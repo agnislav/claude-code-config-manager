@@ -107,7 +107,7 @@
 
 - [x] **Phase 30: Code Simplification** - Extract duplicated patterns into shared helpers across command handlers (completed 2026-03-15)
 - [x] **Phase 31: Settings Add Button** - Inline "+" button on Settings section with schema-aware QuickPick and type-appropriate input (completed 2026-03-15)
-- [ ] **Phase 32: Drag and Drop Between Scopes** - Move/copy tree items across scopes by dragging, with lock awareness
+- [x] **Phase 32: Drag and Drop Between Scopes** - Move/copy tree items across scopes by dragging, with lock awareness (completed 2026-03-27)
 - [ ] **Phase 33: Accessibility Labels** - Populate accessibilityInformation on all tree node types
 
 ## Phase Details
@@ -151,7 +151,7 @@ Plans:
   3. Dropping onto a locked or Managed (read-only) scope shows an error notification and leaves the tree unchanged
   4. Dropping an item onto a section of a different entity type is rejected — only same-entity-type drops are accepted
   5. The move and copy operations are executed via the existing moveCommands.ts logic — no parallel write path is introduced
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
 - [ ] 32-01-PLAN.md — DnD controller with move/copy, lock awareness, and entity type validation
 
@@ -202,7 +202,7 @@ Plans:
 | 29. Permission Overlap Performance | v0.9.0 | 1/1 | Complete | 2026-03-13 |
 | 30. Code Simplification | v0.10.0 | 2/2 | Complete | 2026-03-15 |
 | 31. Settings Add Button | v0.10.0 | 1/1 | Complete | 2026-03-15 |
-| 32. Drag and Drop Between Scopes | v0.10.0 | 0/1 | Not started | - |
+| 32. Drag and Drop Between Scopes | 1/1 | Complete   | 2026-03-27 | - |
 | 33. Accessibility Labels | v0.10.0 | 0/1 | Not started | - |
 
 ---

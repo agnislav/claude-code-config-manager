@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.10.0
-milestone_name: Simplify & Power Features
+milestone: v0.3
+milestone_name: milestone
 status: planning
-stopped_at: Completed 31-01-PLAN.md (Settings Add Button)
-last_updated: "2026-03-15T10:20:36.769Z"
+stopped_at: Completed 32-01-PLAN.md (Drag-and-Drop Between Scopes)
+last_updated: "2026-03-27T11:31:22.472Z"
 last_activity: 2026-03-15 — Roadmap created for v0.10.0 (Phases 30-33)
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 3
+  total_plans: 5
+  completed_plans: 4
   percent: 0
 ---
 
@@ -50,6 +50,7 @@ Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.
 | Phase 30 P01 | 15min | 2 tasks | 11 files |
 | Phase 30-code-simplification P02 | 8min | 1 tasks | 2 files |
 | Phase 31-settings-add-button P01 | 5min | 2 tasks | 3 files |
+| Phase 32-drag-and-drop-between-scopes P01 | 60min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ Recent decisions affecting current work:
 - [Phase 30-02]: togglePluginEnabled uses inline try/catch (not withWriteRetry) to preserve exact original behavior: refresh tree after showWriteError, not just on initial write failure
 - [Phase 31-01]: Inline button and context menu group 3_add both target section.settings.editable contextValue regex to match editable scopes only
 - [Phase 31-01]: SETTING_TYPE_MAP lookup dispatches boolean/number/string[]/object/string input widgets for type-appropriate value entry
+- [Phase 32-drag-and-drop-between-scopes]: DnD defaults to Move-only (no QuickPick); Copy stays in context menu; leaf node drops resolve to parent scope
+- [Phase 32-drag-and-drop-between-scopes]: removeSandboxProperty mirrors setSandboxProperty pattern and cleans up empty sandbox/network objects
 
 ### Pending Todos
 
@@ -77,8 +80,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-15T10:17:55.947Z
-Stopped at: Completed 31-01-PLAN.md (Settings Add Button)
+Last session: 2026-03-27T11:31:22.469Z
+Stopped at: Completed 32-01-PLAN.md (Drag-and-Drop Between Scopes)
 Resume file: None
 
 ---
