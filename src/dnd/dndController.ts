@@ -3,7 +3,7 @@ import { ConfigStore } from '../config/configModel';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { ConfigScope, SectionType } from '../types';
 import { SCOPE_LABELS, MESSAGES } from '../constants';
-import { moveItemToScope, copyItemToScope } from '../commands/moveCommands';
+import { moveItemToScope } from '../commands/moveCommands';
 
 const TREE_MIME = 'application/vnd.code.tree.claudeconfigtree';
 
@@ -91,28 +91,15 @@ export class ConfigDragAndDropController implements vscode.TreeDragAndDropContro
       return;
     }
 
-    // Ask user: Move or Copy?
-    const action = await vscode.window.showQuickPick(
-      [
-        { label: '$(arrow-swap) Move', description: 'Remove from source scope', value: 'move' as const },
-        { label: '$(copy) Copy', description: 'Keep in source scope', value: 'copy' as const },
-      ],
-      { placeHolder: `Move or copy to ${SCOPE_LABELS[targetScope]}?` },
-    );
-    if (!action) return;
-
-    if (action.value === 'move') {
-      // For move, source must not be locked
-      if (this.configStore.isScopeLocked(sourceScope)) {
-        vscode.window.showWarningMessage(
-          `Cannot move from ${SCOPE_LABELS[sourceScope]}: scope is locked. Use Copy instead.`,
-        );
-        return;
-      }
-      await moveItemToScope(this.configStore, sourceNode, targetSc);
-    } else {
-      await copyItemToScope(this.configStore, sourceNode, targetSc);
+    // For move, source must not be locked
+    if (this.configStore.isScopeLocked(sourceScope)) {
+      vscode.window.showWarningMessage(
+        `Cannot move from ${SCOPE_LABELS[sourceScope]}: scope is locked.`,
+      );
+      return;
     }
+
+    await moveItemToScope(this.configStore, sourceNode, targetSc);
   }
 
   /**
@@ -135,14 +122,29 @@ export class ConfigDragAndDropController implements vscode.TreeDragAndDropContro
       const sourceSection = NODE_TYPE_TO_SECTION[sourceNode.nodeType];
       if (!sourceSection) return null;
 
-      // SectionNode.nodeType is "section.{sectionType}" (e.g., "section.permissions")
       const targetSection = targetCtx.section;
       if (targetSection !== sourceSection) return null;
 
       return { targetScope: targetCtx.scope };
     }
 
-    // Drop on any other node type — reject
+    // Drop on a leaf node — treat as dropping onto its scope, but only if types match
+    if (DRAGGABLE_TYPES.has(target.nodeType)) {
+      const sourceSection = NODE_TYPE_TO_SECTION[sourceNode.nodeType];
+      const targetSection = NODE_TYPE_TO_SECTION[target.nodeType];
+      if (!sourceSection || sourceSection !== targetSection) return null;
+
+      return { targetScope: targetCtx.scope };
+    }
+
+    // Drop on any other node type (e.g., permission group) — resolve to scope if types match
+    if (targetCtx.section) {
+      const sourceSection = NODE_TYPE_TO_SECTION[sourceNode.nodeType];
+      if (sourceSection && sourceSection === targetCtx.section) {
+        return { targetScope: targetCtx.scope };
+      }
+    }
+
     return null;
   }
 }
