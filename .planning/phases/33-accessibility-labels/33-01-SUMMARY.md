@@ -65,7 +65,7 @@ Each task was committed atomically:
 1. **Task 1: Add accessibilityInformation to BaseVM and all leaf nodes** - `496b27e` (feat)
 2. **Task 2: Add accessibilityInformation to all container nodes** - `63993f1` (feat)
 
-**Plan metadata:** (docs commit follows)
+**Plan metadata:** `20c0a31` (docs: complete accessibility-labels plan)
 
 ## Files Created/Modified
 

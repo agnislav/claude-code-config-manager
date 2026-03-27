@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A VS Code extension that provides a visual config viewer and editor for Claude Code settings. It displays a scope-aware TreeView with override detection, overlap indicators, inline editing, file watching, and bidirectional editor-tree synchronization. Every entity type has been audited for UX consistency with uniform inline button ordering, complete overlap detection across all 7 entity types, and full action parity.
+A VS Code extension that provides a visual config viewer and editor for Claude Code settings. It displays a scope-aware TreeView with override detection, overlap indicators, inline editing, file watching, and bidirectional editor-tree synchronization. Every entity type has been audited for UX consistency with uniform inline button ordering, complete overlap detection across all 7 entity types, full action parity, drag-and-drop between scopes, and screen reader accessibility labels on all tree nodes.
 
 ## Core Value
 
@@ -67,25 +67,16 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 - ✓ Hook overlap detection completing coverage for all 7 entity types — v0.9.0
 - ✓ EnvVar copy-to-scope, SettingKeyValue edit/delete, MCP multi-scope discovery + move/copy — v0.9.0
 - ✓ Permission overlap batch algorithm with RegExp/parse caching — v0.9.0
+- ✓ Code simplification — 6 shared command helpers extracted, ~270 lines removed — v0.10.0
+- ✓ Settings "Add" button with schema-aware QuickPick and type-appropriate input — v0.10.0
+- ✓ Drag-and-drop between scopes — move items by dragging with lock awareness — v0.10.0
+- ✓ Accessibility labels on all 13 tree node types via ViewModel layer — v0.10.0
 
 ### Active
 
-<!-- Current scope for v0.10.0: Simplify & Power Features -->
+<!-- Next milestone TBD — use /gsd:new-milestone to define -->
 
-- [ ] Code simplification — extract duplicated patterns into shared helpers
-- [ ] Settings "Add" button — inline button on Settings section to add from schema or free-text
-- [ ] Drag-and-drop between scopes — move/copy items by dragging with Alt modifier for copy
-- [ ] Accessibility labels — TreeItem.accessibilityInformation on all node types
-
-## Current Milestone: v0.10.0 Simplify & Power Features
-
-**Goal:** Clean up ~270+ lines of duplicated command code, then add Settings "Add" button, drag-and-drop between scopes, and accessibility labels.
-
-**Target features:**
-- Code simplification (try/catch, read-only guards, scope pickers, timestamp formatting)
-- Settings section "Add" button with schema-aware QuickPick
-- Drag-and-drop between scopes (move default, Alt to copy)
-- Accessibility labels on all tree nodes
+(No active requirements — next milestone not yet defined)
 
 ### Out of Scope
 
@@ -99,9 +90,6 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 - Sort items — deferred to separate task
 - Plugin inline buttons beyond openReadme (checkbox interaction complicates this) — DEFR-01
 - Hook move/copy between scopes (complex nesting requires hierarchy reconstruction) — DEFR-02
-- Settings section "Add" button for arbitrary config keys — DEFR-03
-- Drag-and-drop between scopes — DEFR-04
-- Accessibility labels via TreeItem.accessibilityInformation — DEFR-05
 - EnvVar inline edit button — DEFR-06
 - SandboxProperty inline edit button — DEFR-07
 - Marketplace publishing — personal tool, not targeting public release
@@ -109,7 +97,7 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 
 ## Context
 
-6,466 LOC TypeScript. Shipped v0.9.0 with full UX audit — all 7 entity types audited for consistency, overlap detection complete across all types, action parity achieved (SettingKeyValue edit/delete, EnvVar copy, MCP multi-scope), and permission overlap performance optimized with batch algorithm. 132-test suite validates builder, overlap resolver, and commands. Tech stack: TypeScript, VS Code Extension API, esbuild bundler — no runtime dependencies.
+6,882 LOC TypeScript. Shipped v0.10.0 with code simplification (6 shared helpers, ~270 lines removed), Settings "Add" button with schema-aware QuickPick, drag-and-drop between scopes for all 6 item types, and accessibility labels on all 13 tree node types. 132-test suite validates builder, overlap resolver, and commands. Tech stack: TypeScript, VS Code Extension API, esbuild bundler — no runtime dependencies.
 
 ## Constraints
 
@@ -167,6 +155,15 @@ Every Claude Code setting is visible, editable, and scope-aware in one place —
 | Record<string,unknown> for ~/.claude.json reads | Preserves non-MCP data on write; safe partial file editing | ✓ Good |
 | computePermissionOverlapMap called once per buildPermissionRules | Batch over per-rule; eliminates O(R²) repeated work | ✓ Good |
 | Tool-name bucket isolation in batch overlap algorithm | Structurally prevents cross-tool comparisons; correct by construction | ✓ Good |
+| withWriteRetry passes action as retryFn to showWriteError | Avoids extra closure; reuses existing error recovery pattern | ✓ Good |
+| guardReadOnly uses allowLockedUser option for copy commands | Copy is safe to locked scopes; only blocks writes | ✓ Good |
+| formatValue style parameter replacing formatSandboxValue | Single function handles both regular and sandbox display | ✓ Good |
+| togglePluginEnabled uses inline try/catch (not withWriteRetry) | Preserves exact original behavior: refresh tree after showWriteError | ✓ Good |
+| SETTING_TYPE_MAP dispatches boolean/number/string[]/object/string input widgets | Type-appropriate value entry from schema definitions | ✓ Good |
+| DnD defaults to Move-only (no QuickPick); Copy stays in context menu | Simpler interaction; Alt-copy adds complexity without matching user intent | ✓ Good |
+| removeSandboxProperty mirrors setSandboxProperty pattern | Consistent cleanup of empty sandbox/network objects | ✓ Good |
+| accessibilityInformation optional on BaseVM | Nodes without it remain unaffected; no empty string labels | ✓ Good |
+| buildOverlapAccessibilityLabel appends relationship text to base label | Keeps overlap semantics consistent with tooltip display | ✓ Good |
 
 ---
-*Last updated: 2026-03-14 after v0.10.0 milestone started*
+*Last updated: 2026-03-27 after v0.10.0 milestone*

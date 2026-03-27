@@ -2,75 +2,59 @@
 gsd_state_version: 1.0
 milestone: v0.10.0
 milestone_name: Simplify & Power Features
-status: planning
-stopped_at: Completed 33-01-PLAN.md (Accessibility Labels)
-last_updated: "2026-03-27T12:14:31.559Z"
-last_activity: 2026-03-15 — Roadmap created for v0.10.0 (Phases 30-33)
+status: complete
+stopped_at: v0.10.0 milestone shipped
+last_updated: "2026-03-27T15:10:00.000Z"
+last_activity: 2026-03-27 — v0.10.0 milestone completed
 progress:
   total_phases: 4
   completed_phases: 4
   total_plans: 5
   completed_plans: 5
-  percent: 0
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-14)
+See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Every Claude Code setting is visible, editable, and scope-aware in one place
-**Current focus:** Phase 30 — Code Simplification
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 30 of 33 (Code Simplification)
-Plan: — (not yet planned)
-Status: Ready to plan
-Last activity: 2026-03-15 — Roadmap created for v0.10.0 (Phases 30-33)
+Phase: 33 of 33 (all complete)
+Plan: All plans complete
+Status: Milestone shipped
+Last activity: 2026-03-27 — v0.10.0 milestone completed
 
-Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 ✓ | v0.10.0 [░░░░] 0%
+Progress: v0.3.x ✓ | v0.4.0 ✓ | v0.4.1 ✓ | v0.5.0 ✓ | v0.6.0 ✓ | v0.7.0 ✓ | v0.8.0 ✓ | v0.9.0 ✓ | v0.10.0 ✓
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed (v0.10.0): 0
-- Average duration: —
-- Total execution time: —
+- Total plans completed (v0.10.0): 5
+- Total execution time: ~115min
 
 **By Phase (v0.10.0):**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 30. Code Simplification | - | - | - |
-| 31. Settings Add Button | - | - | - |
-| 32. Drag and Drop | - | - | - |
-| 33. Accessibility Labels | - | - | - |
 | Phase 30 P01 | 15min | 2 tasks | 11 files |
-| Phase 30-code-simplification P02 | 8min | 1 tasks | 2 files |
-| Phase 31-settings-add-button P01 | 5min | 2 tasks | 3 files |
-| Phase 32-drag-and-drop-between-scopes P01 | 60min | 3 tasks | 4 files |
-| Phase 33-accessibility-labels P01 | 27min | 2 tasks | 3 files |
+| Phase 30 P02 | 8min | 1 tasks | 2 files |
+| Phase 31 P01 | 5min | 2 tasks | 3 files |
+| Phase 32 P01 | 60min | 3 tasks | 4 files |
+| Phase 33 P01 | 27min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- Phase 29: Permission overlap batch algorithm replacing O(R²) with indexed O(R×G)
-- v0.10.0 planning: DND between scopes and accessibility labels moved from DEFR list into active milestone scope
-- [Phase 30]: withWriteRetry passes action directly as retryFn to showWriteError, guardReadOnly uses allowLockedUser option for copy commands, formatValue gains style parameter replacing formatSandboxValue
-- [Phase 30-02]: togglePluginEnabled uses inline try/catch (not withWriteRetry) to preserve exact original behavior: refresh tree after showWriteError, not just on initial write failure
-- [Phase 31-01]: Inline button and context menu group 3_add both target section.settings.editable contextValue regex to match editable scopes only
-- [Phase 31-01]: SETTING_TYPE_MAP lookup dispatches boolean/number/string[]/object/string input widgets for type-appropriate value entry
-- [Phase 32-drag-and-drop-between-scopes]: DnD defaults to Move-only (no QuickPick); Copy stays in context menu; leaf node drops resolve to parent scope
-- [Phase 32-drag-and-drop-between-scopes]: removeSandboxProperty mirrors setSandboxProperty pattern and cleans up empty sandbox/network objects
-- [Phase 33-accessibility-labels]: accessibilityInformation is optional on BaseVM; baseNode wires it conditionally so nodes without it remain unaffected
-- [Phase 33-accessibility-labels]: buildOverlapAccessibilityLabel appends overrides/isOverriddenBy/duplicates/isDuplicatedBy text to base label, keeping overlap semantics consistent with tooltip
+All v0.10.0 decisions archived — see PROJECT.md for full table.
 
 ### Pending Todos
 
@@ -80,15 +64,15 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-None yet.
+None.
 
 ## Session Continuity
 
-Last session: 2026-03-27T12:14:31.556Z
-Stopped at: Completed 33-01-PLAN.md (Accessibility Labels)
+Last session: 2026-03-27
+Stopped at: v0.10.0 milestone shipped
 Resume file: None
 
 ---
 
 *State initialized: 2026-02-20*
-*Last updated: 2026-03-15 — v0.10.0 roadmap created (Phases 30-33)*
+*Last updated: 2026-03-27 — v0.10.0 milestone shipped*
