@@ -263,6 +263,9 @@ export class TreeViewModelBuilder {
         nodeContext: ctx,
         children: scopeChildren,
         id: computeId(ctx),
+        accessibilityInformation: {
+          label: `Workspace folder: ${folderName}, ${scopeChildren.length} scope${scopeChildren.length !== 1 ? 's' : ''}`,
+        },
       });
     }
 
@@ -330,6 +333,9 @@ export class TreeViewModelBuilder {
       children,
       id: computeId(ctx),
       resourceUri,
+      accessibilityInformation: {
+        label: `${SCOPE_LABELS[scope]} scope, ${children.length} section${children.length !== 1 ? 's' : ''}${isReadOnly ? ', read only' : ''}`,
+      },
     };
   }
 
@@ -418,6 +424,9 @@ export class TreeViewModelBuilder {
       nodeContext: ctx,
       children,
       id: computeId(ctx),
+      accessibilityInformation: {
+        label: `${SECTION_LABELS[sectionType]} section in ${SCOPE_LABELS[scopedConfig.scope]} scope, ${description}`,
+      },
     };
   }
 
@@ -1053,6 +1062,9 @@ export class TreeViewModelBuilder {
       nodeContext: ctx,
       children: entryChildren,
       id: computeId(ctx),
+      accessibilityInformation: {
+        label: `${eventType} hook event in ${SCOPE_LABELS[scopedConfig.scope]} scope, ${hookCount} hook${hookCount !== 1 ? 's' : ''}`,
+      },
     };
   }
 
