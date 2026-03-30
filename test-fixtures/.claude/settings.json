@@ -1,19 +1,27 @@
 {
   "env": {
-    "DISABLE_AUTOUPDATER": "1",
     "NODE_ENV": "development",
-    "API_BASE_URL": "https://api.example.com/v1"
+    "API_BASE_URL": "https://api.example.com/v1",
+    "DISABLE_AUTOUPDATER": "1"
   },
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": false,
     "network": {
-      "allowedDomains": ["api.example.com", "cdn.example.com"],
+      "allowedDomains": [
+        "api.example.com",
+        "cdn.example.com"
+      ],
       "allowLocalBinding": true
     },
     "filesystem": {
-      "allowWrite": ["/tmp", "/var/cache"],
-      "denyRead": ["/etc/secrets"]
+      "allowWrite": [
+        "/tmp",
+        "/var/cache"
+      ],
+      "denyRead": [
+        "/etc/secrets"
+      ]
     }
   },
   "hooks": {
@@ -54,8 +62,6 @@
       "Bash(TZ=UTC yarn jest:*)",
       "Bash(TZ=UTC yarn test)",
       "Bash(TZ=UTC yarn test:*)",
-      "Bash(adb -s emulator-5554 emu avd:*)",
-      "Bash(adb -s emulator-5554 shell input keyevent:*)",
       "Bash(adb devices:*)",
       "Bash(adb shell pm list packages:*)",
       "Bash(adb shell:*)",
@@ -146,7 +152,9 @@
       "mcp__mcp-sequentialthinking-tools__sequentialthinking_tools",
       "mcp__repomix__attach_packed_output",
       "mcp__repomix__grep_repomix_output",
-      "mcp__repomix__pack_remote_repository"
+      "mcp__repomix__pack_remote_repository",
+      "Bash(adb -s emulator-5554 emu avd:*)",
+      "Bash(adb -s emulator-5554 shell input keyevent:*)"
     ],
     "deny": [],
     "ask": [

@@ -6,19 +6,21 @@
   "sandbox": {
     "enabled": true,
     "network": {
-      "allowedDomains": ["api.example.com", "cdn.example.com", "staging.example.com"],
+      "allowedDomains": [
+        "api.example.com",
+        "cdn.example.com",
+        "staging.example.com"
+      ],
       "allowLocalBinding": false
     },
     "filesystem": {
-      "allowWrite": ["/tmp"]
+      "allowWrite": [
+        "/tmp"
+      ]
     }
   },
   "permissions": {
     "allow": [
-      "Bash(TZ=UTC yarn jest:*)",
-      "Bash(TZ=UTC yarn test:*)",
-      "Bash(adb -s emulator-5554 emu avd:*)",
-      "Bash(adb -s emulator-5554 shell input keyevent:*)",
       "Bash(adb shell pm list packages:*)",
       "Bash(adb shell:*)",
       "Bash(adb wait-for-device:*)",
