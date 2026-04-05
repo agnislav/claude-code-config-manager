@@ -1015,8 +1015,10 @@ export class TreeViewModelBuilder {
     const result: HookEventVM[] = [];
     for (const eventType of Object.values(HookEventType)) {
       const matchers = hooks[eventType];
-      if (matchers && matchers.length > 0) {
-        result.push(this.buildHookEventVM(eventType, matchers, scopedConfig, allScopes));
+      if (!matchers || matchers.length === 0) continue;
+      const valid = matchers.filter((m: HookMatcher) => Array.isArray(m.hooks) && m.hooks.length > 0);
+      if (valid.length > 0) {
+        result.push(this.buildHookEventVM(eventType, valid, scopedConfig, allScopes));
       }
     }
     return result;
