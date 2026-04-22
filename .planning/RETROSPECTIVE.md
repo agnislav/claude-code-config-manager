@@ -170,6 +170,47 @@
 
 ---
 
+## Milestone: v0.10.0 — Simplify & Power Features
+
+**Shipped:** 2026-03-27
+**Phases:** 4 | **Plans:** 5 | **Commits:** 9
+
+### What Was Built
+- 6 shared command helpers (withWriteRetry, guardReadOnly, pickEditableTargetScope, confirmOverwrite, formatTimestamp, togglePluginEnabled) eliminating ~270 lines of duplicated code
+- Settings "Add" button with schema-aware QuickPick and type-appropriate value input (boolean toggle, string input, etc.)
+- Drag-and-drop move for all 6 item types across scopes via VS Code TreeDragAndDropController with lock/read-only rejection
+- Accessibility labels on all 13 tree node types via ViewModel layer with scope, value, and overlap text
+
+### What Worked
+- Code simplification first (Phase 30) reduced codebase complexity before adding new features — made DnD and accessibility phases cleaner
+- ViewModel layer from v0.6.0 made accessibility labels trivial — just add `accessibilityInformation` to VM, baseNode wires it automatically
+- Move-only DnD decision (no QuickPick for move/copy choice) kept the interaction simple and predictable
+- Leaf node drop resolution (drop on item resolves to parent scope) was an elegant UX improvement discovered during implementation
+
+### What Was Inefficient
+- Phase 30 Plan 01 one-liner was empty in SUMMARY.md frontmatter — minor documentation gap
+- STATE.md and ROADMAP.md progress tracking fell out of sync during execution (percent stayed 0%, phase tracking didn't update)
+
+### Patterns Established
+- `withWriteRetry` pattern: wraps any write operation with try/catch, showWriteError, and retry button
+- `guardReadOnly` with `allowLockedUser` option: copy commands bypass lock check since they target other scopes
+- `SETTING_TYPE_MAP` for type-dispatched input widgets: boolean QuickPick, string input, number input
+- Optional `accessibilityInformation` on BaseVM: nodes without it remain unaffected, no empty labels
+- `buildOverlapAccessibilityLabel`: appends overlap relationship text to base accessibility label
+
+### Key Lessons
+1. Extract shared helpers before adding features — smaller codebase makes new code easier to integrate
+2. ViewModel layer pays dividends across milestones — accessibility was trivially added because VM already encapsulates all display state
+3. DnD "move-only by default" with copy in context menu is better UX than a QuickPick dialog on every drop
+4. STATE.md progress tracking needs to be updated by execution workflow, not just planning — current tracking drifted
+
+### Cost Observations
+- Model mix: ~60% sonnet, ~40% opus (balanced profile)
+- Sessions: ~5 across 4 phases
+- Notable: Phase 32 (DnD) was heaviest at 60min — required new controller, removeSandboxProperty, and leaf-node resolution logic
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -180,6 +221,7 @@
 | v0.7.0 | ~30 | 4 | Overlap system replacing override; milestone audit → gap closure pattern |
 | v0.8.0 | 14 | 2 | Flat permission list; checkbox-only plugin pattern; inline type switching |
 | v0.9.0 | 58 | 5 | Audit-driven UX fixes; action parity; batch overlap algorithm; MCP multi-scope |
+| v0.10.0 | 9 | 4 | Code simplification; Settings Add; DnD between scopes; accessibility labels |
 
 ### Cumulative Quality
 
@@ -189,6 +231,7 @@
 | v0.7.0 | 56 | 5,672 | Overlap resolver tests (+25), lock tests (+3); legacy code removed (-575 LOC) |
 | v0.8.0 | 56 | 5,672 | Net +20 LOC source; PermissionGroup dead code removed; inline buttons restored |
 | v0.9.0 | 132 | 6,466 | +76 tests; overlap complete for all 7 types; batch algorithm; MCP multi-scope |
+| v0.10.0 | 132 | 6,882 | +416 LOC net; 6 shared helpers; DnD controller; accessibility on all 13 node types |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -201,3 +244,5 @@
 7. Audit-first approach (systematic gap inventory) directly drives precise phase scope and prevents missed requirements
 8. Batch algorithms with pre-indexing solve performance problems more cleanly than incremental optimization
 9. Post-merge visual testing catches issues invisible to unit tests — especially with real-world data volumes
+10. Extract shared helpers before adding features — smaller codebase makes new code easier to integrate
+11. ViewModel layer pays dividends across milestones — new features (accessibility, DnD) are trivially wired through VM

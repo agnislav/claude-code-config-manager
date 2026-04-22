@@ -1,12 +1,53 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ConfigStore } from '../config/configModel';
-import { removePlugin, setPluginEnabled, showWriteError } from '../config/configWriter';
-import { SCOPE_LABELS, MESSAGES } from '../constants';
+import { removePlugin, setPluginEnabled, isWriteInFlight, showWriteError } from '../config/configWriter';
+import { MESSAGES, SCOPE_LABELS } from '../constants';
 import { ConfigScope } from '../types';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { PluginMetadataService } from '../utils/pluginMetadata';
 import { validateKeyPath } from '../utils/validation';
+import { guardReadOnly, pickEditableTargetScope, withWriteRetry } from '../utils/commandHelpers';
+
+/**
+ * Toggles a plugin's enabled state. Used by both the checkbox handler and the
+ * context menu "Toggle Plugin" command, eliminating duplicated guard + write + error logic.
+ *
+ * @param node       - The plugin tree node to toggle.
+ * @param enabled    - The desired enabled state.
+ * @param refreshTree - Optional callback to refresh the tree view (called on error or guard hit).
+ */
+export async function togglePluginEnabled(
+  node: ConfigTreeNode,
+  enabled: boolean,
+  refreshTree?: () => void,
+): Promise<void> {
+  if (node.nodeType !== 'plugin') return;
+
+  const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
+
+  if (isReadOnly || !filePath || keyPath.length < 2) {
+    if (isReadOnly && scope === ConfigScope.User) {
+      vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
+    }
+    refreshTree?.();
+    return;
+  }
+
+  if (isWriteInFlight(filePath)) {
+    vscode.window.showInformationMessage(MESSAGES.writeInProgress);
+    return;
+  }
+
+  try {
+    setPluginEnabled(filePath, keyPath[1], enabled);
+  } catch (error) {
+    await showWriteError(filePath, error, () => {
+      setPluginEnabled(filePath, keyPath[1], enabled);
+    });
+    refreshTree?.();
+  }
+}
 
 export function registerPluginCommands(
   context: vscode.ExtensionContext,
@@ -18,16 +59,9 @@ export function registerPluginCommands(
       'claudeConfig.deletePlugin',
       async (node?: ConfigTreeNode) => {
         if (!node?.nodeContext) return;
-        const { filePath, keyPath, isReadOnly, scope } = node.nodeContext;
+        const { filePath, keyPath, scope } = node.nodeContext;
 
-        if (isReadOnly || !filePath) {
-          if (isReadOnly && scope === ConfigScope.User) {
-            vscode.window.showInformationMessage(MESSAGES.userScopeLocked);
-          } else {
-            vscode.window.showWarningMessage(MESSAGES.readOnlyDelete);
-          }
-          return;
-        }
+        if (guardReadOnly(node, MESSAGES.readOnlyDelete)) return;
 
         if (!validateKeyPath(keyPath, 2, 'deletePlugin')) return;
 
@@ -42,13 +76,9 @@ export function registerPluginCommands(
         );
         if (confirmed !== 'Delete') return;
 
-        try {
-          removePlugin(filePath, pluginId);
-        } catch (error) {
-          await showWriteError(filePath, error, () => {
-            removePlugin(filePath, pluginId);
-          });
-        }
+        await withWriteRetry(filePath!, () => {
+          removePlugin(filePath!, pluginId);
+        });
       },
     ),
   );
@@ -90,14 +120,11 @@ export function registerPluginCommands(
       'claudeConfig.copyPluginToScope',
       async (node?: ConfigTreeNode) => {
         if (!node?.nodeContext) return;
-        const { keyPath, isReadOnly, scope } = node.nodeContext;
+        const { keyPath, scope } = node.nodeContext;
 
         // Allow copy from locked User scope (non-destructive).
         // Block copy from truly read-only scopes (Managed).
-        if (isReadOnly && scope !== ConfigScope.User) {
-          vscode.window.showWarningMessage(MESSAGES.readOnlyCopy);
-          return;
-        }
+        if (guardReadOnly(node, MESSAGES.readOnlyCopy, { allowLockedUser: true })) return;
 
         if (!validateKeyPath(keyPath, 2, 'copyPluginToScope')) return;
 
@@ -105,38 +132,16 @@ export function registerPluginCommands(
 
         const pluginId = keyPath[1];
 
-        // Build list of writable target scopes, excluding current and Managed
-        const keys = configStore.getWorkspaceFolderKeys();
-        if (keys.length === 0) {
-          vscode.window.showInformationMessage(MESSAGES.noWorkspaceFolders);
-          return;
-        }
-        const key = node.nodeContext.workspaceFolderUri ?? keys[0];
-        const allScopes = configStore.getAllScopes(key);
-
-        const pluginTargetScopes = allScopes.filter(
-          (s) => s.scope !== scope && !s.isReadOnly && s.scope !== ConfigScope.Managed && !configStore.isScopeLocked(s.scope),
+        const target = await pickEditableTargetScope(
+          configStore,
+          scope,
+          node.nodeContext.workspaceFolderUri,
+          'Copy plugin to which scope?',
+          'Copy to ',
         );
+        if (!target) return;
 
-        if (pluginTargetScopes.length === 0) {
-          vscode.window.showInformationMessage(MESSAGES.noEditableScopes);
-          return;
-        }
-
-        // Step 1: pick target scope
-        const pluginScopePick = await vscode.window.showQuickPick(
-          pluginTargetScopes.map((s) => ({
-            label: `Copy to ${SCOPE_LABELS[s.scope]}`,
-            description: s.filePath ?? '',
-            value: s,
-          })),
-          { placeHolder: 'Copy plugin to which scope?' },
-        );
-        if (!pluginScopePick) return;
-
-        const scopePick = pluginScopePick;
-
-        const targetFilePath = scopePick.value.filePath;
+        const targetFilePath = target.filePath;
         if (!targetFilePath) {
           vscode.window.showWarningMessage(MESSAGES.noTargetFile);
           return;
@@ -152,17 +157,13 @@ export function registerPluginCommands(
         );
         if (!statePick) return;
 
-        try {
+        await withWriteRetry(targetFilePath, () => {
           setPluginEnabled(targetFilePath, pluginId, statePick.value);
-          const itemName = node.label?.toString() ?? pluginId;
-          vscode.window.showInformationMessage(
-            MESSAGES.copiedPlugin(itemName, SCOPE_LABELS[scopePick.value.scope], statePick.label.toLowerCase()),
-          );
-        } catch (error) {
-          await showWriteError(targetFilePath, error, () => {
-            setPluginEnabled(targetFilePath, pluginId, statePick.value);
-          });
-        }
+        });
+        const itemName = node.label?.toString() ?? pluginId;
+        vscode.window.showInformationMessage(
+          MESSAGES.copiedPlugin(itemName, SCOPE_LABELS[target.scope], statePick.label.toLowerCase()),
+        );
       },
     ),
   );

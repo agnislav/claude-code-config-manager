@@ -5,15 +5,20 @@ import {
   setEnvVar,
   setMcpServer,
   addHookEntry,
-  showWriteError,
+  setScalarSetting,
 } from '../config/configWriter';
-import { SCOPE_LABELS, ALL_HOOK_EVENT_TYPES } from '../constants';
+import { SCOPE_LABELS, ALL_HOOK_EVENT_TYPES, KNOWN_SETTING_KEYS, SETTING_TYPE_MAP, DEDICATED_SECTION_KEYS } from '../constants';
 import {
   HookEventType,
   McpServerConfig,
   PermissionCategory,
 } from '../types';
+
+interface SettingQuickPickItem extends vscode.QuickPickItem {
+  value?: string;
+}
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
+import { withWriteRetry } from '../utils/commandHelpers';
 
 export function registerAddCommands(
   context: vscode.ExtensionContext,
@@ -43,13 +48,9 @@ export function registerAddCommands(
         });
         if (!rule) return;
 
-        try {
+        await withWriteRetry(filePath, () => {
           addPermissionRule(filePath, category.value, rule.trim());
-        } catch (error) {
-          await showWriteError(filePath, error, () => {
-            addPermissionRule(filePath, category.value, rule.trim());
-          });
-        }
+        });
       },
     ),
   );
@@ -74,13 +75,9 @@ export function registerAddCommands(
         });
         if (value === undefined) return;
 
-        try {
+        await withWriteRetry(filePath, () => {
           setEnvVar(filePath, key.trim(), value);
-        } catch (error) {
-          await showWriteError(filePath, error, () => {
-            setEnvVar(filePath, key.trim(), value);
-          });
-        }
+        });
       },
     ),
   );
@@ -136,13 +133,9 @@ export function registerAddCommands(
           config = { command: command.trim(), args };
         }
 
-        try {
+        await withWriteRetry(mcpFilePath, () => {
           setMcpServer(mcpFilePath, serverName.trim(), config);
-        } catch (error) {
-          await showWriteError(mcpFilePath, error, () => {
-            setMcpServer(mcpFilePath, serverName.trim(), config);
-          });
-        }
+        });
       },
     ),
   );
@@ -172,19 +165,119 @@ export function registerAddCommands(
         });
         if (!command) return;
 
-        try {
+        await withWriteRetry(filePath, () => {
           addHookEntry(filePath, eventType.value as HookEventType, {
             matcher: matcher?.trim() || undefined,
             hooks: [{ type: 'command', command: command.trim() }],
           });
-        } catch (error) {
-          await showWriteError(filePath, error, () => {
-            addHookEntry(filePath, eventType.value as HookEventType, {
-              matcher: matcher?.trim() || undefined,
-              hooks: [{ type: 'command', command: command.trim() }],
-            });
+        });
+      },
+    ),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'claudeConfig.addSetting',
+      async (node?: ConfigTreeNode) => {
+        const filePath = await resolveFilePath(node, configStore);
+        if (!filePath) return;
+
+        // Determine already-set setting keys for this file's scope
+        const allScopes = configStore.getAllScopes();
+        const scopedConfig = allScopes.find((s) => s.filePath === filePath);
+        const existingConfig = scopedConfig?.config ?? {};
+        const existingSettingKeys = new Set(
+          Object.keys(existingConfig).filter((k) => !DEDICATED_SECTION_KEYS.has(k)),
+        );
+
+        // Build QuickPick items from KNOWN_SETTING_KEYS, filtering out already-present keys
+        const knownItems: SettingQuickPickItem[] = KNOWN_SETTING_KEYS
+          .filter((key) => !existingSettingKeys.has(key))
+          .map((key) => ({
+            label: key,
+            description: SETTING_TYPE_MAP[key] ?? 'unknown',
+            value: key,
+          }));
+
+        const items: SettingQuickPickItem[] = [
+          ...knownItems,
+          { label: '', kind: vscode.QuickPickItemKind.Separator },
+          { label: '$(edit) Enter custom key...', value: '__custom__', alwaysShow: true },
+        ];
+
+        const selected = await vscode.window.showQuickPick<SettingQuickPickItem>(items, {
+          placeHolder: 'Select setting to add',
+        });
+        if (!selected) return;
+
+        let selectedKey: string;
+        if (selected.value === '__custom__') {
+          const customKey = await vscode.window.showInputBox({
+            prompt: 'Enter setting key',
+            validateInput: (v) => (v.trim() ? null : 'Key cannot be empty'),
           });
+          if (!customKey) return;
+          selectedKey = customKey.trim();
+        } else {
+          selectedKey = selected.value ?? selected.label;
         }
+
+        const valueType = SETTING_TYPE_MAP[selectedKey] ?? 'string';
+
+        let value: unknown;
+
+        if (valueType === 'boolean') {
+          const boolPick = await vscode.window.showQuickPick(
+            [
+              { label: 'true', value: true as boolean | undefined },
+              { label: 'false', value: false as boolean | undefined },
+            ],
+            { placeHolder: `Set value for ${selectedKey}` },
+          );
+          if (!boolPick) return;
+          value = boolPick.value;
+        } else if (valueType === 'number') {
+          const numStr = await vscode.window.showInputBox({
+            prompt: `Enter value for ${selectedKey}`,
+            validateInput: (v) => (isNaN(Number(v)) ? 'Must be a number' : null),
+          });
+          if (numStr === undefined) return;
+          value = Number(numStr);
+        } else if (valueType === 'string[]') {
+          const arrStr = await vscode.window.showInputBox({
+            prompt: `Enter comma-separated values for ${selectedKey}`,
+          });
+          if (arrStr === undefined) return;
+          value = arrStr
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+        } else if (valueType === 'object') {
+          const jsonStr = await vscode.window.showInputBox({
+            prompt: `Enter JSON value for ${selectedKey}`,
+            validateInput: (v) => {
+              try {
+                JSON.parse(v);
+                return null;
+              } catch (e) {
+                return e instanceof Error ? e.message : 'Invalid JSON';
+              }
+            },
+          });
+          if (jsonStr === undefined) return;
+          value = JSON.parse(jsonStr);
+        } else {
+          // string (default)
+          const strVal = await vscode.window.showInputBox({
+            prompt: `Enter value for ${selectedKey}`,
+          });
+          if (strVal === undefined) return;
+          value = strVal;
+        }
+
+        await withWriteRetry(filePath, () => {
+          setScalarSetting(filePath, selectedKey, value);
+        });
       },
     ),
   );

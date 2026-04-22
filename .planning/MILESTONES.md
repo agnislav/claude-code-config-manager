@@ -1,5 +1,18 @@
 # Milestones: Claude Code Config Manager
 
+## v0.10.0 Simplify & Power Features (Shipped: 2026-03-27)
+
+**Phases completed:** 4 phases, 5 plans, 8 tasks
+
+**Key accomplishments:**
+
+- Extracted 6 shared command helpers (withWriteRetry, guardReadOnly, pickEditableTargetScope, confirmOverwrite, formatTimestamp, togglePluginEnabled) eliminating ~270 lines of duplicated code
+- claudeConfig.addSetting command with schema-aware QuickPick and type-appropriate value input, plus inline '+' button on editable Settings section headers
+- Drag-and-drop Move for all 6 item types (PermissionRule, EnvVar, McpServer, Plugin, Setting, SandboxProperty) across scopes via VS Code TreeDragAndDropController, with lock/read-only rejection and leaf-node drop resolution
+- VS Code TreeItem.accessibilityInformation wired to all 13 tree node types via ViewModel layer, with scope, value, and overlap-relationship text for screen readers
+
+---
+
 ## v0.9.0 — UX Audit (Complete)
 
 **Completed:** 2026-03-14
@@ -11,6 +24,7 @@
 Systematically audited every entity type's tree structure, node behavior, and inline buttons — found inconsistencies and UX gaps, then fixed them all. Completed overlap coverage for all 7 entity types and added action parity across the board.
 
 **Key accomplishments:**
+
 - Complete audit matrix documenting all 12 NodeKind types across 5 audit vectors with gap tracking
 - Trivial display fixes: sandbox section count, hook type descriptions, envvar base tooltips
 - Uniform inline button slot ordering (edit@0, move@1, copy@2, delete@3) across all entity types
@@ -31,6 +45,7 @@ Systematically audited every entity type's tree structure, node behavior, and in
 Refined tree node display for cleaner UX — plugin nodes show checkbox-only appearance when unlocked, permission rules flatten to a single list with type-aware icons and inline type switching.
 
 **Key accomplishments:**
+
 - Plugin checkbox-only display — no icon noise when User scope is unlocked
 - Flattened 3-level permission hierarchy to 2-level (Section → PermissionRule)
 - Category-specific icons on permission rules (check/question/close for allow/ask/deny)
@@ -51,6 +66,7 @@ Refined tree node display for cleaner UX — plugin nodes show checkbox-only app
 Made the tree reflect true state — overlaps visible across scopes, lock toggle respected by plugin display, hook leaf navigation correct. Replaced the legacy override system with a new 4-directional overlap model.
 
 **Key accomplishments:**
+
 - Fixed hook entry keyPath navigation — clicking hook entries now opens correct JSON line
 - Lock-aware plugin display — locked User scope shows static icons instead of interactive checkboxes
 - Overlap resolver with nearest-neighbor algorithm for all 7 entity types
@@ -76,6 +92,7 @@ Made the tree reflect true state — overlaps visible across scopes, lock toggle
 Decoupled tree node construction from direct ConfigStore access by introducing a ViewModel layer. TreeViewModelBuilder pre-computes all display state (labels, descriptions, icons, contextValues, override resolution) and all 14 node types now accept typed ViewModel descriptors instead of raw config data. Comprehensive test suite validates builder output across all entity types.
 
 **Key accomplishments:**
+
 - Complete ViewModel type system (BaseVM + 15 per-type interfaces) for all tree node types
 - TreeViewModelBuilder pre-computes override resolution and display state from raw ConfigStore data
 - All 14 tree node constructors migrated from ScopedConfig/allScopes to typed ViewModel descriptors
@@ -101,6 +118,7 @@ corrected to `$(arrow-swap)`, copy icons changed to `$(add)`, pane auto-activati
 plugin/editValue inline buttons temporarily disabled.
 
 **Key accomplishments:**
+
 - QuickPick multi-select filter replacing 8 individual toolbar buttons
 - User scope lock toggle with ephemeral state, icon swap, and lock-aware commands
 - Move inline buttons alongside copy buttons on tree items
@@ -120,6 +138,7 @@ Object-type settings expand to show key/value child nodes instead of dead-end `{
 Toolbar order finalized: lock, filter, collapse, expand.
 
 **Key accomplishments:**
+
 - Lock-by-default with state-semantic toolbar icons
 - Collapse All / Expand All toolbar buttons for instant tree navigation
 - Object settings expand to reveal key/value child nodes
@@ -138,7 +157,6 @@ Hook entry nodes expand to reveal key-value child nodes matching the object sett
 
 ---
 
-
 ## v0.5.0 — Hardening (Complete)
 
 **Completed:** 2026-02-21
@@ -150,6 +168,7 @@ Hook entry nodes expand to reveal key-value child nodes matching the object sett
 Fixed all identified bugs, reduced technical debt, and hardened error handling across the extension. Every write operation now has error propagation with recovery buttons, race conditions eliminated through in-flight write tracking, paths validated against whitelists with traversal/symlink protection, and all user-facing messages centralized with consistent prefixing.
 
 **Key accomplishments:**
+
 - Error propagation with scope-aware messages and retry/open-file recovery across all write operations
 - Tree operation error guards and plugin checkbox rollback for resilient UI under failure
 - In-flight write tracking with watcher suppression and maxWait debounce ceiling to eliminate race conditions
@@ -163,4 +182,3 @@ Fixed all identified bugs, reduced technical debt, and hardened error handling a
 - QUAL-04: pluginCommands.ts:39 missing "Claude Config:" prefix (cosmetic, 1-line fix)
 
 ---
-

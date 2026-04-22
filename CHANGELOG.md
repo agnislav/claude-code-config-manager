@@ -5,6 +5,27 @@ All notable changes to the Claude Code Config Manager extension will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.10.0] - 2026-03-27
+
+### Added
+- Settings "Add" button — inline "+" button on editable Settings section headers opens a schema-aware QuickPick with type-appropriate value input (boolean toggle, string input, number input)
+- Custom setting key entry via free-text option in the QuickPick for keys not in the schema
+- Drag-and-drop between scopes — drag any supported item (permission rule, env var, MCP server, plugin, setting, sandbox property) onto a different scope to move it
+- Lock-aware DnD — drops onto locked or Managed (read-only) scopes show an error notification
+- Leaf node drop resolution — dropping onto an item resolves to its parent scope automatically
+- Accessibility labels on all 13 tree node types — screen readers announce scope, value, and overlap status for every tree item
+- Overlap relationship text in accessibility labels (e.g., "overrides User scope value", "duplicated in Project Shared")
+
+### Changed
+- Extracted 6 shared command helpers: `withWriteRetry`, `guardReadOnly`, `pickEditableTargetScope`, `confirmOverwrite`, `formatTimestamp`, `togglePluginEnabled` — eliminating ~270 lines of duplicated code
+- `formatValue()` now handles both regular and sandbox values via a style parameter, replacing the separate `formatSandboxValue()` function
+- `guardReadOnly()` supports `allowLockedUser` option for copy commands that target other scopes
+- DnD defaults to move-only; copy remains available via context menu
+
+### Removed
+- `formatSandboxValue()` — merged into `formatValue()` with style parameter
+- Duplicated plugin toggle logic in extension.ts — replaced by shared `togglePluginEnabled()`
+
 ## [0.9.0] - 2026-03-14
 
 ### Added

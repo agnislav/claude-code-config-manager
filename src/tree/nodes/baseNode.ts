@@ -26,6 +26,9 @@ export abstract class ConfigTreeNode extends vscode.TreeItem {
     if (vm.command !== undefined) {
       this.command = vm.command;
     }
+    if (vm.accessibilityInformation !== undefined) {
+      this.accessibilityInformation = vm.accessibilityInformation;
+    }
   }
 
   abstract getChildren(): ConfigTreeNode[];

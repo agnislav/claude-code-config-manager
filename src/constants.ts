@@ -95,6 +95,34 @@ export const KNOWN_SETTING_KEYS = [
 
 export const ALL_HOOK_EVENT_TYPES = Object.values(HookEventType);
 
+/** Maps each known setting key to its expected value type for type-appropriate input prompts. */
+export const SETTING_TYPE_MAP: Record<string, 'boolean' | 'string' | 'number' | 'string[]' | 'object'> = {
+  model: 'string',
+  outputStyle: 'string',
+  language: 'string',
+  attribution: 'object',
+  autoUpdatesChannel: 'string',
+  cleanupPeriodDays: 'number',
+  plansDirectory: 'string',
+  respectGitignore: 'boolean',
+  alwaysThinkingEnabled: 'boolean',
+  showTurnDuration: 'boolean',
+  spinnerTipsEnabled: 'boolean',
+  terminalProgressBarEnabled: 'boolean',
+  prefersReducedMotion: 'boolean',
+  teammateMode: 'string',
+  forceLoginMethod: 'string',
+  includeCoAuthoredBy: 'boolean',
+  disableAllHooks: 'boolean',
+  allowManagedHooksOnly: 'boolean',
+  allowManagedPermissionRulesOnly: 'boolean',
+  enableAllProjectMcpServers: 'boolean',
+  enabledMcpjsonServers: 'string[]',
+  disabledMcpServers: 'string[]',
+  allowedMcpServers: 'string[]',
+  deniedMcpServers: 'string[]',
+};
+
 // ── File paths ──────────────────────────────────────────────────
 
 export const MANAGED_SETTINGS_FILENAME = 'managed-settings.json';

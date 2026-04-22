@@ -2,7 +2,7 @@
   "name": "claude-code-config-manager",
   "displayName": "Claude Code Config Manager",
   "description": "Visual config viewer and editor for Claude Code settings — scope-aware TreeView with override detection, inline editing, and file watching.",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "publisher": "agnislav",
   "license": "MIT",
   "repository": {
@@ -78,6 +78,12 @@
       {
         "command": "claudeConfig.addHook",
         "title": "Add Hook",
+        "category": "Claude Config",
+        "icon": "$(add)"
+      },
+      {
+        "command": "claudeConfig.addSetting",
+        "title": "Add Setting",
         "category": "Claude Config",
         "icon": "$(add)"
       },
@@ -290,6 +296,16 @@
           "group": "3_add"
         },
         {
+          "command": "claudeConfig.addSetting",
+          "when": "view == claudeConfigTree && viewItem =~ /^section\\.settings\\.editable/",
+          "group": "3_add"
+        },
+        {
+          "command": "claudeConfig.addSetting",
+          "when": "view == claudeConfigTree && viewItem =~ /^section\\.settings\\.editable/",
+          "group": "inline@0"
+        },
+        {
           "command": "claudeConfig.togglePlugin",
           "when": "view == claudeConfigTree && viewItem =~ /^plugin\\.editable/",
           "group": "1_edit"
@@ -455,6 +471,10 @@
         },
         {
           "command": "claudeConfig.expandAll",
+          "when": "false"
+        },
+        {
+          "command": "claudeConfig.addSetting",
           "when": "false"
         }
       ]
