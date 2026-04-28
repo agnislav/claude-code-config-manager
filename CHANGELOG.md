@@ -5,6 +5,11 @@ All notable changes to the Claude Code Config Manager extension will be document
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Changed
+- Tree-item click no longer auto-opens a closed config file. `claudeConfig.revealInFile` now reveals and highlights the range only if the file is already open in some tab group; otherwise it is a silent no-op. Use the context-menu / toolbar **Open File** action for explicit opens. ([#19](https://github.com/agnislav/claude-code-config-manager/issues/19), [#20](https://github.com/agnislav/claude-code-config-manager/issues/20))
+
 ## [0.10.0] - 2026-03-27
 
 ### Added

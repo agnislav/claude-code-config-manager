@@ -12,6 +12,19 @@ function logRevealInFile(outputChannel: vscode.OutputChannel | undefined, messag
   outputChannel.appendLine(`${formatTimestamp()} [revealInFile] ${message}`);
 }
 
+export function isFileOpenInAnyTab(uri: vscode.Uri): boolean {
+  const target = uri.fsPath;
+  for (const group of vscode.window.tabGroups.all) {
+    for (const tab of group.tabs) {
+      const input = tab.input;
+      if (input instanceof vscode.TabInputText && input.uri.fsPath === target) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function buildKnownConfigPaths(): Set<string> {
   const paths = new Set<string>();
 
@@ -137,8 +150,14 @@ export function registerOpenFileCommands(
           return;
         }
 
-        // All validations passed - proceed with reveal
+        // All validations passed - check whether the file is already open before revealing
         const uri = vscode.Uri.file(filePath);
+        if (!isFileOpenInAnyTab(uri)) {
+          // Silent no-op: the tree click still selects the item; explicit opens go
+          // through `claudeConfig.openFile` (context menu / toolbar).
+          logRevealInFile(outputChannel, `skipped: ${filePath} (not open in any tab)`);
+          return;
+        }
         const editor = await vscode.window.showTextDocument(uri);
 
         if (keyPath.length > 0) {
