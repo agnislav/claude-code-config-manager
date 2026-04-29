@@ -4,12 +4,31 @@ import * as path from 'path';
 import { ConfigTreeNode } from '../tree/nodes/baseNode';
 import { findKeyLine } from '../utils/jsonLocation';
 import { getUserSettingsPath, getManagedSettingsPath, getUserClaudeJsonPath } from '../utils/platform';
-import { PROJECT_CLAUDE_DIR, PROJECT_SHARED_FILE, PROJECT_LOCAL_FILE, MCP_CONFIG_FILE, MAX_KEYPATH_DEPTH, MESSAGES } from '../constants';
+import { PROJECT_CLAUDE_DIR, PROJECT_SHARED_FILE, PROJECT_LOCAL_FILE, MCP_CONFIG_FILE, MAX_KEYPATH_DEPTH, DOUBLE_CLICK_THRESHOLD_MS, MESSAGES } from '../constants';
 import { formatTimestamp } from '../utils/timestamp';
 
 function logRevealInFile(outputChannel: vscode.OutputChannel | undefined, message: string): void {
   if (!outputChannel) return;
   outputChannel.appendLine(`${formatTimestamp()} [revealInFile] ${message}`);
+}
+
+let lastClick: { nodeId: string; time: number } | null = null;
+
+async function openAndPositionAtKey(
+  uri: vscode.Uri,
+  filePath: string,
+  keyPath: string[],
+): Promise<void> {
+  const editor = await vscode.window.showTextDocument(uri);
+  if (keyPath.length === 0) return;
+  const location = findKeyLine(filePath, keyPath);
+  if (!location) return;
+  const pos = new vscode.Position(location.line, location.lineLength);
+  editor.selection = new vscode.Selection(pos, pos);
+  editor.revealRange(
+    new vscode.Range(pos, pos),
+    vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+  );
 }
 
 export function isFileOpenInAnyTab(uri: vscode.Uri): boolean {
@@ -96,10 +115,19 @@ export function registerOpenFileCommands(
     ),
   );
 
+  // Hidden command used only by the integration test suite to clear the in-memory
+  // double-click debounce state between test cases. Not contributed in package.json,
+  // so it is invisible in the command palette.
+  context.subscriptions.push(
+    vscode.commands.registerCommand('claudeConfig._test_resetDoubleClickState', () => {
+      lastClick = null;
+    }),
+  );
+
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'claudeConfig.revealInFile',
-      async (filePath: string, keyPath: string[]) => {
+      async (filePath: string, keyPath: string[], nodeId?: string) => {
         // Validation 1: Check filePath type and presence
         if (typeof filePath !== 'string' || filePath.length === 0) {
           // Return silently for internal wiring where no path is available
@@ -150,27 +178,37 @@ export function registerOpenFileCommands(
           return;
         }
 
-        // All validations passed - check whether the file is already open before revealing
+        // Decide whether this invocation should open a closed file. Two paths qualify:
+        //  1. The user has VS Code's `workbench.list.openMode` set to `doubleClick`, in
+        //     which case `TreeItem.command` only fires on a real double-click — every
+        //     fire IS the explicit-open intent.
+        //  2. We received two invocations on the same nodeId within the debounce window,
+        //     i.e. a synthesized double-click on top of a `singleClick` openMode.
+        const now = Date.now();
+        const openMode = vscode.workspace
+          .getConfiguration('workbench.list')
+          .get<string>('openMode');
+        const isExplicitDoubleClickMode = openMode === 'doubleClick';
+        const isDebounceMatch =
+          nodeId !== undefined &&
+          lastClick !== null &&
+          lastClick.nodeId === nodeId &&
+          now - lastClick.time < DOUBLE_CLICK_THRESHOLD_MS;
+        const shouldOpenClosedFile = isExplicitDoubleClickMode || isDebounceMatch;
+
+        // Update click state for the next invocation. Done before the await so we
+        // never miss recording a click even if the open path throws.
+        lastClick = nodeId !== undefined ? { nodeId, time: now } : null;
+
         const uri = vscode.Uri.file(filePath);
-        if (!isFileOpenInAnyTab(uri)) {
-          // Silent no-op: the tree click still selects the item; explicit opens go
-          // through `claudeConfig.openFile` (context menu / toolbar).
-          logRevealInFile(outputChannel, `skipped: ${filePath} (not open in any tab)`);
+        if (isFileOpenInAnyTab(uri) || shouldOpenClosedFile) {
+          await openAndPositionAtKey(uri, filePath, keyPath);
           return;
         }
-        const editor = await vscode.window.showTextDocument(uri);
 
-        if (keyPath.length > 0) {
-          const location = findKeyLine(filePath, keyPath);
-          if (location) {
-            const pos = new vscode.Position(location.line, location.lineLength);
-            editor.selection = new vscode.Selection(pos, pos);
-            editor.revealRange(
-              new vscode.Range(pos, pos),
-              vscode.TextEditorRevealType.InCenterIfOutsideViewport,
-            );
-          }
-        }
+        // Silent no-op: the tree click still selects the item; explicit opens go
+        // through `claudeConfig.openFile` (context menu / toolbar) or a double-click.
+        logRevealInFile(outputChannel, `skipped: ${filePath} (not open in any tab)`);
       },
     ),
   );
