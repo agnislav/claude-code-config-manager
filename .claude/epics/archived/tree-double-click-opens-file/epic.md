@@ -1,9 +1,9 @@
 ---
 name: tree-double-click-opens-file
-status: backlog
+status: completed
 created: 2026-04-28T17:23:30Z
-updated: 2026-05-01T14:59:25Z
-progress: 0%
+updated: 2026-05-01T15:39:28Z
+progress: 100%
 prd: .claude/prds/tree-double-click-opens-file.md
 github: https://github.com/agnislav/claude-code-config-manager/issues/22
 ---
