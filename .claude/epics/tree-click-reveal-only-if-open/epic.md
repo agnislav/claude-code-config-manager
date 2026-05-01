@@ -1,9 +1,9 @@
 ---
 name: tree-click-reveal-only-if-open
-status: backlog
+status: completed
 created: 2026-04-23T20:47:04Z
-updated: 2026-04-27T18:12:35Z
-progress: 0%
+updated: 2026-05-01T14:59:25Z
+progress: 100%
 prd: .claude/prds/tree-click-reveal-only-if-open.md
 github: https://github.com/agnislav/claude-code-config-manager/issues/19
 ---

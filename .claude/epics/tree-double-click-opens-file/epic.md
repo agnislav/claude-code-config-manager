@@ -2,10 +2,10 @@
 name: tree-double-click-opens-file
 status: backlog
 created: 2026-04-28T17:23:30Z
-updated: 2026-04-28T17:23:30Z
+updated: 2026-05-01T14:59:25Z
 progress: 0%
 prd: .claude/prds/tree-double-click-opens-file.md
-github: (will be set on sync)
+github: https://github.com/agnislav/claude-code-config-manager/issues/22
 ---
 
 # Epic: tree-double-click-opens-file
