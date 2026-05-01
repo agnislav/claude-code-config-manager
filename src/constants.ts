@@ -167,6 +167,9 @@ export const DEACTIVATION_MAX_WAIT_MS = 5000;
 /** Maximum allowed keyPath depth for revealInFile validation. */
 export const MAX_KEYPATH_DEPTH = 10;
 
+/** Window for treating two consecutive `revealInFile` invocations on the same node as a double-click. */
+export const DOUBLE_CLICK_THRESHOLD_MS = 300;
+
 // ── Messages ──────────────────────────────────────────────────
 
 /** Centralized user-facing messages. All prefixed with "Claude Config:" for identification. */

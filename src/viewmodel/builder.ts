@@ -74,6 +74,7 @@ function computeCommand(
   collapsibleState: vscode.TreeItemCollapsibleState,
   filePath: string | undefined,
   keyPath: string[],
+  nodeId: string,
 ): vscode.Command | undefined {
   if (
     collapsibleState !== vscode.TreeItemCollapsibleState.None ||
@@ -85,7 +86,7 @@ function computeCommand(
   return {
     command: 'claudeConfig.revealInFile',
     title: 'Reveal in Config File',
-    arguments: [filePath, keyPath],
+    arguments: [filePath, keyPath, nodeId],
   };
 }
 
@@ -526,7 +527,7 @@ export class TreeViewModelBuilder {
       nodeContext: ctx,
       children: [],
       id: computeId(ctx),
-      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath, computeId(ctx)),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'permission', `${category}/${rule}`, overlap),
       accessibilityInformation: {
         label: buildOverlapAccessibilityLabel(
@@ -601,7 +602,7 @@ export class TreeViewModelBuilder {
       nodeContext: ctx,
       children,
       id: computeId(ctx),
-      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath, computeId(ctx)),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'setting', key, overlap),
       accessibilityInformation: {
         label: buildOverlapAccessibilityLabel(
@@ -656,7 +657,7 @@ export class TreeViewModelBuilder {
       nodeContext: ctx,
       children: [],
       id: computeId(ctx),
-      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath, computeId(ctx)),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'settingKeyValue', `${parentKey}.${childKey}`, overlap),
       accessibilityInformation: {
         label: buildOverlapAccessibilityLabel(
@@ -709,7 +710,7 @@ export class TreeViewModelBuilder {
         nodeContext: ctx,
         children: [],
         id: computeId(ctx),
-        command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+        command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath, computeId(ctx)),
         resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'env', key, overlap),
         accessibilityInformation: {
           label: buildOverlapAccessibilityLabel(
@@ -796,7 +797,7 @@ export class TreeViewModelBuilder {
               : vscode.TreeItemCheckboxState.Unchecked }
           : {}),
         resourceUri,
-        command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+        command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath, computeId(ctx)),
         accessibilityInformation: {
           label: buildOverlapAccessibilityLabel(
             `Plugin: ${pluginId}, ${enabled ? 'enabled' : 'disabled'}, ${SCOPE_LABELS[scopedConfig.scope]} scope`,
@@ -873,7 +874,7 @@ export class TreeViewModelBuilder {
       nodeContext: ctx,
       children,
       id: computeId(ctx),
-      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath, computeId(ctx)),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'sandbox', key, overlap),
       accessibilityInformation: {
         label: buildOverlapAccessibilityLabel(
@@ -927,7 +928,7 @@ export class TreeViewModelBuilder {
       nodeContext: ctx,
       children: [],
       id: computeId(ctx),
-      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath, computeId(ctx)),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'sandbox', `${parentKey}.${childKey}`, overlap),
       accessibilityInformation: {
         label: buildOverlapAccessibilityLabel(
@@ -994,7 +995,7 @@ export class TreeViewModelBuilder {
         nodeContext: ctx,
         children: [],
         id: computeId(ctx),
-        command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+        command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath, computeId(ctx)),
         resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'mcpServer', name, overlap),
         accessibilityInformation: {
           label: buildOverlapAccessibilityLabel(
@@ -1123,7 +1124,7 @@ export class TreeViewModelBuilder {
       nodeContext: ctx,
       children: [],
       id: computeId(ctx),
-      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath),
+      command: computeCommand(collapsibleState, ctx.filePath, ctx.keyPath, computeId(ctx)),
       resourceUri: buildOverlapResourceUri(scopedConfig.scope, 'hook', `${eventType}/${matcherIndex}/${hookIndex}`, overlap),
       accessibilityInformation: {
         label: buildOverlapAccessibilityLabel(

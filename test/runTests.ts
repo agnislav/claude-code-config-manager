@@ -4,7 +4,12 @@ import { runTests } from '@vscode/test-electron';
 async function main() {
   const extensionDevelopmentPath = path.resolve(__dirname, '../../');
   const extensionTestsPath = path.resolve(__dirname, './suite/index');
-  await runTests({ extensionDevelopmentPath, extensionTestsPath });
+  const testWorkspace = path.resolve(extensionDevelopmentPath, 'test-fixtures');
+  await runTests({
+    extensionDevelopmentPath,
+    extensionTestsPath,
+    launchArgs: [testWorkspace, '--disable-extensions'],
+  });
 }
 
 main().catch((err) => {
