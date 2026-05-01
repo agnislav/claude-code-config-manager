@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { isFileOpenInAnyTab } from '../../../src/commands/openFileCommands';
 import { DOUBLE_CLICK_THRESHOLD_MS } from '../../../src/constants';
+import { findKeyLine } from '../../../src/utils/jsonLocation';
 
 // Resolves the test workspace folder. runTests.ts launches with `test-fixtures/`
 // as the workspace, so the project shared settings file lives at a path that
@@ -25,22 +26,11 @@ function totalTabCount(): number {
 
 suite('openFileCommands.revealInFile (issue #20)', () => {
   suiteSetup(async () => {
-    // Force extension activation so the test-only reset command is registered before
-    // the first teardown runs. Without this, the extension activates lazily on the
-    // first non-direct call, leaving the reset command unknown to teardown.
-    const ext = vscode.extensions.getExtension('agnislav.claude-code-config-manager');
-    assert.ok(ext, 'extension under test must be present');
-    if (!ext!.isActive) {
-      await ext!.activate();
-    }
     await closeAllTabs();
   });
 
   teardown(async () => {
     await closeAllTabs();
-    // The registered command lives in the bundled dist/extension.js — the same module
-    // instance whose `lastClick` state needs to be cleared between cases.
-    await vscode.commands.executeCommand('claudeConfig._test_resetDoubleClickState');
   });
 
   test('isFileOpenInAnyTab returns false when no matching tab is open', async () => {
@@ -87,30 +77,58 @@ suite('openFileCommands.revealInFile (issue #20)', () => {
   });
 
   // ── Double-click behavior (tree-double-click-opens-file) ─────────────────
+  //
+  // Each case uses a unique `nodeId` prefix so no test can pair with debounce
+  // state left behind by an earlier case. That keeps the suite hermetic without
+  // needing a state-reset hook on the bundled handler.
 
-  test('two invocations on same nodeId within window open the closed file and position cursor', async () => {
+  test('two invocations on same nodeId within window open the closed file and position cursor at the matching key', async () => {
     const filePath = getFixtureSharedSettingsPath();
     const target = vscode.Uri.file(filePath);
+    const expected = findKeyLine(filePath, ['env']);
+    assert.ok(expected, 'fixture must contain the env key for this test to be meaningful');
     const tabsBefore = totalTabCount();
 
     // Two fast clicks on the same logical node — second one should trigger the open path.
-    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'node-A');
-    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'node-A');
+    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'dbl-open-A');
+    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'dbl-open-A');
 
     assert.strictEqual(totalTabCount(), tabsBefore + 1, 'second invocation must open the file');
     const active = vscode.window.activeTextEditor;
     assert.ok(active, 'Expected an active editor after double-click open');
     assert.strictEqual(active!.document.uri.fsPath, target.fsPath);
+    // The cursor must land on the line of the JSON key — not just somewhere in the file.
+    assert.strictEqual(active!.selection.active.line, expected!.line, 'cursor must be on the env key line');
+  });
+
+  test('double-click on an already-open file is idempotent (no extra tab, cursor positioned)', async () => {
+    const filePath = getFixtureSharedSettingsPath();
+    const target = vscode.Uri.file(filePath);
+    const expected = findKeyLine(filePath, ['env']);
+    assert.ok(expected);
+
+    // Pre-open the file so the first click is already in the reveal path.
+    const doc = await vscode.workspace.openTextDocument(target);
+    await vscode.window.showTextDocument(doc, { preview: false });
+    const tabsBefore = totalTabCount();
+
+    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'open-idem-A');
+    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'open-idem-A');
+
+    assert.strictEqual(totalTabCount(), tabsBefore, 'no second tab should appear when the file was already open');
+    const active = vscode.window.activeTextEditor!;
+    assert.strictEqual(active.document.uri.fsPath, target.fsPath);
+    assert.strictEqual(active.selection.active.line, expected!.line, 'cursor must be on the env key line after the second click');
   });
 
   test('two invocations outside the debounce window stay silent', async () => {
     const filePath = getFixtureSharedSettingsPath();
     const tabsBefore = totalTabCount();
 
-    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'node-A');
+    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'win-out-A');
     // Wait past the debounce window so the second click no longer pairs with the first.
     await new Promise((resolve) => setTimeout(resolve, DOUBLE_CLICK_THRESHOLD_MS + 50));
-    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'node-A');
+    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'win-out-A');
 
     assert.strictEqual(totalTabCount(), tabsBefore, 'two slow clicks must remain a no-op');
   });
@@ -119,8 +137,8 @@ suite('openFileCommands.revealInFile (issue #20)', () => {
     const filePath = getFixtureSharedSettingsPath();
     const tabsBefore = totalTabCount();
 
-    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'node-A');
-    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'node-B');
+    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'diff-A');
+    await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'diff-B');
 
     assert.strictEqual(totalTabCount(), tabsBefore, 'fast clicks on different nodes must not be treated as a double-click');
   });
@@ -135,7 +153,7 @@ suite('openFileCommands.revealInFile (issue #20)', () => {
     await config.update('openMode', 'doubleClick', vscode.ConfigurationTarget.Workspace);
 
     try {
-      await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'node-A');
+      await vscode.commands.executeCommand('claudeConfig.revealInFile', filePath, ['env'], 'mode-dbl-A');
 
       assert.strictEqual(totalTabCount(), tabsBefore + 1, 'single invocation in doubleClick openMode must open the file');
       const active = vscode.window.activeTextEditor;

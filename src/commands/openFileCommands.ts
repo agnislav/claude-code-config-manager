@@ -115,15 +115,6 @@ export function registerOpenFileCommands(
     ),
   );
 
-  // Hidden command used only by the integration test suite to clear the in-memory
-  // double-click debounce state between test cases. Not contributed in package.json,
-  // so it is invisible in the command palette.
-  context.subscriptions.push(
-    vscode.commands.registerCommand('claudeConfig._test_resetDoubleClickState', () => {
-      lastClick = null;
-    }),
-  );
-
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'claudeConfig.revealInFile',
