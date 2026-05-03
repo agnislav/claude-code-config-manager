@@ -25,6 +25,7 @@ echo "🗂️ Data Integrity:"
 # Check epics have epic.md files
 for epic_dir in .claude/epics/*/; do
   [ -d "$epic_dir" ] || continue
+  [ "$(basename "$epic_dir")" = "archived" ] && continue
   if [ ! -f "$epic_dir/epic.md" ]; then
     echo "  ⚠️ Missing epic.md in $(basename "$epic_dir")"
     ((warnings++))
@@ -44,7 +45,7 @@ for task_file in .claude/epics/*/[0-9]*.md; do
 
   deps_line=$(grep "^depends_on:" "$task_file" | head -1)
   if [ -n "$deps_line" ]; then
-    deps=$(echo "$deps_line" | sed 's/^depends_on: *//' | sed 's/^\[//' | sed 's/\]$//' | sed 's/,/ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
+    deps=$(echo "$deps_line" | sed 's/^depends_on: *//' | sed 's/^\[//' | sed 's/\]$//' | sed 's/"//g' | sed 's/,/ /g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
     [ -z "$deps" ] && deps=""
   else
     deps=""
@@ -69,9 +70,12 @@ echo ""
 echo "📝 Frontmatter Validation:"
 invalid=0
 
-for file in $(find .claude -name "*.md" -path "*/epics/*" -o -path "*/prds/*" 2>/dev/null); do
+STRUCTURAL_FILES="github-mapping.md|execution-status.md|execution.md"
+for file in $(find .claude -name "*.md" \( -path "*/epics/*" -o -path "*/prds/*" \) 2>/dev/null); do
+  basename_file=$(basename "$file")
+  echo "$basename_file" | grep -qE "^($STRUCTURAL_FILES)$" && continue
   if ! grep -q "^---" "$file"; then
-    echo "  ⚠️ Missing frontmatter: $(basename "$file")"
+    echo "  ⚠️ Missing frontmatter: $basename_file"
     ((invalid++))
   fi
 done
